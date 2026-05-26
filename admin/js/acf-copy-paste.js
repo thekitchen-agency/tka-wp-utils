@@ -95,6 +95,9 @@
 				const $handle = $layout.find('.acf-fc-layout-handle').first();
 				if ($handle.length && !$handle.find('.tka-acf-layout-select').length) {
 					const $checkbox = $('<input type="checkbox" class="tka-acf-layout-select">');
+					$checkbox.on('click mousedown mouseup', function(e) {
+						e.stopPropagation();
+					});
 					$handle.prepend($checkbox);
 				}
 			}
