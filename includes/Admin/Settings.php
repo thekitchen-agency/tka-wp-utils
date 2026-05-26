@@ -105,6 +105,8 @@ class Settings {
 					'hide_acf_menu'            => 0,
 					'disable_acf_shortcode'    => 0,
 					'acf_custom_json_path'     => 0,
+					'acf_copy_paste'           => 0,
+					'acf_copy_paste_multiselect' => 0,
 				],
 			]
 		);
@@ -255,6 +257,8 @@ class Settings {
 		$sanitized['hide_acf_menu']         = isset( $input['hide_acf_menu'] ) ? 1 : 0;
 		$sanitized['disable_acf_shortcode'] = isset( $input['disable_acf_shortcode'] ) ? 1 : 0;
 		$sanitized['acf_custom_json_path']  = isset( $input['acf_custom_json_path'] ) ? 1 : 0;
+		$sanitized['acf_copy_paste']             = isset( $input['acf_copy_paste'] ) ? 1 : 0;
+		$sanitized['acf_copy_paste_multiselect'] = isset( $input['acf_copy_paste_multiselect'] ) ? 1 : 0;
 
 		return $sanitized;
 	}
@@ -1162,6 +1166,32 @@ class Settings {
 											<div class="tka-setting-control">
 												<label class="tka-switch">
 													<input type="checkbox" name="tka_wp_utils_options[acf_custom_json_path]" value="1" <?php checked( 1, $options['acf_custom_json_path'] ?? 0 ); ?>>
+													<span class="tka-slider"></span>
+												</label>
+											</div>
+										</div>
+
+										<div class="tka-setting-row">
+											<div class="tka-setting-label">
+												<strong><?php esc_html_e( 'Enable Flexible Layout Copy & Paste', 'tka-wp-utils' ); ?></strong>
+												<p><?php esc_html_e( 'Adds Copy & Paste buttons to each Flexible Content block in the WordPress post editor. Copied blocks can be pasted across different fields and posts.', 'tka-wp-utils' ); ?></p>
+											</div>
+											<div class="tka-setting-control">
+												<label class="tka-switch">
+													<input type="checkbox" id="tka-acf-copy-paste-toggle" name="tka_wp_utils_options[acf_copy_paste]" value="1" <?php checked( 1, $options['acf_copy_paste'] ?? 0 ); ?>>
+													<span class="tka-slider"></span>
+												</label>
+											</div>
+										</div>
+
+										<div class="tka-setting-row nested-acf-multiselect" style="<?php echo ( ! empty( $options['acf_copy_paste'] ) ) ? 'display: flex;' : 'display: none;'; ?>">
+											<div class="tka-setting-label">
+												<strong><?php esc_html_e( 'Enable Multiple Layout Copy/Paste (Multiselect)', 'tka-wp-utils' ); ?></strong>
+												<p><?php esc_html_e( 'Enables checkboxes in layout headers to select, copy, and bulk paste multiple layout blocks simultaneously.', 'tka-wp-utils' ); ?></p>
+											</div>
+											<div class="tka-setting-control">
+												<label class="tka-switch">
+													<input type="checkbox" name="tka_wp_utils_options[acf_copy_paste_multiselect]" value="1" <?php checked( 1, $options['acf_copy_paste_multiselect'] ?? 0 ); ?>>
 													<span class="tka-slider"></span>
 												</label>
 											</div>

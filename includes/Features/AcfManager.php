@@ -35,6 +35,47 @@ class AcfManager {
 			add_filter( 'acf/settings/save_json', [ $this, 'getCustomJsonSavePath' ] );
 			add_filter( 'acf/settings/load_json', [ $this, 'getCustomJsonLoadPaths' ] );
 		}
+
+		if ( ! empty( $this->options['acf_copy_paste'] ) ) {
+			add_action( 'admin_enqueue_scripts', [ $this, 'enqueueCopyPasteAssets' ] );
+		}
+	}
+
+	/**
+	 * Enqueue ACF copy and paste utility assets on post creation/editing pages.
+	 */
+	public function enqueueCopyPasteAssets( string $hook ): void {
+		if ( ! in_array( $hook, [ 'post.php', 'post-new.php' ], true ) ) {
+			return;
+		}
+
+		wp_enqueue_style(
+			'tka-acf-copy-paste-css',
+			TKA_WP_UTILS_URL . 'admin/css/acf-copy-paste.css',
+			[],
+			TKA_WP_UTILS_VERSION
+		);
+
+		wp_enqueue_script(
+			'tka-acf-copy-paste-js',
+			TKA_WP_UTILS_URL . 'admin/js/acf-copy-paste.js',
+			[ 'jquery' ],
+			TKA_WP_UTILS_VERSION,
+			true
+		);
+
+		wp_localize_script( 'tka-acf-copy-paste-js', 'tkaAcfSettings', [
+			'enableMultiselect' => ! empty( $this->options['acf_copy_paste_multiselect'] ) ? 1 : 0,
+			'i18n'              => [
+				'copy'          => __( 'Copy', 'tka-wp-utils' ),
+				'copied'        => __( 'Copied!', 'tka-wp-utils' ),
+				'paste'         => __( 'Paste Block', 'tka-wp-utils' ),
+				'copySelected'  => __( 'Copy Selected', 'tka-wp-utils' ),
+				'nothingCopied' => __( 'No copied block layout found in clipboard.', 'tka-wp-utils' ),
+				'confirmPaste'  => __( 'Are you sure you want to paste the copied block(s)?', 'tka-wp-utils' ),
+				'layoutsCopied' => __( 'Selected layout blocks successfully copied to clipboard!', 'tka-wp-utils' ),
+			],
+		] );
 	}
 
 	/**
