@@ -194,16 +194,31 @@
 			}
 		});
 
+		// Capture gallery attachment visual layouts and their nested input values
+		const galleryValues = [];
+		$layout.find('.acf-field-gallery').each(function() {
+			const $galleryField = $(this);
+			const key = $galleryField.data('key');
+			const $attachmentsWrap = $galleryField.find('.acf-gallery-attachments').first();
+			if ($attachmentsWrap.length) {
+				galleryValues.push({
+					key: key,
+					attachmentsHtml: $attachmentsWrap.html()
+				});
+			}
+		});
+
 		return {
 			layoutSlug: layoutSlug,
-			fields: fieldValues
+			fields: fieldValues,
+			galleries: galleryValues
 		};
 	}
 
 	/**
 	 * Populate values recursively into a newly created layout row.
 	 */
-	function populateLayout($newRow, fields) {
+	function populateLayout($newRow, fields, galleries) {
 		const $layoutInput = $newRow.find('input[name$="[acf_fc_layout]"]').first();
 		if (!$layoutInput.length) {
 			return;
@@ -257,6 +272,36 @@
 				$input.trigger('change');
 			}
 		});
+
+		// Restore gallery attachments and nested inputs
+		if (galleries && Array.isArray(galleries)) {
+			galleries.forEach(function(savedGallery) {
+				const $galleryField = $newRow.find('.acf-field-gallery[data-key="' + savedGallery.key + '"]').first();
+				if ($galleryField.length) {
+					const $attachmentsWrap = $galleryField.find('.acf-gallery-attachments').first();
+					if ($attachmentsWrap.length) {
+						// 1. Restore visual gallery HTML grid containing the thumbnail preview items
+						$attachmentsWrap.html(savedGallery.attachmentsHtml);
+
+						// 2. Locate and rename the name attributes of all nested hidden inputs to use the new layout row's prefix
+						$attachmentsWrap.find('input[type="hidden"]').each(function() {
+							const oldName = $(this).attr('name');
+							if (oldName) {
+								const keyMatch = oldName.match(/\[field_[a-zA-Z0-9_]+\]/);
+								if (keyMatch) {
+									const relativePart = oldName.substring(oldName.indexOf(keyMatch[0]));
+									$(this).attr('name', prefix + relativePart);
+								}
+							}
+						});
+
+						// 3. Mark the gallery control container as non-empty so ACF styling renders it correctly
+						$galleryField.find('.acf-gallery').first().removeClass('-empty');
+						$galleryField.trigger('change');
+					}
+				}
+			});
+		}
 	}
 
 	/**
@@ -288,7 +333,7 @@
 			});
 
 			if ($newRow && $newRow.length) {
-				populateLayout($newRow, copiedLayout.fields);
+				populateLayout($newRow, copiedLayout.fields, copiedLayout.galleries);
 			}
 
 			// Process next item in the queue
