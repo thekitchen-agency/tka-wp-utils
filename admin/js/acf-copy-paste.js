@@ -194,16 +194,16 @@
 			}
 		});
 
-		// Capture gallery attachment visual layouts and their nested input values
-		const galleryValues = [];
-		$layout.find('.acf-field-gallery').each(function() {
-			const $galleryField = $(this);
-			const key = $galleryField.data('key');
-			const $attachmentsWrap = $galleryField.find('.acf-gallery-attachments').first();
-			if ($attachmentsWrap.length) {
-				galleryValues.push({
+		// Capture media upload visual structures and their nested input values (Image, File, Gallery)
+		const mediaValues = [];
+		$layout.find('.acf-field-image, .acf-field-file, .acf-field-gallery').each(function() {
+			const $mediaField = $(this);
+			const key = $mediaField.data('key');
+			const $inputContainer = $mediaField.find('.acf-input').first();
+			if ($inputContainer.length) {
+				mediaValues.push({
 					key: key,
-					attachmentsHtml: $attachmentsWrap.html()
+					inputHtml: $inputContainer.html()
 				});
 			}
 		});
@@ -211,14 +211,47 @@
 		return {
 			layoutSlug: layoutSlug,
 			fields: fieldValues,
-			galleries: galleryValues
+			medias: mediaValues
 		};
+	}
+
+	/**
+	 * Ensure that all nested repeater rows exist in the DOM before populating values.
+	 */
+	function ensureRepeaterRows($newRow, relativeName) {
+		// Match all occurrences of [field_key][row-index]
+		// E.g., [field_123][row-0]
+		const regex = /\[(field_[a-zA-Z0-9_]+)\]\[row-([0-9]+)\]/g;
+		let match;
+		let $container = $newRow;
+
+		while ((match = regex.exec(relativeName)) !== null) {
+			const repeaterKey = match[1];
+			const rowIndex = parseInt(match[2], 10);
+
+			const $repeaterField = $container.find('.acf-field-repeater[data-key="' + repeaterKey + '"]').first();
+			if ($repeaterField.length) {
+				const repeater = acf.getField($repeaterField);
+				if (repeater && typeof repeater.add === 'function' && typeof repeater.$rows === 'function') {
+					// Add rows until the desired index exists
+					while (repeater.$rows().length <= rowIndex) {
+						repeater.add();
+					}
+					// Move container context into the specific row
+					$container = repeater.$row(rowIndex);
+				} else {
+					break;
+				}
+			} else {
+				break;
+			}
+		}
 	}
 
 	/**
 	 * Populate values recursively into a newly created layout row.
 	 */
-	function populateLayout($newRow, fields, galleries) {
+	function populateLayout($newRow, fields, medias) {
 		const $layoutInput = $newRow.find('input[name$="[acf_fc_layout]"]').first();
 		if (!$layoutInput.length) {
 			return;
@@ -227,7 +260,40 @@
 		const layoutName = $layoutInput.attr('name');
 		const prefix = layoutName.replace('[acf_fc_layout]', '');
 
+		// Restore media fields (Image, File, Gallery) first, so that their inputs exist in the DOM before we populate values
+		if (medias && Array.isArray(medias)) {
+			medias.forEach(function(savedMedia) {
+				const $mediaField = $newRow.find('.acf-field-image, .acf-field-file, .acf-field-gallery').filter('[data-key="' + savedMedia.key + '"]').first();
+				if ($mediaField.length) {
+					const $inputContainer = $mediaField.find('.acf-input').first();
+					if ($inputContainer.length) {
+						// 1. Restore visual gallery/uploader HTML grid containing preview items
+						$inputContainer.html(savedMedia.inputHtml);
+
+						// 2. Locate and rename the name attributes of all nested hidden inputs to use the new layout row's prefix
+						$inputContainer.find('input, select, textarea').each(function() {
+							const oldName = $(this).attr('name');
+							if (oldName) {
+								const keyMatch = oldName.match(/\[field_[a-zA-Z0-9_]+\]/);
+								if (keyMatch) {
+									const relativePart = oldName.substring(oldName.indexOf(keyMatch[0]));
+									$(this).attr('name', prefix + relativePart);
+								}
+							}
+						});
+
+						// 3. Mark the gallery control container as non-empty so ACF styling renders it correctly
+						$mediaField.find('.acf-gallery').first().removeClass('-empty');
+						$mediaField.trigger('change');
+					}
+				}
+			});
+		}
+
 		fields.forEach(function(field) {
+			// Ensure parent repeater rows exist
+			ensureRepeaterRows($newRow, field.relativeName);
+
 			const absoluteName = prefix + field.relativeName;
 			// Escape jQuery selector meta characters in name
 			const escapedName = absoluteName.replace(/(:|\.|\[|\]|,|=|@)/g, "\\$1");
@@ -272,36 +338,6 @@
 				$input.trigger('change');
 			}
 		});
-
-		// Restore gallery attachments and nested inputs
-		if (galleries && Array.isArray(galleries)) {
-			galleries.forEach(function(savedGallery) {
-				const $galleryField = $newRow.find('.acf-field-gallery[data-key="' + savedGallery.key + '"]').first();
-				if ($galleryField.length) {
-					const $attachmentsWrap = $galleryField.find('.acf-gallery-attachments').first();
-					if ($attachmentsWrap.length) {
-						// 1. Restore visual gallery HTML grid containing the thumbnail preview items
-						$attachmentsWrap.html(savedGallery.attachmentsHtml);
-
-						// 2. Locate and rename the name attributes of all nested hidden inputs to use the new layout row's prefix
-						$attachmentsWrap.find('input[type="hidden"]').each(function() {
-							const oldName = $(this).attr('name');
-							if (oldName) {
-								const keyMatch = oldName.match(/\[field_[a-zA-Z0-9_]+\]/);
-								if (keyMatch) {
-									const relativePart = oldName.substring(oldName.indexOf(keyMatch[0]));
-									$(this).attr('name', prefix + relativePart);
-								}
-							}
-						});
-
-						// 3. Mark the gallery control container as non-empty so ACF styling renders it correctly
-						$galleryField.find('.acf-gallery').first().removeClass('-empty');
-						$galleryField.trigger('change');
-					}
-				}
-			});
-		}
 	}
 
 	/**
@@ -333,7 +369,7 @@
 			});
 
 			if ($newRow && $newRow.length) {
-				populateLayout($newRow, copiedLayout.fields, copiedLayout.galleries);
+				populateLayout($newRow, copiedLayout.fields, copiedLayout.medias);
 			}
 
 			// Process next item in the queue
