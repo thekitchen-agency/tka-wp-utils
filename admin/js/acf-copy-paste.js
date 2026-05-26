@@ -298,10 +298,16 @@
 		}
 	});
 
-	// 1b. Prevent checkbox clicks from triggering layout collapse/expand in ACF handle
-	$(document).on('click', '.tka-acf-layout-select', function(e) {
-		e.stopPropagation();
-	});
+	// 1b. Prevent checkbox interactions (click, drag/sort) from triggering layout collapse/expand or sortable drag in ACF handle
+	if (typeof document !== 'undefined') {
+		['click', 'mousedown', 'mouseup'].forEach(function(eventName) {
+			document.addEventListener(eventName, function(e) {
+				if (e.target && (e.target.classList.contains('tka-acf-layout-select') || e.target.closest('.tka-acf-layout-select'))) {
+					e.stopPropagation();
+				}
+			}, true); // Use capture phase to intercept event before it reaches ACF or jQuery UI Sortable
+		});
+	}
 
 	// 2. Multiselect Checkbox Handler
 	$(document).on('change', '.tka-acf-layout-select', function() {
