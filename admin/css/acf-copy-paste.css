@@ -26,6 +26,7 @@
 	vertical-align: middle !important;
 	margin: -3px 10px 0 0 !important;
 	position: relative !important;
+	z-index: 10 !important;
 	transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease !important;
 	outline: none !important;
 	box-shadow: none !important;

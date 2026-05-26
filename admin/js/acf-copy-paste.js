@@ -255,6 +255,11 @@
 		}
 	});
 
+	// 1b. Prevent checkbox clicks from triggering layout collapse/expand in ACF handle
+	$(document).on('click', '.tka-acf-layout-select', function(e) {
+		e.stopPropagation();
+	});
+
 	// 2. Multiselect Checkbox Handler
 	$(document).on('change', '.tka-acf-layout-select', function() {
 		const $checkbox = $(this);
