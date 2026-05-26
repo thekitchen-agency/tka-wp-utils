@@ -144,114 +144,217 @@
 	}
 
 	/**
+	 * Recursively serialize an ACF field (supporting repeaters, groups, and standard fields).
+	 */
+	function serializeField($fieldEl) {
+		const field = acf.getField($fieldEl);
+		if (!field) return null;
+
+		const key = field.get('key');
+		const type = field.get('type');
+
+		if (type === 'repeater') {
+			const rows = [];
+			field.$rows().each(function() {
+				const $row = $(this);
+				const rowData = {};
+				$row.find('.acf-field').each(function() {
+					const $subfieldEl = $(this);
+					// Process only direct children of this row (not nested deeper inside other subfields in the same row)
+					if ($subfieldEl.parent().closest('.acf-field', $row).length === 0) {
+						const subSerialized = serializeField($subfieldEl);
+						if (subSerialized) {
+							rowData[subSerialized.key] = subSerialized;
+						}
+					}
+				});
+				rows.push(rowData);
+			});
+			return { key: key, type: type, value: rows };
+		} else if (type === 'group') {
+			const groupData = {};
+			$fieldEl.find('.acf-field').each(function() {
+				const $subfieldEl = $(this);
+				// Process only direct children of this group
+				if ($subfieldEl.parent().closest('.acf-field', $fieldEl).length === 0) {
+					const subSerialized = serializeField($subfieldEl);
+					if (subSerialized) {
+						groupData[subSerialized.key] = subSerialized;
+					}
+				}
+			});
+			return { key: key, type: type, value: groupData };
+		} else {
+			// Standard or complex field
+			let val = field.val();
+
+			// Special handling for WYSIWYG: ensure TinyMCE is synced to textarea
+			if (type === 'wysiwyg' && typeof tinyMCE !== 'undefined') {
+				const textareaId = $fieldEl.find('textarea').first().attr('id');
+				if (textareaId) {
+					const editor = tinyMCE.get(textareaId);
+					if (editor) {
+						val = editor.getContent();
+					}
+				}
+			}
+
+			// Special handling for media fields (Image, File, Gallery): capture entire input preview HTML
+			let mediaHtml = null;
+			if (type === 'image' || type === 'file' || type === 'gallery') {
+				const $inputContainer = $fieldEl.find('.acf-input').first();
+				if ($inputContainer.length) {
+					mediaHtml = $inputContainer.html();
+				}
+			}
+
+			return {
+				key: key,
+				type: type,
+				value: val,
+				mediaHtml: mediaHtml
+			};
+		}
+	}
+
+	/**
+	 * Recursively populate an ACF field (supporting repeaters, groups, and standard fields).
+	 */
+	function populateField($fieldEl, serializedData, prefix) {
+		if (!serializedData) return;
+		const field = acf.getField($fieldEl);
+		if (!field) return;
+
+		const type = serializedData.type;
+		const val = serializedData.value;
+
+		if (type === 'repeater') {
+			// Clear existing rows (if any)
+			field.$rows().each(function() {
+				$(this).remove();
+			});
+
+			// Add rows and populate recursively
+			if (Array.isArray(val)) {
+				val.forEach(function(rowData) {
+					const $newRow = field.add(); // Programmatically append new row
+					if ($newRow && $newRow.length) {
+						$newRow.find('.acf-field').each(function() {
+							const $subfieldEl = $(this);
+							if ($subfieldEl.parent().closest('.acf-field', $newRow).length === 0) {
+								const subKey = $subfieldEl.data('key');
+								if (rowData[subKey]) {
+									populateField($subfieldEl, rowData[subKey], prefix);
+								}
+							}
+						});
+					}
+				});
+			}
+		} else if (type === 'group') {
+			$fieldEl.find('.acf-field').each(function() {
+				const $subfieldEl = $(this);
+				if ($subfieldEl.parent().closest('.acf-field', $fieldEl).length === 0) {
+					const subKey = $subfieldEl.data('key');
+					if (val && val[subKey]) {
+						populateField($subfieldEl, val[subKey], prefix);
+					}
+				}
+			});
+		} else {
+			// Standard or complex field
+
+			// 1. Restore visual media structures first
+			if ((type === 'image' || type === 'file' || type === 'gallery') && serializedData.mediaHtml) {
+				const $inputContainer = $fieldEl.find('.acf-input').first();
+				if ($inputContainer.length) {
+					$inputContainer.html(serializedData.mediaHtml);
+
+					// Rename inputs to use the new layout row's prefix
+					$inputContainer.find('input, select, textarea').each(function() {
+						const oldName = $(this).attr('name');
+						if (oldName) {
+							const keyMatch = oldName.match(/\[field_[a-zA-Z0-9_]+\]/);
+							if (keyMatch) {
+								const relativePart = oldName.substring(oldName.indexOf(keyMatch[0]));
+								$(this).attr('name', prefix + relativePart);
+							}
+						}
+					});
+
+					$fieldEl.find('.acf-gallery').first().removeClass('-empty');
+				}
+			}
+
+			// 2. Set DOM value directly
+			const $input = $fieldEl.find('input, select, textarea').first();
+			if ($input.length) {
+				if ($input.attr('type') === 'radio' || $input.attr('type') === 'checkbox') {
+					$fieldEl.find('input[value="' + val + '"]').prop('checked', true);
+				} else {
+					$input.val(val);
+				}
+			}
+
+			// 3. Try setting via ACF JS API
+			if (typeof field.val === 'function') {
+				try {
+					field.val(val);
+				} catch (e) {
+					console.warn('ACF JS API val() failed:', e);
+				}
+			}
+
+			// 4. Special handling for WYSIWYG editors
+			if (type === 'wysiwyg' && typeof tinymce !== 'undefined') {
+				const textareaId = $fieldEl.find('textarea').first().attr('id');
+				if (textareaId) {
+					const editor = tinymce.get(textareaId);
+					if (editor) {
+						try {
+							editor.setContent(val);
+						} catch (e) {}
+					}
+				}
+			}
+
+			$fieldEl.trigger('change');
+		}
+	}
+
+	/**
 	 * Serialize a Layout Row into a JSON object.
 	 */
 	function serializeLayout($layout) {
-		// Force TinyMCE to synchronize iframe contents back to the textareas
-		if (typeof tinyMCE !== 'undefined') {
-			try {
-				tinyMCE.triggerSave();
-			} catch (e) {
-				console.warn('TinyMCE triggerSave failed:', e);
-			}
-		}
-
 		const $layoutInput = $layout.find('input[name$="[acf_fc_layout]"]').first();
 		if (!$layoutInput.length) {
 			return null;
 		}
 
-		const layoutName = $layoutInput.attr('name');
 		const layoutSlug = $layoutInput.val();
-		const prefix = layoutName.replace('[acf_fc_layout]', '');
 		const fieldValues = [];
 
-		// Query all nested input elements
-		$layout.find('input, select, textarea').each(function() {
-			const name = $(this).attr('name');
-			if (!name || name.endsWith('[acf_fc_layout]')) {
-				return;
-			}
-
-			if (name.startsWith(prefix)) {
-				const relativeName = name.substring(prefix.length);
-				const type = $(this).attr('type');
-				const value = $(this).val();
-
-				// Skip unchecked radios/checkboxes
-				if (type === 'radio' || type === 'checkbox') {
-					if (!$(this).prop('checked')) {
-						return;
-					}
+		// Serialize only top-level fields inside the layout
+		$layout.find('.acf-field').each(function() {
+			const $fieldEl = $(this);
+			if ($fieldEl.parent().closest('.acf-field', $layout).length === 0) {
+				const serialized = serializeField($fieldEl);
+				if (serialized) {
+					fieldValues.push(serialized);
 				}
-
-				fieldValues.push({
-					relativeName: relativeName,
-					value: value,
-					type: type,
-					checked: $(this).prop('checked')
-				});
-			}
-		});
-
-		// Capture media upload visual structures and their nested input values (Image, File, Gallery)
-		const mediaValues = [];
-		$layout.find('.acf-field-image, .acf-field-file, .acf-field-gallery').each(function() {
-			const $mediaField = $(this);
-			const key = $mediaField.data('key');
-			const $inputContainer = $mediaField.find('.acf-input').first();
-			if ($inputContainer.length) {
-				mediaValues.push({
-					key: key,
-					inputHtml: $inputContainer.html()
-				});
 			}
 		});
 
 		return {
 			layoutSlug: layoutSlug,
-			fields: fieldValues,
-			medias: mediaValues
+			fields: fieldValues
 		};
-	}
-
-	/**
-	 * Ensure that all nested repeater rows exist in the DOM before populating values.
-	 */
-	function ensureRepeaterRows($newRow, relativeName) {
-		// Match all occurrences of [field_key][row-index]
-		// E.g., [field_123][row-0]
-		const regex = /\[(field_[a-zA-Z0-9_]+)\]\[row-([0-9]+)\]/g;
-		let match;
-		let $container = $newRow;
-
-		while ((match = regex.exec(relativeName)) !== null) {
-			const repeaterKey = match[1];
-			const rowIndex = parseInt(match[2], 10);
-
-			const $repeaterField = $container.find('.acf-field-repeater[data-key="' + repeaterKey + '"]').first();
-			if ($repeaterField.length) {
-				const repeater = acf.getField($repeaterField);
-				if (repeater && typeof repeater.add === 'function' && typeof repeater.$rows === 'function') {
-					// Add rows until the desired index exists
-					while (repeater.$rows().length <= rowIndex) {
-						repeater.add();
-					}
-					// Move container context into the specific row
-					$container = repeater.$row(rowIndex);
-				} else {
-					break;
-				}
-			} else {
-				break;
-			}
-		}
 	}
 
 	/**
 	 * Populate values recursively into a newly created layout row.
 	 */
-	function populateLayout($newRow, fields, medias) {
+	function populateLayout($newRow, fields) {
 		const $layoutInput = $newRow.find('input[name$="[acf_fc_layout]"]').first();
 		if (!$layoutInput.length) {
 			return;
@@ -260,84 +363,14 @@
 		const layoutName = $layoutInput.attr('name');
 		const prefix = layoutName.replace('[acf_fc_layout]', '');
 
-		// Restore media fields (Image, File, Gallery) first, so that their inputs exist in the DOM before we populate values
-		if (medias && Array.isArray(medias)) {
-			medias.forEach(function(savedMedia) {
-				const $mediaField = $newRow.find('.acf-field-image, .acf-field-file, .acf-field-gallery').filter('[data-key="' + savedMedia.key + '"]').first();
-				if ($mediaField.length) {
-					const $inputContainer = $mediaField.find('.acf-input').first();
-					if ($inputContainer.length) {
-						// 1. Restore visual gallery/uploader HTML grid containing preview items
-						$inputContainer.html(savedMedia.inputHtml);
-
-						// 2. Locate and rename the name attributes of all nested hidden inputs to use the new layout row's prefix
-						$inputContainer.find('input, select, textarea').each(function() {
-							const oldName = $(this).attr('name');
-							if (oldName) {
-								const keyMatch = oldName.match(/\[field_[a-zA-Z0-9_]+\]/);
-								if (keyMatch) {
-									const relativePart = oldName.substring(oldName.indexOf(keyMatch[0]));
-									$(this).attr('name', prefix + relativePart);
-								}
-							}
-						});
-
-						// 3. Mark the gallery control container as non-empty so ACF styling renders it correctly
-						$mediaField.find('.acf-gallery').first().removeClass('-empty');
-						$mediaField.trigger('change');
-					}
+		if (fields && Array.isArray(fields)) {
+			fields.forEach(function(serializedField) {
+				const $fieldEl = $newRow.find('.acf-field[data-key="' + serializedField.key + '"]').first();
+				if ($fieldEl.length) {
+					populateField($fieldEl, serializedField, prefix);
 				}
 			});
 		}
-
-		fields.forEach(function(field) {
-			// Ensure parent repeater rows exist
-			ensureRepeaterRows($newRow, field.relativeName);
-
-			const absoluteName = prefix + field.relativeName;
-			// Escape jQuery selector meta characters in name
-			const escapedName = absoluteName.replace(/(:|\.|\[|\]|,|=|@)/g, "\\$1");
-			const $input = $newRow.find('[name="' + escapedName + '"]');
-
-			if ($input.length) {
-				// 1. Set the value directly in the DOM (important as fallback for editors not yet initialized in JS)
-				if (field.type === 'radio' || field.type === 'checkbox') {
-					$input.prop('checked', field.checked);
-				} else {
-					$input.val(field.value);
-				}
-
-				// 2. Try updating via ACF JS API if available
-				const $acfFieldEl = $input.closest('.acf-field');
-				if ($acfFieldEl.length) {
-					const acfField = acf.getField($acfFieldEl);
-					if (acfField && typeof acfField.val === 'function') {
-						try {
-							acfField.val(field.value);
-						} catch (e) {
-							console.warn('ACF JS API val() failed:', e);
-						}
-					}
-				}
-
-				// 3. For WYSIWYG fields: if TinyMCE editor instance is already initialized, update it directly
-				if (typeof tinymce !== 'undefined') {
-					const inputId = $input.attr('id');
-					if (inputId) {
-						const editor = tinymce.get(inputId);
-						if (editor) {
-							try {
-								editor.setContent(field.value);
-							} catch (e) {
-								console.warn('TinyMCE setContent failed:', e);
-							}
-						}
-					}
-				}
-
-				$input.trigger('change');
-			}
-		});
 	}
 
 	/**
@@ -369,7 +402,7 @@
 			});
 
 			if ($newRow && $newRow.length) {
-				populateLayout($newRow, copiedLayout.fields, copiedLayout.medias);
+				populateLayout($newRow, copiedLayout.fields);
 			}
 
 			// Process next item in the queue
