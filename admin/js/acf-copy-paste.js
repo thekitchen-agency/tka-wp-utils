@@ -1,22 +1,21 @@
 /**
  * TKA WP Utils - ACF Flexible Layout Copy & Paste Engine
  */
-(function($) {
+(function ($) {
 	if (typeof acf === 'undefined') {
 		return;
 	}
 
 	const enableMultiselect = parseInt(tkaAcfSettings.enableMultiselect, 10) === 1;
-	const enableToggles = parseInt(tkaAcfSettings.enableToggles, 10) === 1;
 	const i18n = tkaAcfSettings.i18n;
 
 	// Hook into ACF Flexible Content Initialization
-	acf.add_action('ready_field/type=flexible_content', function(field) {
+	acf.add_action('ready_field/type=flexible_content', function (field) {
 		initFlexibleField(field);
 	});
 
 	// Re-run initialization on newly appended layout elements
-	acf.add_action('append', function($el) {
+	acf.add_action('append', function ($el) {
 		if ($el.hasClass('acf-fc-layout') || $el.hasClass('layout')) {
 			const $fieldEl = $el.closest('.acf-field-flexible-content');
 			if ($fieldEl.length) {
@@ -30,9 +29,9 @@
 
 	// Setup MutationObserver to dynamically initialize layouts when they are loaded asynchronously (e.g. via AJAX / Gutenberg Block Editor)
 	if (typeof MutationObserver !== 'undefined') {
-		const observer = new MutationObserver(function(mutations) {
+		const observer = new MutationObserver(function (mutations) {
 			let shouldInit = false;
-			mutations.forEach(function(mutation) {
+			mutations.forEach(function (mutation) {
 				if (mutation.addedNodes && mutation.addedNodes.length > 0) {
 					for (let i = 0; i < mutation.addedNodes.length; i++) {
 						const node = mutation.addedNodes[i];
@@ -47,7 +46,7 @@
 				}
 			});
 			if (shouldInit) {
-				acf.getFields({ type: 'flexible_content' }).forEach(function(field) {
+				acf.getFields({ type: 'flexible_content' }).forEach(function (field) {
 					initFlexibleField(field);
 				});
 			}
@@ -60,9 +59,9 @@
 	}
 
 	// Delayed initialization fallback for slow loading Gutenberg AJAX blocks
-	$(document).ready(function() {
-		setTimeout(function() {
-			acf.getFields({ type: 'flexible_content' }).forEach(function(field) {
+	$(document).ready(function () {
+		setTimeout(function () {
+			acf.getFields({ type: 'flexible_content' }).forEach(function (field) {
 				initFlexibleField(field);
 			});
 		}, 1000);
@@ -82,7 +81,7 @@
 		const $layouts = $field.find('.acf-fc-layout, .layout');
 
 		// 1. Inject Copy buttons to each layout row
-		$layouts.each(function() {
+		$layouts.each(function () {
 			const $layout = $(this);
 			const $controls = $layout.find('.acf-fc-layout-controls').first();
 
@@ -95,9 +94,8 @@
 			if (enableMultiselect) {
 				const $handle = $layout.find('.acf-fc-layout-handle').first();
 				if ($handle.length && !$handle.find('.tka-acf-layout-select').length) {
-					const toggleClass = enableToggles ? ' tka-select-toggle' : '';
-					const $checkbox = $('<input type="checkbox" class="tka-acf-layout-select' + toggleClass + '">');
-					$checkbox.on('click mousedown mouseup', function(e) {
+					const $checkbox = $('<input type="checkbox" class="tka-acf-layout-select">');
+					$checkbox.on('click mousedown mouseup', function (e) {
 						e.stopPropagation();
 					});
 					$handle.prepend($checkbox);
@@ -140,7 +138,7 @@
 					$pasteBtns.show();
 					return;
 				}
-			} catch (e) {}
+			} catch (e) { }
 		}
 		$pasteBtns.hide();
 	}
@@ -164,10 +162,10 @@
 
 		if (type === 'repeater') {
 			const rows = [];
-			field.$rows().each(function() {
+			field.$rows().each(function () {
 				const $row = $(this);
 				const rowData = {};
-				$row.find('.acf-field').each(function() {
+				$row.find('.acf-field').each(function () {
 					const $subfieldEl = $(this);
 					// Process only direct children of this row (not nested deeper inside other subfields in the same row)
 					if (isDirectChildField($subfieldEl, $row)) {
@@ -182,7 +180,7 @@
 			return { key: key, type: type, value: rows };
 		} else if (type === 'group') {
 			const groupData = {};
-			$fieldEl.find('.acf-field').each(function() {
+			$fieldEl.find('.acf-field').each(function () {
 				const $subfieldEl = $(this);
 				// Process only direct children of this group
 				if (isDirectChildField($subfieldEl, $fieldEl)) {
@@ -204,7 +202,7 @@
 					const firstType = $inputs.first().attr('type');
 					if (firstType === 'checkbox' || firstType === 'radio') {
 						const checkedVals = [];
-						$inputs.filter(':checked').each(function() {
+						$inputs.filter(':checked').each(function () {
 							checkedVals.push($(this).val());
 						});
 						if (firstType === 'checkbox') {
@@ -228,7 +226,7 @@
 			const $select = $fieldEl.find('select').first();
 			if ($select.length) {
 				selectOptions = [];
-				$select.find('option:selected').each(function() {
+				$select.find('option:selected').each(function () {
 					selectOptions.push({
 						value: $(this).val(),
 						text: $(this).text()
@@ -279,16 +277,16 @@
 
 		if (type === 'repeater') {
 			// Clear existing rows (if any)
-			field.$rows().each(function() {
+			field.$rows().each(function () {
 				$(this).remove();
 			});
 
 			// Add rows and populate recursively
 			if (Array.isArray(val)) {
-				val.forEach(function(rowData) {
+				val.forEach(function (rowData) {
 					const $newRow = field.add(); // Programmatically append new row
 					if ($newRow && $newRow.length) {
-						$newRow.find('.acf-field').each(function() {
+						$newRow.find('.acf-field').each(function () {
 							const $subfieldEl = $(this);
 							if (isDirectChildField($subfieldEl, $newRow)) {
 								const subKey = $subfieldEl.data('key');
@@ -301,7 +299,7 @@
 				});
 			}
 		} else if (type === 'group') {
-			$fieldEl.find('.acf-field').each(function() {
+			$fieldEl.find('.acf-field').each(function () {
 				const $subfieldEl = $(this);
 				if (isDirectChildField($subfieldEl, $fieldEl)) {
 					const subKey = $subfieldEl.data('key');
@@ -320,7 +318,7 @@
 					$inputContainer.html(serializedData.mediaHtml);
 
 					// Rename inputs to use the new layout row's prefix
-					$inputContainer.find('input, select, textarea').each(function() {
+					$inputContainer.find('input, select, textarea').each(function () {
 						const oldName = $(this).attr('name');
 						if (oldName) {
 							const newName = oldName.replace(/^acf\[field_[a-zA-Z0-9_]+\]\[(?:row-)?\d+\]/, prefix);
@@ -336,7 +334,7 @@
 			if (serializedData.selectOptions && Array.isArray(serializedData.selectOptions)) {
 				const $select = $fieldEl.find('select').first();
 				if ($select.length) {
-					serializedData.selectOptions.forEach(function(opt) {
+					serializedData.selectOptions.forEach(function (opt) {
 						if (opt.value !== null && opt.value !== undefined && opt.value !== '') {
 							if ($select.find('option[value="' + opt.value + '"]').length === 0) {
 								const $newOpt = $('<option selected="selected"></option>')
@@ -361,7 +359,7 @@
 
 					// If val is an array, check each matching value
 					if (Array.isArray(val)) {
-						val.forEach(function(v) {
+						val.forEach(function (v) {
 							$fieldEl.find('input[value="' + v + '"]').prop('checked', true).trigger('change');
 						});
 					} else if (val !== null && val !== undefined && val !== '') {
@@ -370,7 +368,7 @@
 				} else {
 					// Set value for select, textarea, text input, etc.
 					// Works for single select and multi-select (where val is an array)
-					$inputs.each(function() {
+					$inputs.each(function () {
 						const $inp = $(this);
 						$inp.val(val);
 						$inp.trigger('change');
@@ -395,7 +393,7 @@
 					if (editor) {
 						try {
 							editor.setContent(val);
-						} catch (e) {}
+						} catch (e) { }
 					}
 				}
 			}
@@ -417,7 +415,7 @@
 		const fieldValues = [];
 
 		// Serialize only top-level fields inside the layout
-		$layout.find('.acf-field').each(function() {
+		$layout.find('.acf-field').each(function () {
 			const $fieldEl = $(this);
 			if (isDirectChildField($fieldEl, $layout)) {
 				const serialized = serializeField($fieldEl);
@@ -446,7 +444,7 @@
 		const prefix = layoutName.replace('[acf_fc_layout]', '');
 
 		if (fields && Array.isArray(fields)) {
-			fields.forEach(function(serializedField) {
+			fields.forEach(function (serializedField) {
 				const $fieldEl = $newRow.find('.acf-field[data-key="' + serializedField.key + '"]').first();
 				if ($fieldEl.length) {
 					populateField($fieldEl, serializedField, prefix);
@@ -473,11 +471,11 @@
 		});
 
 		// Set a safe timeout to let ACF instantiate the layouts HTML and nested JS fields
-		setTimeout(function() {
+		setTimeout(function () {
 			const $afterRows = field.$el.find('.acf-fc-layout, .layout');
 			let $newRow = null;
 
-			$afterRows.each(function() {
+			$afterRows.each(function () {
 				if ($beforeRows.index(this) === -1) {
 					$newRow = $(this);
 				}
@@ -497,7 +495,7 @@
 	// ==========================================
 
 	// 1. Single Copy Click Handler
-	$(document).on('click', '.tka-acf-copy-btn', function(e) {
+	$(document).on('click', '.tka-acf-copy-btn', function (e) {
 		e.preventDefault();
 		e.stopPropagation();
 
@@ -507,11 +505,11 @@
 
 		if (layoutData) {
 			localStorage.setItem('tka_acf_copied_layouts', JSON.stringify([layoutData]));
-			
+
 			// Quick feedback
 			const originalClass = $btn.attr('class');
 			$btn.removeClass('dashicons-admin-page').addClass('dashicons-yes-alt').attr('title', i18n.copied);
-			setTimeout(function() {
+			setTimeout(function () {
 				$btn.attr('class', originalClass).attr('title', i18n.copy);
 			}, 1500);
 
@@ -521,8 +519,8 @@
 
 	// 1b. Prevent checkbox interactions (click, drag/sort) from triggering layout collapse/expand or sortable drag in ACF handle
 	if (typeof document !== 'undefined') {
-		['click', 'mousedown', 'mouseup'].forEach(function(eventName) {
-			document.addEventListener(eventName, function(e) {
+		['click', 'mousedown', 'mouseup'].forEach(function (eventName) {
+			document.addEventListener(eventName, function (e) {
 				if (e.target && (e.target.classList.contains('tka-acf-layout-select') || e.target.closest('.tka-acf-layout-select'))) {
 					e.stopPropagation();
 				}
@@ -531,7 +529,7 @@
 	}
 
 	// 2. Multiselect Checkbox Handler
-	$(document).on('change', '.tka-acf-layout-select', function() {
+	$(document).on('change', '.tka-acf-layout-select', function () {
 		const $checkbox = $(this);
 		const $layout = $checkbox.closest('.acf-fc-layout, .layout');
 		const $field = $checkbox.closest('.acf-field-flexible-content');
@@ -555,14 +553,14 @@
 	});
 
 	// 3. Bulk "Copy Selected" Click Handler
-	$(document).on('click', '.tka-acf-copy-selected-btn', function(e) {
+	$(document).on('click', '.tka-acf-copy-selected-btn', function (e) {
 		e.preventDefault();
 		const $btn = $(this);
 		const $field = $btn.closest('.acf-field-flexible-content');
 		const $checked = $field.find('.tka-acf-layout-select:checked');
 		const serializedArray = [];
 
-		$checked.each(function() {
+		$checked.each(function () {
 			const $layout = $(this).closest('.acf-fc-layout, .layout');
 			const data = serializeLayout($layout);
 			if (data) {
@@ -581,7 +579,7 @@
 	});
 
 	// 4. "Paste Layouts" Click Handler
-	$(document).on('click', '.tka-acf-paste-btn', function(e) {
+	$(document).on('click', '.tka-acf-paste-btn', function (e) {
 		e.preventDefault();
 		const $btn = $(this);
 		const $fieldEl = $btn.closest('.acf-field-flexible-content');
