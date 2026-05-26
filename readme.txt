@@ -26,6 +26,7 @@ TKA WP Utils is an all-in-one utility plugin designed to help developers and age
 *   **Drag & Drop Content Ordering**: Enables manual drag-and-drop row sorting in post list tables.
 *   **One-Click Duplication**: Clone any post, page, or custom post type into a new draft in one click.
 *   **Redesigned Admin Columns Customizer**: Customize column layouts for post type lists. Features drag-and-drop sortable configurations, database meta key selectors, click-through relational links for Related Posts and Custom Taxonomy Terms, and matching top-bar filters.
+*   **ACF Flexible Content Copy/Paste Engine**: Copy and paste layout blocks inside Flexible Content fields, supporting both single block duplication and bulk multiselect operations across different posts and pages. Supports deep, recursive mapping for standard inputs, WYSIWYG, Images, Files, Galleries, Repeaters, Groups, and relational fields (Post Object, Taxonomy, Relationship).
 
 == Installation ==
 
@@ -44,6 +45,10 @@ The columns customizer supports standard custom field metadata, ACF Post Object/
 == Changelog ==
 
 = 1.1.0 =
+*   Added premium ACF Flexible Content Copy & Paste Engine.
+*   Added multiselect bulk duplication controls with selection glow borders.
+*   Implemented recursive field-tree mapping for complex ACF types (Repeaters, Groups, and Media fields).
+*   Resolved Select2/AJAX option recreation and change event propagation for relational fields (Post Object, Taxonomy, Relationship).
 *   Added ACF Integration Settings tab.
 *   Added Custom Fields sidebar menu visibility controls (restricts access to developer only).
 *   Added ACF shortcode strict disable option for security hardening.

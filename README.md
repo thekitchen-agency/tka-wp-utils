@@ -36,6 +36,16 @@ A comprehensive, premium suite of utility tools designed for developers and agen
     *   **Relational Linking**: Define if a column contains a *Related Post* or a *Taxonomy Term*. The customizer resolves raw IDs/objects into direct edit page links.
     *   **Toolbar Filters**: Injects matching dropdown filters at the top of the post list tables to filter entries by selected relations.
 
+### 🔌 5. ACF Integration & Copy/Paste Engine
+*   **ACF Flexible Content Copy/Paste**: Duplicate layouts inside WordPress edit screens, storing serialized layout structures inside browser `localStorage` to copy-and-paste across different posts and pages.
+*   **Deep Recursive Mapping**: Fully serializes and repopulates nested field elements including standard text inputs, WYSIWYG visual editors, checkboxes, and radio lists.
+*   **Nested Repeater & Group Fields Support**: Automatically tracks nested arrays and subfield hierarchies inside Repeaters and Groups. Appends required repeater rows dynamically and sequentially before population.
+*   **Complex Media Uploader Integrity**: Preserves and restores visual preview containers, cancellation hooks, and dynamic thumbnail links for Image, File, and Gallery ACF uploader fields, re-indexing name attributes securely.
+*   **Relational & Select2 Options Reconstitution**: Recreates dynamic selected option elements for AJAX-loaded Select2 select boxes (including Post Object, Taxonomy, and Relationship fields) to ensure selections render correctly in the visual interface.
+*   **Visually Styled Highlights**: Features premium HSL tailored border glow highlighting (`.tka-layout-selected`) and visual check states during multiselect bulk operations.
+*   **Sidebar Visibility & Shortcode Hardening**: Restricts sidebar Custom Fields editor access to the developer/installer only, and strictly disables front-end shortcode execution for robust security hardening.
+*   **Local JSON Shared Storage**: Integrates with ACF to automatically direct ACF local JSON configurations into the theme-independent `/wp-content/acf-json/` directory.
+
 ---
 
 ## Directory Structure
@@ -44,8 +54,10 @@ A comprehensive, premium suite of utility tools designed for developers and agen
 tka-wp-utils/
 ├── admin/
 │   ├── css/
+│   │   ├── acf-copy-paste.css    # Layout highlights & custom checkboxes
 │   │   └── admin-style.css       # Premium Slate/Indigo Dashboard styles
 │   └── js/
+│       ├── acf-copy-paste.js     # ACF layout copy-paste & Select2 engine
 │       ├── admin-columns.js      # Column Customizer and sorting scripts
 │       ├── admin-order.js        # Drag-and-drop content ordering scripts
 │       └── admin-script.js       # Admin Sandbox and Menu Organizer handling
@@ -54,7 +66,8 @@ tka-wp-utils/
 │   │   └── Settings.php          # Settings coordinators, registration & markup
 │   ├── Core/
 │   │   └── Plugin.php            # Main Singleton COORDINATOR
-│   └── Features/                 # 10 core feature classes
+│   └── Features/                 # 11 core feature classes
+│       ├── AcfManager.php        # ACF controls & asset loader
 │       ├── AdminColumns.php
 │       ├── AdminInterface.php
 │       ├── ClassicEditor.php
