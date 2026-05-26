@@ -3,7 +3,7 @@ Contributors: thekitchen-agency
 Tags: classic editor, svg upload, admin columns, menu organizer, hardening
 Requires at least: 6.0
 Tested up to: 6.5
-Stable tag: 1.0.0
+Stable tag: 1.1.0
 Requires PHP: 8.3
 License: MIT
 License URI: https://opensource.org/licenses/MIT
@@ -42,6 +42,12 @@ No. Every tool is built with performance in mind. Asset dequeuing blocks emojis,
 The columns customizer supports standard custom field metadata, ACF Post Object/Relationship fields, and Custom Taxonomy Term fields. When selected as related posts or terms, values are resolved into direct click-through edit links and filter dropdowns are injected into the list table.
 
 == Changelog ==
+
+= 1.1.0 =
+*   Added ACF Integration Settings tab.
+*   Added Custom Fields sidebar menu visibility controls (restricts access to developer only).
+*   Added ACF shortcode strict disable option for security hardening.
+*   Added theme-independent Local JSON option storing configs in `/wp-content/acf-json/`.
 
 = 1.0.0 =
 *   Initial Release.

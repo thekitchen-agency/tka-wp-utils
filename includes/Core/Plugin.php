@@ -13,6 +13,7 @@ use TKA\WPUtils\Features\ContentDuplicate;
 use TKA\WPUtils\Features\AdminInterface;
 use TKA\WPUtils\Features\SecurityManager;
 use TKA\WPUtils\Features\AdminColumns;
+use TKA\WPUtils\Features\AcfManager;
 
 /**
  * Main Plugin Coordinator class.
@@ -110,6 +111,12 @@ class Plugin {
 		if ( ! empty( $columns_options ) ) {
 			$admin_columns = new AdminColumns( $columns_options );
 			$admin_columns->hook();
+		}
+
+		// ACF Integration (only runs if ACF is active)
+		if ( class_exists( 'ACF' ) ) {
+			$acf_manager = new AcfManager( $options );
+			$acf_manager->hook();
 		}
 	}
 }

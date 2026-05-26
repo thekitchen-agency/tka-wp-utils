@@ -102,6 +102,9 @@ class Settings {
 					'admin_logo'               => '',
 					'login_custom_css'         => '',
 					'remove_footer_text'       => 0,
+					'hide_acf_menu'            => 0,
+					'disable_acf_shortcode'    => 0,
+					'acf_custom_json_path'     => 0,
 				],
 			]
 		);
@@ -248,6 +251,10 @@ class Settings {
 		$sanitized['admin_logo']       = isset( $input['admin_logo'] ) ? sanitize_text_field( $input['admin_logo'] ) : '';
 		$sanitized['login_custom_css'] = isset( $input['login_custom_css'] ) ? wp_strip_all_tags( $input['login_custom_css'] ) : '';
 		$sanitized['remove_footer_text'] = isset( $input['remove_footer_text'] ) ? 1 : 0;
+
+		$sanitized['hide_acf_menu']         = isset( $input['hide_acf_menu'] ) ? 1 : 0;
+		$sanitized['disable_acf_shortcode'] = isset( $input['disable_acf_shortcode'] ) ? 1 : 0;
+		$sanitized['acf_custom_json_path']  = isset( $input['acf_custom_json_path'] ) ? 1 : 0;
 
 		return $sanitized;
 	}
@@ -411,6 +418,12 @@ class Settings {
 								<a href="#design" class="tka-nav-item" data-tab="design">
 									<span class="dashicons dashicons-art"></span>
 									<?php esc_html_e( 'Design Customization', 'tka-wp-utils' ); ?>
+								</a>
+							<?php endif; ?>
+							<?php if ( class_exists( 'ACF' ) ) : ?>
+								<a href="#acf" class="tka-nav-item" data-tab="acf">
+									<span class="dashicons dashicons-welcome-widgets-menus"></span>
+									<?php esc_html_e( 'ACF Settings', 'tka-wp-utils' ); ?>
 								</a>
 							<?php endif; ?>
 							<a href="#sandbox" class="tka-nav-item" data-tab="sandbox">
@@ -1103,6 +1116,55 @@ class Settings {
 												<p><?php esc_html_e( 'Enter custom CSS rules to customize the login screen aesthetics (background color, buttons, typography). This CSS applies exclusively to the login screen.', 'tka-wp-utils' ); ?></p>
 											</div>
 											<textarea name="tka_wp_utils_options[login_custom_css]" class="large-text code" rows="6" placeholder="body.login { background: #4f46e5; }&#10;.login h1 a { filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1)); }" style="width: 100%; font-family: SFMono-Regular, Consolas, monospace; font-size: 13px; margin-top: 10px; border-radius: 6px; padding: 10px; border-color: var(--tka-border);"><?php echo esc_textarea( $options['login_custom_css'] ?? '' ); ?></textarea>
+										</div>
+									</div>
+								</section>
+							<?php endif; ?>
+
+							<?php if ( class_exists( 'ACF' ) ) : ?>
+								<!-- ACF PANEL -->
+								<section id="panel-acf" class="tka-tab-panel">
+									<h2><?php esc_html_e( 'Advanced Custom Fields (ACF) Integration', 'tka-wp-utils' ); ?></h2>
+									<p class="section-desc"><?php esc_html_e( 'Optimize and secure your ACF setup for client-facing websites.', 'tka-wp-utils' ); ?></p>
+
+									<div class="tka-settings-card">
+										<div class="tka-setting-row">
+											<div class="tka-setting-label">
+												<strong><?php esc_html_e( 'Hide Custom Fields Admin Menu', 'tka-wp-utils' ); ?></strong>
+												<p><?php esc_html_e( 'Hides the "Custom Fields" sidebar menu item for all administrators except the plugin installer (developer). Keeps your ACF schemas safe from client edits.', 'tka-wp-utils' ); ?></p>
+											</div>
+											<div class="tka-setting-control">
+												<label class="tka-switch">
+													<input type="checkbox" name="tka_wp_utils_options[hide_acf_menu]" value="1" <?php checked( 1, $options['hide_acf_menu'] ?? 0 ); ?>>
+													<span class="tka-slider"></span>
+												</label>
+											</div>
+										</div>
+
+										<div class="tka-setting-row">
+											<div class="tka-setting-label">
+												<strong><?php esc_html_e( 'Disable [acf] Shortcode', 'tka-wp-utils' ); ?></strong>
+												<p><?php esc_html_e( 'Disables front-end execution of the legacy `[acf]` shortcode. This is a vital security hardening practice to prevent unauthorized data exposure of raw database values.', 'tka-wp-utils' ); ?></p>
+											</div>
+											<div class="tka-setting-control">
+												<label class="tka-switch">
+													<input type="checkbox" name="tka_wp_utils_options[disable_acf_shortcode]" value="1" <?php checked( 1, $options['disable_acf_shortcode'] ?? 0 ); ?>>
+													<span class="tka-slider"></span>
+												</label>
+											</div>
+										</div>
+
+										<div class="tka-setting-row">
+											<div class="tka-setting-label">
+												<strong><?php esc_html_e( 'Theme-Independent Local JSON', 'tka-wp-utils' ); ?></strong>
+												<p><?php esc_html_e( 'Saves and loads ACF field groups in a shared, theme-independent directory (`/wp-content/acf-json/`) instead of the active theme folder. Prevents accidental field group loss during theme updates or switches.', 'tka-wp-utils' ); ?></p>
+											</div>
+											<div class="tka-setting-control">
+												<label class="tka-switch">
+													<input type="checkbox" name="tka_wp_utils_options[acf_custom_json_path]" value="1" <?php checked( 1, $options['acf_custom_json_path'] ?? 0 ); ?>>
+													<span class="tka-slider"></span>
+												</label>
+											</div>
 										</div>
 									</div>
 								</section>
