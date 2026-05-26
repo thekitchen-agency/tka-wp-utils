@@ -195,6 +195,45 @@
 			// Standard or complex field
 			let val = field.val();
 
+			// Fallback: extract directly from DOM inputs if field.val() is empty/null/empty-array
+			if (val === null || val === undefined || val === '' || (Array.isArray(val) && val.length === 0)) {
+				const $inputs = $fieldEl.find('input, select, textarea');
+				if ($inputs.length) {
+					const firstType = $inputs.first().attr('type');
+					if (firstType === 'checkbox' || firstType === 'radio') {
+						const checkedVals = [];
+						$inputs.filter(':checked').each(function() {
+							checkedVals.push($(this).val());
+						});
+						if (firstType === 'checkbox') {
+							val = checkedVals;
+						} else {
+							val = checkedVals.length ? checkedVals[0] : null;
+						}
+					} else {
+						// For selects (including multi-select) and standard inputs
+						if ($inputs.first().is('select') && $inputs.first().prop('multiple')) {
+							val = $inputs.first().val() || [];
+						} else {
+							val = $inputs.first().val();
+						}
+					}
+				}
+			}
+
+			// Capture selected options (text & value) to restore AJAX Select2 fields on Paste
+			let selectOptions = null;
+			const $select = $fieldEl.find('select').first();
+			if ($select.length) {
+				selectOptions = [];
+				$select.find('option:selected').each(function() {
+					selectOptions.push({
+						value: $(this).val(),
+						text: $(this).text()
+					});
+				});
+			}
+
 			// Special handling for WYSIWYG: ensure TinyMCE is synced to textarea
 			if (type === 'wysiwyg' && typeof tinyMCE !== 'undefined') {
 				const textareaId = $fieldEl.find('textarea').first().attr('id');
@@ -219,7 +258,8 @@
 				key: key,
 				type: type,
 				value: val,
-				mediaHtml: mediaHtml
+				mediaHtml: mediaHtml,
+				selectOptions: selectOptions
 			};
 		}
 	}
@@ -290,13 +330,49 @@
 				}
 			}
 
-			// 2. Set DOM value directly
-			const $input = $fieldEl.find('input, select, textarea').first();
-			if ($input.length) {
-				if ($input.attr('type') === 'radio' || $input.attr('type') === 'checkbox') {
-					$fieldEl.find('input[value="' + val + '"]').prop('checked', true);
+			// 1b. Recreate options for Select2 / AJAX elements (Post Object, Taxonomy, Select, Relationship, User)
+			if (serializedData.selectOptions && Array.isArray(serializedData.selectOptions)) {
+				const $select = $fieldEl.find('select').first();
+				if ($select.length) {
+					serializedData.selectOptions.forEach(function(opt) {
+						if (opt.value !== null && opt.value !== undefined && opt.value !== '') {
+							if ($select.find('option[value="' + opt.value + '"]').length === 0) {
+								const $newOpt = $('<option selected="selected"></option>')
+									.val(opt.value)
+									.text(opt.text || opt.value);
+								$select.append($newOpt);
+							}
+						}
+					});
+				}
+			}
+
+			// 2. Set DOM value directly and trigger change event to refresh select2 / UI
+			const $inputs = $fieldEl.find('input, select, textarea');
+			if ($inputs.length) {
+				const isCheckbox = $inputs.first().attr('type') === 'checkbox';
+				const isRadio = $inputs.first().attr('type') === 'radio';
+
+				if (isCheckbox || isRadio) {
+					// Uncheck all first
+					$inputs.prop('checked', false);
+
+					// If val is an array, check each matching value
+					if (Array.isArray(val)) {
+						val.forEach(function(v) {
+							$fieldEl.find('input[value="' + v + '"]').prop('checked', true).trigger('change');
+						});
+					} else if (val !== null && val !== undefined && val !== '') {
+						$fieldEl.find('input[value="' + val + '"]').prop('checked', true).trigger('change');
+					}
 				} else {
-					$input.val(val);
+					// Set value for select, textarea, text input, etc.
+					// Works for single select and multi-select (where val is an array)
+					$inputs.each(function() {
+						const $inp = $(this);
+						$inp.val(val);
+						$inp.trigger('change');
+					});
 				}
 			}
 
