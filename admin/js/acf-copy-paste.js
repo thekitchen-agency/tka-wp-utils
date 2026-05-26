@@ -16,7 +16,7 @@
 
 	// Re-run initialization on newly appended layout elements
 	acf.add_action('append', function($el) {
-		if ($el.hasClass('acf-fc-layout')) {
+		if ($el.hasClass('acf-fc-layout') || $el.hasClass('layout')) {
 			const $fieldEl = $el.closest('.acf-field-flexible-content');
 			if ($fieldEl.length) {
 				const field = acf.getField($fieldEl);
@@ -37,7 +37,7 @@
 						const node = mutation.addedNodes[i];
 						if (node.nodeType === 1) { // Element node
 							const $node = $(node);
-							if ($node.hasClass('acf-fc-layout') || $node.find('.acf-fc-layout').length > 0) {
+							if ($node.hasClass('acf-fc-layout') || $node.hasClass('layout') || $node.find('.acf-fc-layout, .layout').length > 0) {
 								shouldInit = true;
 								break;
 							}
@@ -78,7 +78,7 @@
 		if (!$field || !$field.length) {
 			return;
 		}
-		const $layouts = $field.find('.acf-fc-layout');
+		const $layouts = $field.find('.acf-fc-layout, .layout');
 
 		// 1. Inject Copy buttons to each layout row
 		$layouts.each(function() {
@@ -241,7 +241,7 @@
 		}
 
 		const copiedLayout = layouts[index];
-		const $beforeRows = field.$el.find('.acf-fc-layout');
+		const $beforeRows = field.$el.find('.acf-fc-layout, .layout');
 
 		// Programmatically add the layout
 		field.add({
@@ -250,7 +250,7 @@
 
 		// Set a safe timeout to let ACF instantiate the layouts HTML and nested JS fields
 		setTimeout(function() {
-			const $afterRows = field.$el.find('.acf-fc-layout');
+			const $afterRows = field.$el.find('.acf-fc-layout, .layout');
 			let $newRow = null;
 
 			$afterRows.each(function() {
@@ -278,7 +278,7 @@
 		e.stopPropagation();
 
 		const $btn = $(this);
-		const $layout = $btn.closest('.acf-fc-layout');
+		const $layout = $btn.closest('.acf-fc-layout, .layout');
 		const layoutData = serializeLayout($layout);
 
 		if (layoutData) {
@@ -303,7 +303,7 @@
 	// 2. Multiselect Checkbox Handler
 	$(document).on('change', '.tka-acf-layout-select', function() {
 		const $checkbox = $(this);
-		const $layout = $checkbox.closest('.acf-fc-layout');
+		const $layout = $checkbox.closest('.acf-fc-layout, .layout');
 		const $field = $checkbox.closest('.acf-field-flexible-content');
 
 		if ($checkbox.prop('checked')) {
@@ -333,7 +333,7 @@
 		const serializedArray = [];
 
 		$checked.each(function() {
-			const $layout = $(this).closest('.acf-fc-layout');
+			const $layout = $(this).closest('.acf-fc-layout, .layout');
 			const data = serializeLayout($layout);
 			if (data) {
 				serializedArray.push(data);

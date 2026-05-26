@@ -1,12 +1,14 @@
 /* TKA WP Utils - ACF Layout Copy/Paste Styles */
 
 /* 1. Base transitions for layout panels */
-.acf-fc-layout {
+.acf-fc-layout,
+.acf-field-flexible-content .layout {
 	transition: box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease !important;
 }
 
 /* 2. Premium Glow Highlight for Selected Layout Blocks */
-.acf-fc-layout.tka-layout-selected {
+.acf-fc-layout.tka-layout-selected,
+.acf-field-flexible-content .layout.tka-layout-selected {
 	border-color: #4f46e5 !important;
 	box-shadow: 0 0 0 1px #4f46e5, 0 8px 24px rgba(79, 70, 229, 0.08) !important;
 	background-color: rgba(79, 70, 229, 0.01) !important;
