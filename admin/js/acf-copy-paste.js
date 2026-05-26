@@ -144,6 +144,13 @@
 	}
 
 	/**
+	 * Check if a subfield is a direct child field of a container.
+	 */
+	function isDirectChildField($subfield, $container) {
+		return !$subfield.parentsUntil($container).filter('.acf-field').length;
+	}
+
+	/**
 	 * Recursively serialize an ACF field (supporting repeaters, groups, and standard fields).
 	 */
 	function serializeField($fieldEl) {
@@ -161,7 +168,7 @@
 				$row.find('.acf-field').each(function() {
 					const $subfieldEl = $(this);
 					// Process only direct children of this row (not nested deeper inside other subfields in the same row)
-					if ($subfieldEl.parent().closest('.acf-field', $row).length === 0) {
+					if (isDirectChildField($subfieldEl, $row)) {
 						const subSerialized = serializeField($subfieldEl);
 						if (subSerialized) {
 							rowData[subSerialized.key] = subSerialized;
@@ -176,7 +183,7 @@
 			$fieldEl.find('.acf-field').each(function() {
 				const $subfieldEl = $(this);
 				// Process only direct children of this group
-				if ($subfieldEl.parent().closest('.acf-field', $fieldEl).length === 0) {
+				if (isDirectChildField($subfieldEl, $fieldEl)) {
 					const subSerialized = serializeField($subfieldEl);
 					if (subSerialized) {
 						groupData[subSerialized.key] = subSerialized;
@@ -241,7 +248,7 @@
 					if ($newRow && $newRow.length) {
 						$newRow.find('.acf-field').each(function() {
 							const $subfieldEl = $(this);
-							if ($subfieldEl.parent().closest('.acf-field', $newRow).length === 0) {
+							if (isDirectChildField($subfieldEl, $newRow)) {
 								const subKey = $subfieldEl.data('key');
 								if (rowData[subKey]) {
 									populateField($subfieldEl, rowData[subKey], prefix);
@@ -254,7 +261,7 @@
 		} else if (type === 'group') {
 			$fieldEl.find('.acf-field').each(function() {
 				const $subfieldEl = $(this);
-				if ($subfieldEl.parent().closest('.acf-field', $fieldEl).length === 0) {
+				if (isDirectChildField($subfieldEl, $fieldEl)) {
 					const subKey = $subfieldEl.data('key');
 					if (val && val[subKey]) {
 						populateField($subfieldEl, val[subKey], prefix);
@@ -274,11 +281,8 @@
 					$inputContainer.find('input, select, textarea').each(function() {
 						const oldName = $(this).attr('name');
 						if (oldName) {
-							const keyMatch = oldName.match(/\[field_[a-zA-Z0-9_]+\]/);
-							if (keyMatch) {
-								const relativePart = oldName.substring(oldName.indexOf(keyMatch[0]));
-								$(this).attr('name', prefix + relativePart);
-							}
+							const newName = oldName.replace(/^acf\[field_[a-zA-Z0-9_]+\]\[(?:row-)?\d+\]/, prefix);
+							$(this).attr('name', newName);
 						}
 					});
 
@@ -337,7 +341,7 @@
 		// Serialize only top-level fields inside the layout
 		$layout.find('.acf-field').each(function() {
 			const $fieldEl = $(this);
-			if ($fieldEl.parent().closest('.acf-field', $layout).length === 0) {
+			if (isDirectChildField($fieldEl, $layout)) {
 				const serialized = serializeField($fieldEl);
 				if (serialized) {
 					fieldValues.push(serialized);
