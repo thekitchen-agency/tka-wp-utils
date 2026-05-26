@@ -27,6 +27,46 @@
 		}
 	});
 
+	// Setup MutationObserver to dynamically initialize layouts when they are loaded asynchronously (e.g. via AJAX / Gutenberg Block Editor)
+	if (typeof MutationObserver !== 'undefined') {
+		const observer = new MutationObserver(function(mutations) {
+			let shouldInit = false;
+			mutations.forEach(function(mutation) {
+				if (mutation.addedNodes && mutation.addedNodes.length > 0) {
+					for (let i = 0; i < mutation.addedNodes.length; i++) {
+						const node = mutation.addedNodes[i];
+						if (node.nodeType === 1) { // Element node
+							const $node = $(node);
+							if ($node.hasClass('acf-fc-layout') || $node.find('.acf-fc-layout').length > 0) {
+								shouldInit = true;
+								break;
+							}
+						}
+					}
+				}
+			});
+			if (shouldInit) {
+				acf.getFields({ type: 'flexible_content' }).forEach(function(field) {
+					initFlexibleField(field);
+				});
+			}
+		});
+
+		observer.observe(document.body, {
+			childList: true,
+			subtree: true
+		});
+	}
+
+	// Delayed initialization fallback for slow loading Gutenberg AJAX blocks
+	$(document).ready(function() {
+		setTimeout(function() {
+			acf.getFields({ type: 'flexible_content' }).forEach(function(field) {
+				initFlexibleField(field);
+			});
+		}, 1000);
+	});
+
 	/**
 	 * Initialize custom copy/paste actions on a Flexible Content Field.
 	 */
