@@ -147,6 +147,15 @@
 	 * Serialize a Layout Row into a JSON object.
 	 */
 	function serializeLayout($layout) {
+		// Force TinyMCE to synchronize iframe contents back to the textareas
+		if (typeof tinyMCE !== 'undefined') {
+			try {
+				tinyMCE.triggerSave();
+			} catch (e) {
+				console.warn('TinyMCE triggerSave failed:', e);
+			}
+		}
+
 		const $layoutInput = $layout.find('input[name$="[acf_fc_layout]"]').first();
 		if (!$layoutInput.length) {
 			return null;
@@ -210,25 +219,41 @@
 			const $input = $newRow.find('[name="' + escapedName + '"]');
 
 			if ($input.length) {
+				// 1. Set the value directly in the DOM (important as fallback for editors not yet initialized in JS)
+				if (field.type === 'radio' || field.type === 'checkbox') {
+					$input.prop('checked', field.checked);
+				} else {
+					$input.val(field.value);
+				}
+
+				// 2. Try updating via ACF JS API if available
 				const $acfFieldEl = $input.closest('.acf-field');
 				if ($acfFieldEl.length) {
 					const acfField = acf.getField($acfFieldEl);
 					if (acfField && typeof acfField.val === 'function') {
-						acfField.val(field.value);
-					} else {
-						if (field.type === 'radio' || field.type === 'checkbox') {
-							$input.prop('checked', field.checked);
-						} else {
-							$input.val(field.value);
+						try {
+							acfField.val(field.value);
+						} catch (e) {
+							console.warn('ACF JS API val() failed:', e);
 						}
 					}
-				} else {
-					if (field.type === 'radio' || field.type === 'checkbox') {
-						$input.prop('checked', field.checked);
-					} else {
-						$input.val(field.value);
+				}
+
+				// 3. For WYSIWYG fields: if TinyMCE editor instance is already initialized, update it directly
+				if (typeof tinymce !== 'undefined') {
+					const inputId = $input.attr('id');
+					if (inputId) {
+						const editor = tinymce.get(inputId);
+						if (editor) {
+							try {
+								editor.setContent(field.value);
+							} catch (e) {
+								console.warn('TinyMCE setContent failed:', e);
+							}
+						}
 					}
 				}
+
 				$input.trigger('change');
 			}
 		});
