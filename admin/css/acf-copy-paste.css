@@ -6,7 +6,7 @@
 	transition: box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease !important;
 }
 
-/* 2. Premium Glow Highlight for Selected Layout Blocks */
+/* 2. Glow Highlight for Selected Layout Blocks */
 .acf-fc-layout.tka-layout-selected,
 .acf-field-flexible-content .layout.tka-layout-selected {
 	border-color: #4f46e5 !important;

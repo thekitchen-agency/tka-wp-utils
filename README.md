@@ -5,7 +5,7 @@
 [![PHP Version Requirement](https://img.shields.io/badge/PHP-8.3-teal.svg?logo=php&logoColor=white)](https://www.php.net/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-A comprehensive, premium suite of utility tools designed for developers and agencies to secure, white-label, customize, and optimize the WordPress administration dashboard.
+A comprehensive suite of utility tools designed for developers and agencies to secure, white-label, customize, and optimize the WordPress administration dashboard.
 
 ---
 
@@ -42,7 +42,7 @@ A comprehensive, premium suite of utility tools designed for developers and agen
 *   **Nested Repeater & Group Fields Support**: Automatically tracks nested arrays and subfield hierarchies inside Repeaters and Groups. Appends required repeater rows dynamically and sequentially before population.
 *   **Complex Media Uploader Integrity**: Preserves and restores visual preview containers, cancellation hooks, and dynamic thumbnail links for Image, File, and Gallery ACF uploader fields, re-indexing name attributes securely.
 *   **Relational & Select2 Options Reconstitution**: Recreates dynamic selected option elements for AJAX-loaded Select2 select boxes (including Post Object, Taxonomy, and Relationship fields) to ensure selections render correctly in the visual interface.
-*   **Visually Styled Highlights**: Features premium HSL tailored border glow highlighting (`.tka-layout-selected`) and visual check states during multiselect bulk operations.
+*   **Visually Styled Highlights**: Features HSL tailored border glow highlighting (`.tka-layout-selected`) and visual check states during multiselect bulk operations.
 *   **Sidebar Visibility & Shortcode Hardening**: Restricts sidebar Custom Fields editor access to the developer/installer only, and strictly disables front-end shortcode execution for robust security hardening.
 *   **Local JSON Shared Storage**: Integrates with ACF to automatically direct ACF local JSON configurations into the theme-independent `/wp-content/acf-json/` directory.
 
@@ -55,7 +55,7 @@ tka-wp-utils/
 ├── admin/
 │   ├── css/
 │   │   ├── acf-copy-paste.css    # Layout highlights & custom checkboxes
-│   │   └── admin-style.css       # Premium Slate/Indigo Dashboard styles
+│   │   └── admin-style.css       # Slate/Indigo Dashboard styles
 │   └── js/
 │       ├── acf-copy-paste.js     # ACF layout copy-paste & Select2 engine
 │       ├── admin-columns.js      # Column Customizer and sorting scripts

@@ -372,7 +372,7 @@ class Settings {
 	}
 
 	/**
-	 * Render the premium settings page HTML.
+	 * Render the settings page HTML.
 	 */
 	public function renderSettingsPage(): void {
 		$options = get_option( 'tka_wp_utils_options' );
@@ -1228,7 +1228,7 @@ class Settings {
 	}
 
 	/**
-	 * Render the premium Admin Columns Customizer subpage HTML.
+	 * Render the Admin Columns Customizer subpage HTML.
 	 */
 	public function renderAdminColumnsPage(): void {
 		$columns = get_option( 'tka_wp_utils_columns', [] );

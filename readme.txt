@@ -45,7 +45,7 @@ The columns customizer supports standard custom field metadata, ACF Post Object/
 == Changelog ==
 
 = 1.1.0 =
-*   Added premium ACF Flexible Content Copy & Paste Engine.
+*   Added ACF Flexible Content Copy & Paste Engine.
 *   Added multiselect bulk duplication controls with selection glow borders.
 *   Implemented recursive field-tree mapping for complex ACF types (Repeaters, Groups, and Media fields).
 *   Resolved Select2/AJAX option recreation and change event propagation for relational fields (Post Object, Taxonomy, Relationship).
