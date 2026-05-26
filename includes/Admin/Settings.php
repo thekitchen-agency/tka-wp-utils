@@ -1174,24 +1174,11 @@ class Settings {
 										<div class="tka-setting-row">
 											<div class="tka-setting-label">
 												<strong><?php esc_html_e( 'Enable Flexible Layout Copy & Paste', 'tka-wp-utils' ); ?></strong>
-												<p><?php esc_html_e( 'Adds Copy & Paste buttons to each Flexible Content block in the WordPress post editor. Copied blocks can be pasted across different fields and posts.', 'tka-wp-utils' ); ?></p>
+												<p><?php esc_html_e( 'Adds Copy/Paste buttons and selection checkboxes to each Flexible Content layout in the WordPress editor. Copied blocks can be bulk pasted across fields and posts.', 'tka-wp-utils' ); ?></p>
 											</div>
 											<div class="tka-setting-control">
 												<label class="tka-switch">
-													<input type="checkbox" id="tka-acf-copy-paste-toggle" name="tka_wp_utils_options[acf_copy_paste]" value="1" <?php checked( 1, $options['acf_copy_paste'] ?? 0 ); ?>>
-													<span class="tka-slider"></span>
-												</label>
-											</div>
-										</div>
-
-										<div class="tka-setting-row nested-acf-multiselect" style="<?php echo ( ! empty( $options['acf_copy_paste'] ) ) ? 'display: flex;' : 'display: none;'; ?>">
-											<div class="tka-setting-label">
-												<strong><?php esc_html_e( 'Enable Multiple Layout Copy/Paste (Multiselect)', 'tka-wp-utils' ); ?></strong>
-												<p><?php esc_html_e( 'Enables checkboxes in layout headers to select, copy, and bulk paste multiple layout blocks simultaneously.', 'tka-wp-utils' ); ?></p>
-											</div>
-											<div class="tka-setting-control">
-												<label class="tka-switch">
-													<input type="checkbox" name="tka_wp_utils_options[acf_copy_paste_multiselect]" value="1" <?php checked( 1, $options['acf_copy_paste_multiselect'] ?? 0 ); ?>>
+													<input type="checkbox" name="tka_wp_utils_options[acf_copy_paste]" value="1" <?php checked( 1, $options['acf_copy_paste'] ?? 0 ); ?>>
 													<span class="tka-slider"></span>
 												</label>
 											</div>

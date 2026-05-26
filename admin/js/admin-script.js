@@ -120,27 +120,7 @@ document.addEventListener( 'DOMContentLoaded', function () {
 		} );
 	}
 
-	const acfCopyToggle = document.getElementById( 'tka-acf-copy-paste-toggle' );
-	const acfMultiselectRow = document.querySelector( '.nested-acf-multiselect' );
 
-	if ( acfCopyToggle && acfMultiselectRow ) {
-		acfCopyToggle.addEventListener( 'change', function () {
-			if ( this.checked ) {
-				acfMultiselectRow.style.display = 'flex';
-				acfMultiselectRow.style.opacity = 0;
-				setTimeout( () => {
-					acfMultiselectRow.style.transition = 'opacity 0.2s ease-in-out';
-					acfMultiselectRow.style.opacity = 1;
-				}, 10 );
-			} else {
-				acfMultiselectRow.style.transition = 'opacity 0.15s ease-in-out';
-				acfMultiselectRow.style.opacity = 0;
-				setTimeout( () => {
-					acfMultiselectRow.style.display = 'none';
-				}, 150 );
-			}
-		} );
-	}
 
 
 

@@ -65,7 +65,7 @@ class AcfManager {
 		);
 
 		wp_localize_script( 'tka-acf-copy-paste-js', 'tkaAcfSettings', [
-			'enableMultiselect' => ! empty( $this->options['acf_copy_paste_multiselect'] ) ? 1 : 0,
+			'enableMultiselect' => ! empty( $this->options['acf_copy_paste'] ) ? 1 : 0,
 			'i18n'              => [
 				'copy'          => __( 'Copy', 'tka-wp-utils' ),
 				'copied'        => __( 'Copied!', 'tka-wp-utils' ),
