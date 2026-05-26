@@ -31,7 +31,13 @@
 	 * Initialize custom copy/paste actions on a Flexible Content Field.
 	 */
 	function initFlexibleField(field) {
-		const $field = field.$el;
+		if (!field) {
+			return;
+		}
+		const $field = field.$el ? field.$el : (field.jquery ? field : $(field));
+		if (!$field || !$field.length) {
+			return;
+		}
 		const $layouts = $field.find('.acf-fc-layout');
 
 		// 1. Inject Copy buttons to each layout row
