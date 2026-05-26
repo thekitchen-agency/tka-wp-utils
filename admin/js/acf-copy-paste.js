@@ -7,6 +7,7 @@
 	}
 
 	const enableMultiselect = parseInt(tkaAcfSettings.enableMultiselect, 10) === 1;
+	const enableToggles = parseInt(tkaAcfSettings.enableToggles, 10) === 1;
 	const i18n = tkaAcfSettings.i18n;
 
 	// Hook into ACF Flexible Content Initialization
@@ -94,7 +95,8 @@
 			if (enableMultiselect) {
 				const $handle = $layout.find('.acf-fc-layout-handle').first();
 				if ($handle.length && !$handle.find('.tka-acf-layout-select').length) {
-					const $checkbox = $('<input type="checkbox" class="tka-acf-layout-select">');
+					const toggleClass = enableToggles ? ' tka-select-toggle' : '';
+					const $checkbox = $('<input type="checkbox" class="tka-acf-layout-select' + toggleClass + '">');
 					$checkbox.on('click mousedown mouseup', function(e) {
 						e.stopPropagation();
 					});

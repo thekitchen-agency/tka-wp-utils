@@ -3,7 +3,7 @@ Contributors: thekitchen-agency
 Tags: classic editor, svg upload, admin columns, menu organizer, hardening
 Requires at least: 6.0
 Tested up to: 6.5
-Stable tag: 1.1.0
+Stable tag: 1.1.1
 Requires PHP: 8.3
 License: MIT
 License URI: https://opensource.org/licenses/MIT
@@ -43,6 +43,10 @@ No. Every tool is built with performance in mind. Asset dequeuing blocks emojis,
 The columns customizer supports standard custom field metadata, ACF Post Object/Relationship fields, and Custom Taxonomy Term fields. When selected as related posts or terms, values are resolved into direct click-through edit links and filter dropdowns are injected into the list table.
 
 == Changelog ==
+
+= 1.1.1 =
+*   Added an option to style layout selection checkboxes as toggles under the ACF Settings tab.
+*   Introduced selection toggle switch CSS transformations for layout handles.
 
 = 1.1.0 =
 *   Added ACF Flexible Content Copy & Paste Engine.
