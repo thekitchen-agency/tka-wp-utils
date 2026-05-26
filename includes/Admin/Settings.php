@@ -892,6 +892,10 @@ class Settings {
 											<div class="tka-setting-label">
 												<strong><?php esc_html_e( 'Admin Menu Organizer', 'tka-wp-utils' ); ?></strong>
 												<p><?php esc_html_e( 'Configure separate drag-and-drop menu order and visibility rules for yourself and other administrators.', 'tka-wp-utils' ); ?></p>
+												<p style="margin-top: 10px; font-size: 13px; color: var(--tka-primary); background: rgba(79, 70, 229, 0.04); padding: 8px 14px; border-radius: 8px; border-left: 4px solid var(--tka-primary); display: inline-block; box-sizing: border-box; line-height: 1.4;">
+													<span class="dashicons dashicons-info" style="font-size: 16px; width: 16px; height: 16px; margin-top: -3px; vertical-align: middle; margin-right: 4px;"></span>
+													<strong><?php esc_html_e( 'Note:', 'tka-wp-utils' ); ?></strong> <?php esc_html_e( 'If the "Appearance" (themes.php) menu is hidden for other administrators, a standalone "Menus" option will automatically be exposed in their sidebar to allow navigation menu adjustments.', 'tka-wp-utils' ); ?>
+												</p>
 											</div>
 										</div>
 
