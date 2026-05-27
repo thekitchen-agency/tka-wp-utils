@@ -3,7 +3,7 @@ Contributors: thekitchen-agency
 Tags: classic editor, svg upload, admin columns, menu organizer, hardening
 Requires at least: 6.0
 Tested up to: 6.5
-Stable tag: 1.1.0
+Stable tag: 1.1.1
 Requires PHP: 8.3
 License: MIT
 License URI: https://opensource.org/licenses/MIT
@@ -43,6 +43,15 @@ No. Every tool is built with performance in mind. Asset dequeuing blocks emojis,
 The columns customizer supports standard custom field metadata, ACF Post Object/Relationship fields, and Custom Taxonomy Term fields. When selected as related posts or terms, values are resolved into direct click-through edit links and filter dropdowns are injected into the list table.
 
 == Changelog ==
+
+= 1.1.1 =
+*   Added ACF Flexible Content Visual Layout Selection Modal.
+*   Replaced the native layout dropdown with a stunning, searchable modal overlay supporting visual previews and category tabs.
+*   Implemented automated keyword-based and title-based fallback metadata generators (icons, descriptions, categories) in Javascript for new blocks.
+*   Implemented dynamic PHP custom block metadata registry via filter `tka_acf_layout_modal_metadata`.
+*   Implemented theme-level template header discovery scanning template directories for `.php` and `.blade.php` files to automatically extract block metadata from template comments natively via `get_file_data()`.
+*   Fixed closed modal stickiness to the admin viewport footer.
+*   Ensured clean dismissal of the background native ACF tooltip popup on modal close events (Escape key, backdrop click, close button) to prevent post editing session state leakages.
 
 = 1.1.0 =
 *   Added ACF Flexible Content Copy & Paste Engine.

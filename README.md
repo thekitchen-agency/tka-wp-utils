@@ -37,6 +37,9 @@ A comprehensive suite of utility tools designed for developers and agencies to s
     *   **Toolbar Filters**: Injects matching dropdown filters at the top of the post list tables to filter entries by selected relations.
 
 ### 🔌 5. ACF Integration & Copy/Paste Engine
+*   **ACF Flexible Content Visual Layout Selection Modal**: Replaces the standard narrow ACF layout selector dropdown list with a gorgeous, searchable, and category-filtered grid modal showing block descriptions, custom icons, and theme screenshot previews.
+*   **Dynamic Theme-Agnostic Discovery**: Automatically scans active theme block template directories (supporting both PHP and Blade templates) and dynamically extracts custom block metadata (Title, Category, Icon, Description) from template file comment headers natively using `get_file_data()`.
+*   **Automated Fallback Generation**: Features automatic title-based and keyword-based metadata fallback generators for any new custom block layout, allowing zero-configuration setup for any third-party block theme.
 *   **ACF Flexible Content Copy/Paste**: Duplicate layouts inside WordPress edit screens, storing serialized layout structures inside browser `localStorage` to copy-and-paste across different posts and pages.
 *   **Deep Recursive Mapping**: Fully serializes and repopulates nested field elements including standard text inputs, WYSIWYG visual editors, checkboxes, and radio lists.
 *   **Nested Repeater & Group Fields Support**: Automatically tracks nested arrays and subfield hierarchies inside Repeaters and Groups. Appends required repeater rows dynamically and sequentially before population.
@@ -55,9 +58,11 @@ tka-wp-utils/
 ├── admin/
 │   ├── css/
 │   │   ├── acf-copy-paste.css    # Layout highlights & custom checkboxes
+│   │   ├── acf-layout-modal.css  # Visual layout selector modal styles
 │   │   └── admin-style.css       # Slate/Indigo Dashboard styles
 │   └── js/
 │       ├── acf-copy-paste.js     # ACF layout copy-paste & Select2 engine
+│       ├── acf-layout-modal.js   # Visual layout selector modal & comment parser script
 │       ├── admin-columns.js      # Column Customizer and sorting scripts
 │       ├── admin-order.js        # Drag-and-drop content ordering scripts
 │       └── admin-script.js       # Admin Sandbox and Menu Organizer handling

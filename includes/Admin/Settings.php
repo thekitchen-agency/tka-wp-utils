@@ -111,6 +111,7 @@ class Settings
 					'acf_custom_json_path' => 0,
 					'acf_copy_paste' => 0,
 					'acf_copy_paste_multiselect' => 0,
+					'acf_layout_modal' => 0,
 				],
 			]
 		);
@@ -265,6 +266,7 @@ class Settings
 		$sanitized['acf_custom_json_path'] = isset($input['acf_custom_json_path']) ? 1 : 0;
 		$sanitized['acf_copy_paste'] = isset($input['acf_copy_paste']) ? 1 : 0;
 		$sanitized['acf_copy_paste_multiselect'] = isset($input['acf_copy_paste_multiselect']) ? 1 : 0;
+		$sanitized['acf_layout_modal'] = isset($input['acf_layout_modal']) ? 1 : 0;
 
 		return $sanitized;
 	}
@@ -1318,6 +1320,21 @@ class Settings
 												<label class="tka-switch">
 													<input type="checkbox" name="tka_wp_utils_options[acf_copy_paste]" value="1"
 														<?php checked(1, $options['acf_copy_paste'] ?? 0); ?>>
+													<span class="tka-slider"></span>
+												</label>
+											</div>
+										</div>
+
+										<div class="tka-setting-row">
+											<div class="tka-setting-label">
+												<strong><?php esc_html_e('Flexible Layout Selection Modal', 'tka-wp-utils'); ?></strong>
+												<p><?php esc_html_e('Replaces the default ACF Flexible Content "Add Row" dropdown list with a beautiful, searchable modal overlay supporting visual previews and category filtering.', 'tka-wp-utils'); ?>
+												</p>
+											</div>
+											<div class="tka-setting-control">
+												<label class="tka-switch">
+													<input type="checkbox" name="tka_wp_utils_options[acf_layout_modal]" value="1"
+														<?php checked(1, $options['acf_layout_modal'] ?? 0); ?>>
 													<span class="tka-slider"></span>
 												</label>
 											</div>
