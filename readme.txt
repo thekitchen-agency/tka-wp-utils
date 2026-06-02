@@ -1,9 +1,9 @@
 === TKA WP Utils ===
 Contributors: thekitchen-agency
-Tags: classic editor, svg upload, admin columns, menu organizer, hardening
+Tags: classic editor, svg upload, admin columns, menu organizer, hardening, image optimization
 Requires at least: 6.0
 Tested up to: 6.5
-Stable tag: 1.1.1
+Stable tag: 1.2.0
 Requires PHP: 8.3
 License: MIT
 License URI: https://opensource.org/licenses/MIT
@@ -22,11 +22,13 @@ TKA WP Utils is an all-in-one utility plugin designed to help developers and age
 *   **Obfuscate Author URLs & REST User Slugs**: Secure your site against brute-force user enumeration by hiding user slugs in the REST API and public author archives.
 *   **Obfuscate Email Addresses**: Auto-scans published post, page, and widget contents to convert email addresses into randomized decimal/hexadecimal HTML entities, shielding them from spam harvesters.
 *   **Complete White-Labeling**: Rebrand the login screen with a custom logo and login page CSS. Replace the top admin toolbar logo and remove footer brandings.
-*   **Admin Menu Organizer**: Rearrange sidebar menus with a drag-and-drop builder. Configure separate visibility rules for the website owner (installer) and client administrators.
+*   **Dedicated Admin Menu Organizer Subpage**: Rearrange sidebar menus with a drag-and-drop builder on a standalone subpage. Configure separate visibility rules for the website owner (installer) and client administrators.
 *   **Drag & Drop Content Ordering**: Enables manual drag-and-drop row sorting in post list tables.
 *   **One-Click Duplication**: Clone any post, page, or custom post type into a new draft in one click.
 *   **Redesigned Admin Columns Customizer**: Customize column layouts for post type lists. Features drag-and-drop sortable configurations, database meta key selectors, click-through relational links for Related Posts and Custom Taxonomy Terms, and matching top-bar filters.
 *   **ACF Flexible Content Copy/Paste Engine**: Copy and paste layout blocks inside Flexible Content fields, supporting both single block duplication and bulk multiselect operations across different posts and pages. Supports deep, recursive mapping for standard inputs, WYSIWYG, Images, Files, Galleries, Repeaters, Groups, and relational fields (Post Object, Taxonomy, Relationship).
+*   **Dedicated Bulk Retroactive Image Optimizer**: Features a sequential batch retroactive image optimizer subpage that safely processes JPEGs and PNGs to prevent FPM gateway timeouts.
+*   **Interactive Media Library Status Table**: A premium, real-time reactive table displaying JPEG, PNG, and WebP assets with color-coded format badges (slate JPEG, indigo PNG, success green WebP), status indicators, and direct database-backed size savings metadata display with smooth success highlight animations.
 
 == Installation ==
 
@@ -42,7 +44,22 @@ No. Every tool is built with performance in mind. Asset dequeuing blocks emojis,
 = What taxonomies and relations does the columns manager support? =
 The columns customizer supports standard custom field metadata, ACF Post Object/Relationship fields, and Custom Taxonomy Term fields. When selected as related posts or terms, values are resolved into direct click-through edit links and filter dropdowns are injected into the list table.
 
+= How are WebP images delivered, and is it compatible with Apache and Nginx? =
+Our plugin uses a database-first approach: it converts physical files to WebP and updates the attachment references directly in the database. This delivers static WebP URLs natively. Unlike other plugins, it does NOT require complex .htaccess (Apache) or nginx.conf (Nginx) rewrite rules, ensuring 100% compatibility across all server setups with zero performance overhead.
+
+= What happens if I deactivate the plugin? =
+Since images are permanently converted to WebP in the database, deactivating the plugin leaves WebP files active in your media library. If you want to keep original JPEGs/PNGs for safe backup, make sure the "Keep Original Images" setting is toggled on before running bulk optimization.
+
 == Changelog ==
+
+= 1.2.0 =
+*   Reorganized Settings Dashboard to move advanced utilities to dedicated submenu subpages.
+*   Moved Admin Menu Organizer to its own standalone submenu subpage.
+*   Moved retroactive Bulk Image Optimizer sequential engine to its own standalone submenu subpage.
+*   Added Interactive Media Library Optimization Status Table on the Bulk Optimizer page.
+*   Implemented persistent database storage footprint tracking saving bytes saved to `_tka_image_savings` post meta.
+*   Rendered high-fidelity type badges (slate JPEG, indigo PNG, success green WebP), status pills, and direct KB/MB savings columns.
+*   Implemented real-time sequential client transitions updating badges, status, and savings dynamically with a smooth CSS success highlight flash animation upon completion.
 
 = 1.1.1 =
 *   Added ACF Flexible Content Visual Layout Selection Modal.

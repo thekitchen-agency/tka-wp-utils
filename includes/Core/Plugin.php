@@ -14,6 +14,7 @@ use TKA\WPUtils\Features\AdminInterface;
 use TKA\WPUtils\Features\SecurityManager;
 use TKA\WPUtils\Features\AdminColumns;
 use TKA\WPUtils\Features\AcfManager;
+use TKA\WPUtils\Features\ImageOptimizer;
 
 /**
  * Main Plugin Coordinator class.
@@ -105,6 +106,10 @@ class Plugin {
 		// Security Manager
 		$security_manager = new SecurityManager( $options );
 		$security_manager->hook();
+
+		// Image Optimizer
+		$image_optimizer = new ImageOptimizer( $options );
+		$image_optimizer->hook();
 
 		// Custom Admin Columns manager
 		$columns_options = get_option( 'tka_wp_utils_columns', [] );

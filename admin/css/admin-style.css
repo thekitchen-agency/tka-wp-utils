@@ -958,4 +958,128 @@
 	color: var(--tka-text-muted);
 }
 
+/* Bulk Optimizer Table & Badges */
+.tka-table {
+	width: 100%;
+	border-collapse: collapse;
+	background: var(--tka-bg-card);
+	border-radius: 8px;
+	overflow: hidden;
+	box-shadow: var(--tka-shadow);
+	margin-top: 15px;
+}
+
+.tka-table th, 
+.tka-table td {
+	padding: 14px 18px;
+	vertical-align: middle;
+	border-bottom: 1px solid var(--tka-border);
+}
+
+.tka-table th {
+	font-weight: 600;
+	color: var(--tka-text-muted);
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	background: rgba(248, 250, 252, 0.8);
+}
+
+.tka-table tr {
+	transition: background-color 0.2s ease;
+}
+
+.tka-table tr:hover {
+	background-color: rgba(248, 250, 252, 0.6);
+}
+
+/* Badge System */
+.tka-badge-format {
+	display: inline-block;
+	padding: 3px 8px;
+	font-size: 10px;
+	font-weight: 700;
+	text-transform: uppercase;
+	border-radius: 4px;
+	letter-spacing: 0.5px;
+}
+
+.tka-badge-format-jpeg {
+	background-color: #f1f5f9;
+	color: #475569;
+}
+
+.tka-badge-format-png {
+	background-color: #eff6ff;
+	color: #2563eb;
+}
+
+.tka-badge-format-webp {
+	background-color: var(--tka-success-bg);
+	color: var(--tka-success);
+	border: 1px solid rgba(16, 185, 129, 0.15);
+}
+
+/* Status Badge System */
+.tka-status-pill {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 11px;
+	font-weight: 600;
+	padding: 3px 8px;
+	border-radius: 12px;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+.tka-status-pill .tka-status-dot {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+}
+
+.tka-status-pill.status-optimized {
+	background: var(--tka-success-bg);
+	color: var(--tka-success);
+}
+
+.tka-status-pill.status-optimized .tka-status-dot {
+	background-color: var(--tka-success);
+}
+
+.tka-status-pill.status-pending {
+	background: rgba(79, 70, 229, 0.05);
+	color: var(--tka-primary);
+}
+
+.tka-status-pill.status-pending .tka-status-dot {
+	background-color: var(--tka-primary);
+}
+
+/* Micro animations */
+.tka-row-optimized {
+	animation: tkaRowFlash 1.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+@keyframes tkaRowFlash {
+	0% {
+		background-color: rgba(16, 185, 129, 0.25);
+	}
+	100% {
+		background-color: transparent;
+	}
+}
+
+.tka-savings-value {
+	font-weight: 600;
+	font-family: SFMono-Regular, Consolas, monospace;
+}
+
+.tka-savings-pending {
+	color: var(--tka-text-muted);
+	font-style: italic;
+}
+
+
 

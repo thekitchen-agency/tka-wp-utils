@@ -25,7 +25,7 @@ A comprehensive suite of utility tools designed for developers and agencies to s
 ### 🗂️ 3. Navigation & Dashboard Control
 *   **Granular Gutenberg Editor Control**: Globally disable the Gutenberg Block Editor, allow it everywhere, or selectively activate/deactivate it per public post type.
 *   **Classic Experience Restored**: Revert post/page creation back to the Classic rich text (TinyMCE) editor and restore the traditional widgets dashboard.
-*   **Admin Menu Organizer**: Rearrange, hide, or sort dashboard sidebar menus. Features a split-view drag-and-drop builder to save separate visible layouts for the installer (owner) and client administrators.
+*   **Dedicated Admin Menu Organizer Subpage**: Moved to a standalone submenu page (`tka-wp-utils-menu-organizer`) with a split-view drag-and-drop builder to easily rearrange, hide, and sort sidebar menus for owner (installer) and client administrators separately.
 
 ### ⚙️ 4. Content Flow & Columns Manager
 *   **Drag-and-Drop Sorting**: Reorder post, page, or custom post type listings manually in admin list tables.
@@ -49,6 +49,13 @@ A comprehensive suite of utility tools designed for developers and agencies to s
 *   **Sidebar Visibility & Shortcode Hardening**: Restricts sidebar Custom Fields editor access to the developer/installer only, and strictly disables front-end shortcode execution for robust security hardening.
 *   **Local JSON Shared Storage**: Integrates with ACF to automatically direct ACF local JSON configurations into the theme-independent `/wp-content/acf-json/` directory.
 
+### 🖼️ 6. Image Optimization & WebP Engine
+*   **Automatic WebP Conversion**: Converts newly uploaded JPEG and PNG images into modern WebP format, generating WebP sub-sizes automatically to ensure lightning-fast site loading.
+*   **Original Image Retention & Compression**: Gives developers the flexibility to delete original uploads or keep compressed JPEG/PNG originals. Intercepts files on upload and compresses them in-place using customizable quality standards.
+*   **Custom Compression Quality Slider**: Sleek range slider enqueued into the dashboard settings to let developers choose the target compression ratio (e.g. 75% or 82%).
+*   **Dedicated Bulk Optimizer Subpage**: Features an advanced sequential batch retroactive image optimizer page (`tka-wp-utils-bulk-optimizer`) that processes existing media assets safely to prevent gateway timeouts.
+*   **Interactive Media Library Status Table**: Displays a real-time responsive dashboard listing all JPEGs, PNGs, and WebPs in the Media Library. Shows format badges, optimized status pills, and direct database-backed size savings metadata (`_tka_image_savings`). Rows transition dynamically in real-time with visual CSS success flash highlight animations upon process completion.
+
 ---
 
 ## Directory Structure
@@ -71,7 +78,7 @@ tka-wp-utils/
 │   │   └── Settings.php          # Settings coordinators, registration & markup
 │   ├── Core/
 │   │   └── Plugin.php            # Main Singleton COORDINATOR
-│   └── Features/                 # 11 core feature classes
+│   └── Features/                 # 12 core feature classes
 │       ├── AcfManager.php        # ACF controls & asset loader
 │       ├── AdminColumns.php
 │       ├── AdminInterface.php
@@ -80,6 +87,7 @@ tka-wp-utils/
 │       ├── ContentDuplicate.php
 │       ├── ContentOrder.php
 │       ├── GutenbergManager.php
+│       ├── ImageOptimizer.php
 │       ├── SecurityManager.php
 │       ├── SvgValidator.php
 │       └── VariousCleaner.php
@@ -105,6 +113,24 @@ tka-wp-utils/
 This plugin uses standard WordPress enqueues and native client scripts (jQuery, jQuery UI Sortable).
 *   **Requirements**: PHP 8.3+, WordPress 6.0+
 *   **Autoloading**: Utilizes a PSR-4 compliant autoloader registered inside `tka-wp-utils.php`. Ensure namespace naming structures correspond to folders inside `includes/`.
+
+---
+
+## Architectural Notice: Native WebP Delivery vs. Rewrite Rules
+
+This plugin uses a **database-first static delivery approach** for WebP conversion rather than dynamic server rewrites:
+
+### Why We Do It This Way
+* **Perfect Cross-Server Compatibility**: Unlike plugins that inject custom `.htaccess` (Apache) or `nginx.conf` (Nginx) rules, our optimizer writes the `.webp` mime type directly to the WordPress attachment records. This guarantees that images deliver flawlessly across Nginx, Apache, or Litespeed servers with **zero custom configurations**.
+* **Zero Performance Overhead**: Browsers load the static `.webp` files directly. The server does not need to intercept each static request, parse browser headers, or perform filesystem negotiations.
+* **Modern Standard Ready**: With modern WebP browser support over 97%, legacy non-WebP fallback systems are no longer necessary.
+
+### Developer Consequences & Reversibility
+* **Permanent Database Changes**: When JPEGs/PNGs are optimized, their database references (`guid`, `post_mime_type`, `_wp_attached_file`, and metadata) are updated to the `.webp` version. 
+* **Uninstallation Note**: If this plugin is deactivated, the images in the database remain `.webp`. They are not automatically reverted to JPEGs/PNGs.
+* **Keep Originals Toggle**: To safeguard original files, ensure the "Keep Original Images" setting is toggled on. The original uncompressed files will remain on disk under their respective directories.
+
+---
 
 ## License
 

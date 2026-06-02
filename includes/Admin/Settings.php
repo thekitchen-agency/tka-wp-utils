@@ -24,7 +24,6 @@ class Settings
 		add_action('admin_menu', [$this, 'addMenuPage']);
 		add_action('admin_init', [$this, 'registerSettings']);
 		add_action('admin_enqueue_scripts', [$this, 'enqueueAssets']);
-		add_action('wp_ajax_tka_wp_utils_sandbox_validate_svg', [$this, 'ajaxSandboxValidateSvg']);
 	}
 
 	/**
@@ -61,6 +60,26 @@ class Settings
 			'manage_options',
 			'tka-wp-utils-columns',
 			[$this, 'renderAdminColumnsPage']
+		);
+
+		// Standalone Admin Menu Organizer submenu
+		add_submenu_page(
+			self::MENU_SLUG,
+			__('Admin Menu Organizer', 'tka-wp-utils'),
+			__('Menu Organizer', 'tka-wp-utils'),
+			'manage_options',
+			'tka-wp-utils-menu-organizer',
+			[$this, 'renderMenuOrganizerPage']
+		);
+
+		// Standalone Bulk Retroactive Image Optimizer submenu
+		add_submenu_page(
+			self::MENU_SLUG,
+			__('Bulk Retroactive Image Optimizer', 'tka-wp-utils'),
+			__('Bulk Optimizer', 'tka-wp-utils'),
+			'manage_options',
+			'tka-wp-utils-bulk-optimizer',
+			[$this, 'renderBulkOptimizerPage']
 		);
 	}
 
@@ -112,6 +131,12 @@ class Settings
 					'acf_copy_paste' => 0,
 					'acf_copy_paste_multiselect' => 0,
 					'acf_layout_modal' => 0,
+					'image_optimization_enabled' => 0,
+					'webp_conversion_enabled' => 0,
+					'webp_keep_original' => 1,
+					'image_compression_quality' => 82,
+					'compress_original_images' => 0,
+					'strip_image_metadata' => 0,
 				],
 			]
 		);
@@ -267,6 +292,12 @@ class Settings
 		$sanitized['acf_copy_paste'] = isset($input['acf_copy_paste']) ? 1 : 0;
 		$sanitized['acf_copy_paste_multiselect'] = isset($input['acf_copy_paste_multiselect']) ? 1 : 0;
 		$sanitized['acf_layout_modal'] = isset($input['acf_layout_modal']) ? 1 : 0;
+		$sanitized['image_optimization_enabled'] = isset($input['image_optimization_enabled']) ? 1 : 0;
+		$sanitized['webp_conversion_enabled'] = isset($input['webp_conversion_enabled']) ? 1 : 0;
+		$sanitized['webp_keep_original'] = isset($input['webp_keep_original']) ? 1 : 0;
+		$sanitized['image_compression_quality'] = isset($input['image_compression_quality']) ? max(50, min(100, intval($input['image_compression_quality']))) : 82;
+		$sanitized['compress_original_images'] = isset($input['compress_original_images']) ? 1 : 0;
+		$sanitized['strip_image_metadata'] = isset($input['strip_image_metadata']) ? 1 : 0;
 
 		return $sanitized;
 	}
@@ -279,6 +310,8 @@ class Settings
 		$allowed_hooks = [
 			'toplevel_page_' . self::MENU_SLUG,
 			'tka-wp-utils_page_tka-wp-utils-columns',
+			'tka-wp-utils_page_tka-wp-utils-menu-organizer',
+			'tka-wp-utils_page_tka-wp-utils-bulk-optimizer',
 			'settings_page_' . self::MENU_SLUG,
 			'tka-wp-utils_page_' . self::MENU_SLUG,
 			'admin_page_' . self::MENU_SLUG,
@@ -307,7 +340,6 @@ class Settings
 
 		wp_localize_script('tka-wp-utils-admin-js', 'tkaWpUtilsAdmin', [
 			'ajaxUrl' => admin_url('admin-ajax.php'),
-			'nonce' => wp_create_nonce('tka-wp-utils-sandbox-nonce'),
 		]);
 
 		if ('tka-wp-utils_page_tka-wp-utils-columns' === $hook) {
@@ -349,38 +381,6 @@ class Settings
 		return array_values(array_filter($keys));
 	}
 
-	/**
-	 * Handle AJAX SVG Sandbox validation.
-	 */
-	public function ajaxSandboxValidateSvg(): void
-	{
-		check_ajax_referer('tka-wp-utils-sandbox-nonce', 'nonce');
-
-		if (!current_user_can('manage_options')) {
-			wp_send_json_error(['message' => __('Insufficient permissions.', 'tka-wp-utils')]);
-		}
-
-		if (empty($_FILES['svg_file'])) {
-			wp_send_json_error(['message' => __('No file uploaded.', 'tka-wp-utils')]);
-		}
-
-		$file = $_FILES['svg_file'];
-
-		// Perform validation
-		$validator = new SvgValidator();
-		$result = $validator->analyzeSvgFile($file['tmp_name']);
-
-		if ($result['safe']) {
-			wp_send_json_success([
-				'message' => __('Validation Passed! This SVG is secure and safe to upload.', 'tka-wp-utils'),
-			]);
-		} else {
-			wp_send_json_error([
-				'message' => __('Security check failed. Dangerous elements detected.', 'tka-wp-utils'),
-				'threats' => $result['threats'],
-			]);
-		}
-	}
 
 	/**
 	 * Render the settings page HTML.
@@ -443,11 +443,9 @@ class Settings
 									<?php esc_html_e('ACF Settings', 'tka-wp-utils'); ?>
 								</a>
 							<?php endif; ?>
-							<a href="#sandbox" class="tka-nav-item" data-tab="sandbox">
-								<span class="dashicons dashicons-shield"></span>
-								<?php esc_html_e('SVG Sandbox Playground', 'tka-wp-utils'); ?>
-								<span
-									class="tka-badge tka-badge-new"><?php esc_html_e('Interactive', 'tka-wp-utils'); ?></span>
+							<a href="#images" class="tka-nav-item" data-tab="images">
+								<span class="dashicons dashicons-format-image"></span>
+								<?php esc_html_e('Image Optimization', 'tka-wp-utils'); ?>
 							</a>
 						</nav>
 
@@ -983,198 +981,6 @@ class Settings
 												<?php endforeach; ?>
 											</div>
 										</div>
-
-										<hr style="border: 0; border-top: 1px solid var(--tka-border); margin: 20px 0;">
-
-										<!-- Admin Menu Organizer -->
-										<div class="tka-setting-row stack" style="border-bottom: none; padding-bottom: 0;">
-											<div class="tka-setting-label">
-												<strong><?php esc_html_e('Admin Menu Organizer', 'tka-wp-utils'); ?></strong>
-												<p><?php esc_html_e('Configure separate drag-and-drop menu order and visibility rules for yourself and other administrators.', 'tka-wp-utils'); ?>
-												</p>
-												<p
-													style="margin-top: 10px; font-size: 13px; color: var(--tka-primary); background: rgba(79, 70, 229, 0.04); padding: 8px 14px; border-radius: 8px; border-left: 4px solid var(--tka-primary); display: inline-block; box-sizing: border-box; line-height: 1.4;">
-													<span class="dashicons dashicons-info"
-														style="font-size: 16px; width: 16px; height: 16px; margin-top: -3px; vertical-align: middle; margin-right: 4px;"></span>
-													<strong><?php esc_html_e('Note:', 'tka-wp-utils'); ?></strong>
-													<?php esc_html_e('If the "Appearance" (themes.php) menu is hidden for other administrators, a standalone "Menus" option will automatically be exposed in their sidebar to allow navigation menu adjustments.', 'tka-wp-utils'); ?>
-												</p>
-											</div>
-										</div>
-
-										<?php
-										global $menu;
-										$raw_menus = [];
-										if (!empty($menu)) {
-											foreach ($menu as $item) {
-												if (empty($item[2]) || (isset($item[4]) && str_contains($item[4], 'wp-menu-separator'))) {
-													continue;
-												}
-												$label = wp_strip_all_tags($item[0]);
-												if (empty(trim($label))) {
-													continue;
-												}
-												$raw_menus[$item[2]] = $label;
-											}
-										}
-
-										// Fallback core menus if uninitialized
-										if (empty($raw_menus)) {
-											$raw_menus = [
-												'index.php' => __('Dashboard', 'tka-wp-utils'),
-												'edit.php' => __('Posts', 'tka-wp-utils'),
-												'upload.php' => __('Media', 'tka-wp-utils'),
-												'edit.php?post_type=page' => __('Pages', 'tka-wp-utils'),
-												'edit-comments.php' => __('Comments', 'tka-wp-utils'),
-												'themes.php' => __('Appearance', 'tka-wp-utils'),
-												'plugins.php' => __('Plugins', 'tka-wp-utils'),
-												'users.php' => __('Users', 'tka-wp-utils'),
-												'tools.php' => __('Tools', 'tka-wp-utils'),
-												'options-general.php' => __('Settings', 'tka-wp-utils'),
-											];
-										}
-										?>
-
-										<!-- Sub-Tabs Navigation for Organizers -->
-										<div class="tka-sub-tabs-container" style="width: 100%; margin-top: 25px;">
-											<div class="tka-sub-tabs-nav">
-												<button type="button" class="tka-sub-tab-btn active" data-subtab="client">
-													<?php esc_html_e('Client Layout (Other Administrators)', 'tka-wp-utils'); ?>
-												</button>
-												<button type="button" class="tka-sub-tab-btn" data-subtab="owner">
-													<?php esc_html_e('Your Account Layout (Original Installer Only)', 'tka-wp-utils'); ?>
-												</button>
-											</div>
-
-											<!-- 1. Client Menu Organizer Tab Content -->
-											<div class="tka-sub-tab-content active" id="tka-subtab-client-content"
-												style="width: 100%;">
-												<div class="tka-setting-row stack"
-													style="margin-top: 15px; border-bottom: none; padding-bottom: 0; width: 100%;">
-													<div class="tka-setting-label">
-														<p><?php esc_html_e('Customize what other administrators see in their sidebar navigation.', 'tka-wp-utils'); ?>
-														</p>
-													</div>
-
-													<div class="tka-menu-organizer" id="tka-menu-organizer-list-client"
-														style="width: 100%;">
-														<?php
-														$menus_to_hide = [];
-														$custom_order = $options['admin_menu_order'] ?? [];
-														foreach ($custom_order as $slug) {
-															if (isset($raw_menus[$slug])) {
-																$menus_to_hide[$slug] = $raw_menus[$slug];
-															}
-														}
-														foreach ($raw_menus as $slug => $label) {
-															if (!isset($menus_to_hide[$slug])) {
-																$menus_to_hide[$slug] = $label;
-															}
-														}
-
-														foreach ($menus_to_hide as $slug => $label):
-															$is_hidden = in_array($slug, $options['hidden_admin_menus'] ?? [], true);
-															?>
-															<div class="tka-organizer-item <?php echo $is_hidden ? 'menu-hidden' : 'menu-visible'; ?>"
-																data-slug="<?php echo esc_attr($slug); ?>">
-																<!-- Sortable Order Input -->
-																<input type="hidden" name="tka_wp_utils_options[admin_menu_order][]"
-																	value="<?php echo esc_attr($slug); ?>">
-
-																<!-- Hidden Visibility Checkbox (checked = hidden) -->
-																<input type="checkbox" class="tka-menu-visibility-checkbox"
-																	name="tka_wp_utils_options[hidden_admin_menus][]"
-																	value="<?php echo esc_attr($slug); ?>" <?php checked($is_hidden); ?> style="display: none;">
-
-																<div class="tka-organizer-drag">
-																	<span class="dashicons dashicons-menu"></span>
-																</div>
-
-																<div class="tka-organizer-details">
-																	<strong
-																		class="tka-organizer-title"><?php echo esc_html($label); ?></strong>
-																	<code class="tka-code-badge"><?php echo esc_html($slug); ?></code>
-																</div>
-
-																<div class="tka-organizer-actions">
-																	<button type="button"
-																		class="tka-organizer-toggle-btn <?php echo $is_hidden ? 'tka-btn-hidden' : 'tka-btn-visible'; ?>"
-																		title="<?php esc_attr_e('Toggle Visibility', 'tka-wp-utils'); ?>">
-																		<span
-																			class="dashicons <?php echo $is_hidden ? 'dashicons-hidden' : 'dashicons-visibility'; ?>"></span>
-																	</button>
-																</div>
-															</div>
-														<?php endforeach; ?>
-													</div>
-												</div>
-											</div>
-
-											<!-- 2. Owner Menu Organizer Tab Content -->
-											<div class="tka-sub-tab-content" id="tka-subtab-owner-content"
-												style="display: none; width: 100%;">
-												<div class="tka-setting-row stack"
-													style="margin-top: 15px; border-bottom: none; padding-bottom: 0; width: 100%;">
-													<div class="tka-setting-label">
-														<p><?php esc_html_e('Customize your own personal sidebar navigation order and visibility.', 'tka-wp-utils'); ?>
-														</p>
-													</div>
-
-													<div class="tka-menu-organizer" id="tka-menu-organizer-list-owner"
-														style="width: 100%;">
-														<?php
-														$owner_menus_to_hide = [];
-														$owner_custom_order = $options['owner_admin_menu_order'] ?? [];
-														foreach ($owner_custom_order as $slug) {
-															if (isset($raw_menus[$slug])) {
-																$owner_menus_to_hide[$slug] = $raw_menus[$slug];
-															}
-														}
-														foreach ($raw_menus as $slug => $label) {
-															if (!isset($owner_menus_to_hide[$slug])) {
-																$owner_menus_to_hide[$slug] = $label;
-															}
-														}
-
-														foreach ($owner_menus_to_hide as $slug => $label):
-															$is_hidden = in_array($slug, $options['owner_hidden_admin_menus'] ?? [], true);
-															?>
-															<div class="tka-organizer-item <?php echo $is_hidden ? 'menu-hidden' : 'menu-visible'; ?>"
-																data-slug="<?php echo esc_attr($slug); ?>">
-																<!-- Sortable Order Input -->
-																<input type="hidden"
-																	name="tka_wp_utils_options[owner_admin_menu_order][]"
-																	value="<?php echo esc_attr($slug); ?>">
-
-																<!-- Hidden Visibility Checkbox (checked = hidden) -->
-																<input type="checkbox" class="tka-menu-visibility-checkbox"
-																	name="tka_wp_utils_options[owner_hidden_admin_menus][]"
-																	value="<?php echo esc_attr($slug); ?>" <?php checked($is_hidden); ?> style="display: none;">
-
-																<div class="tka-organizer-drag">
-																	<span class="dashicons dashicons-menu"></span>
-																</div>
-
-																<div class="tka-organizer-details">
-																	<strong
-																		class="tka-organizer-title"><?php echo esc_html($label); ?></strong>
-																	<code class="tka-code-badge"><?php echo esc_html($slug); ?></code>
-																</div>
-
-																<div class="tka-organizer-actions">
-																	<button type="button"
-																		class="tka-organizer-toggle-btn <?php echo $is_hidden ? 'tka-btn-hidden' : 'tka-btn-visible'; ?>"
-																		title="<?php esc_attr_e('Toggle Visibility', 'tka-wp-utils'); ?>">
-																		<span
-																			class="dashicons <?php echo $is_hidden ? 'dashicons-hidden' : 'dashicons-visibility'; ?>"></span>
-																	</button>
-																</div>
-															</div>
-														<?php endforeach; ?>
-													</div>
-												</div>
-											</div>
-										</div>
 									</div>
 								</section>
 
@@ -1343,43 +1149,172 @@ class Settings
 								</section>
 							<?php endif; ?>
 
+							<!-- IMAGE OPTIMIZATION PANEL -->
+							<section id="panel-images" class="tka-tab-panel">
+								<h2><?php esc_html_e('Image Optimization & WebP Engine', 'tka-wp-utils'); ?></h2>
+								<p class="section-desc">
+									<?php esc_html_e('Convert newly uploaded JPEGs and PNGs to next-generation WebP format and compress assets in-place to save maximum disk storage and load websites lightning fast.', 'tka-wp-utils'); ?>
+								</p>
+
+								<div class="tka-settings-card">
+									<!-- Global Toggle -->
+									<div class="tka-setting-row">
+										<div class="tka-setting-label">
+											<strong><?php esc_html_e('Enable Image Optimization Features', 'tka-wp-utils'); ?></strong>
+											<p><?php esc_html_e('Master switch to enable enqueues, compression quality rules, and upload filters.', 'tka-wp-utils'); ?>
+											</p>
+										</div>
+										<div class="tka-setting-control">
+											<label class="tka-switch">
+												<input type="checkbox" name="tka_wp_utils_options[image_optimization_enabled]" value="1"
+													<?php checked(1, $options['image_optimization_enabled'] ?? 0); ?>>
+												<span class="tka-slider"></span>
+											</label>
+										</div>
+									</div>
+
+									<hr style="border: 0; border-top: 1px solid var(--tka-border); margin: 20px 0;">
+
+									<!-- WebP Conversion Toggle -->
+									<div class="tka-setting-row">
+										<div class="tka-setting-label">
+											<strong><?php esc_html_e('Convert Uploads to WebP', 'tka-wp-utils'); ?></strong>
+											<p><?php esc_html_e('Automatically converts uploaded JPEG and PNG image formats into highly efficient WebP files.', 'tka-wp-utils'); ?>
+											</p>
+										</div>
+										<div class="tka-setting-control">
+											<label class="tka-switch">
+												<input type="checkbox" name="tka_wp_utils_options[webp_conversion_enabled]" value="1"
+													<?php checked(1, $options['webp_conversion_enabled'] ?? 0); ?>>
+												<span class="tka-slider"></span>
+											</label>
+										</div>
+									</div>
+
+									<!-- WebP Keep Original Toggle -->
+									<div class="tka-setting-row">
+										<div class="tka-setting-label">
+											<strong><?php esc_html_e('Keep Original JPEGs / PNGs', 'tka-wp-utils'); ?></strong>
+											<p><?php esc_html_e('Retain the original files on the server folder after converting them to WebP. Turn off to delete original uploads and save absolute maximum disk space.', 'tka-wp-utils'); ?>
+											</p>
+										</div>
+										<div class="tka-setting-control">
+											<label class="tka-switch">
+												<input type="checkbox" name="tka_wp_utils_options[webp_keep_original]" value="1"
+													<?php checked(1, $options['webp_keep_original'] ?? 1); ?>>
+												<span class="tka-slider"></span>
+											</label>
+										</div>
+									</div>
+
+									<!-- Compress Original Toggle -->
+									<div class="tka-setting-row">
+										<div class="tka-setting-label">
+											<strong><?php esc_html_e('Optimize & Compress Original Uploads', 'tka-wp-utils'); ?></strong>
+											<p><?php esc_html_e('Compresses original full-size JPEGs and PNGs directly upon upload, rather than just compressing downscaled sub-sizes.', 'tka-wp-utils'); ?>
+											</p>
+										</div>
+										<div class="tka-setting-control">
+											<label class="tka-switch">
+												<input type="checkbox" name="tka_wp_utils_options[compress_original_images]" value="1"
+													<?php checked(1, $options['compress_original_images'] ?? 0); ?>>
+												<span class="tka-slider"></span>
+											</label>
+										</div>
+									</div>
+
+									<!-- Strip Metadata Toggle -->
+									<div class="tka-setting-row">
+										<div class="tka-setting-label">
+											<strong><?php esc_html_e('Strip EXIF Image Metadata', 'tka-wp-utils'); ?></strong>
+											<p><?php esc_html_e('Automatically strips all camera profiles, copyright tags, and GPS coordinates from images upon upload to safeguard privacy and save size.', 'tka-wp-utils'); ?>
+											</p>
+										</div>
+										<div class="tka-setting-control">
+											<label class="tka-switch">
+												<input type="checkbox" name="tka_wp_utils_options[strip_image_metadata]" value="1"
+													<?php checked(1, $options['strip_image_metadata'] ?? 0); ?>>
+												<span class="tka-slider"></span>
+											</label>
+										</div>
+									</div>
+
+									<hr style="border: 0; border-top: 1px solid var(--tka-border); margin: 20px 0;">
+
+									<!-- Compression Quality Slider -->
+									<div class="tka-setting-row stack" style="border-bottom: none; padding-bottom: 0;">
+										<div class="tka-setting-label" style="max-width: 100%;">
+											<strong><?php esc_html_e('Image Compression Quality', 'tka-wp-utils'); ?></strong>
+											<p><?php esc_html_e('Select target compression quality. Lower quality yields smaller files, while higher quality yields sharp detail (82% is recommended).', 'tka-wp-utils'); ?>
+											</p>
+										</div>
+										<div style="width: 100%; display: flex; align-items: center; gap: 15px; margin-top: 10px;">
+											<input type="range" id="tka-image-quality-slider" name="tka_wp_utils_options[image_compression_quality]"
+												min="50" max="100" value="<?php echo esc_attr($options['image_compression_quality'] ?? 82); ?>"
+												style="flex-grow: 1; accent-color: var(--tka-primary); cursor: pointer;">
+											<span id="tka-image-quality-display" style="font-weight: 700; color: var(--tka-primary); font-size: 16px; min-width: 45px; text-align: right;">
+												<?php echo esc_html($options['image_compression_quality'] ?? 82); ?>%
+											</span>
+										</div>
+									</div>
+								</div>
+
+								<!-- Server Compatibility Card -->
+								<div class="tka-settings-card" style="margin-top: 20px; border-left: 4px solid var(--tka-primary);">
+									<h3 style="margin: 0 0 12px 0; font-size: 14px; font-weight: 700; color: var(--tka-text-main); text-transform: uppercase; letter-spacing: 0.5px;">
+										<?php esc_html_e('Server Compatibility Check', 'tka-wp-utils'); ?>
+									</h3>
+									<ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
+										<li style="display: flex; justify-content: space-between; align-items: center;">
+											<span style="color: var(--tka-text-muted);"><?php esc_html_e('PHP GD WebP Support:', 'tka-wp-utils'); ?></span>
+											<strong>
+												<?php if (function_exists('imagewebp')): ?>
+													<span style="color: var(--tka-success);"><span class="dashicons dashicons-yes" style="font-size: 16px; width: 16px; height: 16px; vertical-align: middle;"></span> <?php esc_html_e('Enabled', 'tka-wp-utils'); ?></span>
+												<?php else: ?>
+													<span style="color: var(--tka-danger);"><span class="dashicons dashicons-no" style="font-size: 16px; width: 16px; height: 16px; vertical-align: middle;"></span> <?php esc_html_e('Disabled', 'tka-wp-utils'); ?></span>
+												<?php endif; ?>
+											</strong>
+										</li>
+										<li style="display: flex; justify-content: space-between; align-items: center;">
+											<span style="color: var(--tka-text-muted);"><?php esc_html_e('PHP Imagick WebP Support:', 'tka-wp-utils'); ?></span>
+											<strong>
+												<?php
+												$imagick_ok = false;
+												if (class_exists('\Imagick')) {
+													try {
+														$formats = \Imagick::queryFormats('WEBP');
+														$imagick_ok = !empty($formats);
+													} catch (\Throwable $e) {
+														$imagick_ok = false;
+													}
+												}
+												if ($imagick_ok): ?>
+													<span style="color: var(--tka-success);"><span class="dashicons dashicons-yes" style="font-size: 16px; width: 16px; height: 16px; vertical-align: middle;"></span> <?php esc_html_e('Enabled', 'tka-wp-utils'); ?></span>
+												<?php else: ?>
+													<span style="color: var(--tka-danger);"><span class="dashicons dashicons-no" style="font-size: 16px; width: 16px; height: 16px; vertical-align: middle;"></span> <?php esc_html_e('Disabled', 'tka-wp-utils'); ?></span>
+												<?php endif; ?>
+											</strong>
+										</li>
+										<li style="display: flex; justify-content: space-between; align-items: center;">
+											<span style="color: var(--tka-text-muted);"><?php esc_html_e('WordPress Engine Native WebP Upload:', 'tka-wp-utils'); ?></span>
+											<strong>
+												<?php if (wp_image_editor_supports(array('mime_type' => 'image/webp'))): ?>
+													<span style="color: var(--tka-success);"><span class="dashicons dashicons-yes" style="font-size: 16px; width: 16px; height: 16px; vertical-align: middle;"></span> <?php esc_html_e('Supported', 'tka-wp-utils'); ?></span>
+												<?php else: ?>
+													<span style="color: var(--tka-danger);"><span class="dashicons dashicons-no" style="font-size: 16px; width: 16px; height: 16px; vertical-align: middle;"></span> <?php esc_html_e('Unsupported', 'tka-wp-utils'); ?></span>
+												<?php endif; ?>
+											</strong>
+										</li>
+									</ul>
+								</div>
+							</section>
+
 							<!-- BUTTON WRAPPER -->
 							<div class="tka-submit-section">
 								<?php submit_button(__('Save Settings', 'tka-wp-utils'), 'primary tka-save-btn', 'submit', false); ?>
 							</div>
 						</form>
 
-						<!-- SANDBOX PANEL (Independent of form submit) -->
-						<section id="panel-sandbox" class="tka-tab-panel">
-							<h2><?php esc_html_e('SVG Security Playground & Sandbox', 'tka-wp-utils'); ?></h2>
-							<p class="section-desc">
-								<?php esc_html_e('Drag and drop any SVG image to inspect its DOM structure and verify if it satisfies our strict sanitization engine before uploading to the WordPress Media Library.', 'tka-wp-utils'); ?>
-							</p>
-
-							<div class="tka-settings-card">
-								<div class="tka-sandbox-container">
-									<div class="tka-dropzone" id="tka-svg-dropzone">
-										<span class="dashicons dashicons-shield-alt tka-shield-icon"></span>
-										<h3><?php esc_html_e('Drag & Drop SVG Here', 'tka-wp-utils'); ?></h3>
-										<p><?php esc_html_e('or click to choose a local file', 'tka-wp-utils'); ?></p>
-										<input type="file" id="tka-sandbox-file-input" accept="image/svg+xml"
-											style="display: none;">
-									</div>
-
-									<div class="tka-sandbox-results" id="tka-sandbox-results" style="display: none;">
-										<div class="tka-results-header">
-											<span class="tka-results-badge"></span>
-											<h4></h4>
-										</div>
-										<div class="tka-threat-details" id="tka-threat-details" style="display: none;">
-											<h5><?php esc_html_e('Detected Security Risk Elements / Attributes:', 'tka-wp-utils'); ?>
-											</h5>
-											<ul class="tka-threat-list"></ul>
-										</div>
-									</div>
-								</div>
-							</div>
-						</section>
 					</main>
 				</div>
 			</div>
@@ -1582,6 +1517,411 @@ class Settings
 								<?php submit_button(__('Save Columns Customizer', 'tka-wp-utils'), 'primary tka-save-btn', 'submit', false); ?>
 							</div>
 						</form>
+					</main>
+				</div>
+			</div>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Render the standalone Admin Menu Organizer subpage HTML.
+	 */
+	public function renderMenuOrganizerPage(): void
+	{
+		$options = get_option('tka_wp_utils_options');
+		?>
+		<div class="wrap tka-wp-utils-wrap">
+			<div class="tka-dashboard">
+				<!-- Header Section -->
+				<header class="tka-dashboard-header">
+					<div class="tka-header-brand">
+						<h1><?php esc_html_e('TKA WP Utils', 'tka-wp-utils'); ?></h1>
+						<span class="tka-version-badge"><?php esc_html_e('Menu Organizer', 'tka-wp-utils'); ?></span>
+					</div>
+					<p class="tka-tagline">
+						<?php esc_html_e('Configure separate drag-and-drop menu order and visibility rules for yourself and other administrators.', 'tka-wp-utils'); ?>
+					</p>
+				</header>
+
+				<!-- Settings Body Layout -->
+				<div class="tka-dashboard-body" style="grid-template-columns: 1fr;">
+					<main class="tka-dashboard-content">
+						<form method="post" action="options.php">
+							<?php
+							settings_fields('tka_wp_utils_group');
+							?>
+
+							<h2><?php esc_html_e('Admin Menu Organizer', 'tka-wp-utils'); ?></h2>
+							<p class="section-desc">
+								<?php esc_html_e('Organize and clean up navigation lists below. Toggle visibility or drag items vertically to sort.', 'tka-wp-utils'); ?>
+							</p>
+
+							<div class="tka-settings-card">
+								<p style="font-size: 13px; color: var(--tka-primary); background: rgba(79, 70, 229, 0.04); padding: 8px 14px; border-radius: 8px; border-left: 4px solid var(--tka-primary); line-height: 1.4; margin-bottom: 20px;">
+									<span class="dashicons dashicons-info" style="font-size: 16px; width: 16px; height: 16px; margin-top: -3px; vertical-align: middle; margin-right: 4px;"></span>
+									<strong><?php esc_html_e('Note:', 'tka-wp-utils'); ?></strong>
+									<?php esc_html_e('If the "Appearance" (themes.php) menu is hidden for other administrators, a standalone "Menus" option will automatically be exposed in their sidebar to allow navigation menu adjustments.', 'tka-wp-utils'); ?>
+								</p>
+
+								<?php
+								global $menu;
+								$raw_menus = [];
+								if (!empty($menu)) {
+									foreach ($menu as $item) {
+										if (empty($item[2]) || (isset($item[4]) && str_contains($item[4], 'wp-menu-separator'))) {
+											continue;
+										}
+										$label = wp_strip_all_tags($item[0]);
+										if (empty(trim($label))) {
+											continue;
+										}
+										$raw_menus[$item[2]] = $label;
+									}
+								}
+
+								// Fallback core menus if uninitialized
+								if (empty($raw_menus)) {
+									$raw_menus = [
+										'index.php' => __('Dashboard', 'tka-wp-utils'),
+										'edit.php' => __('Posts', 'tka-wp-utils'),
+										'upload.php' => __('Media', 'tka-wp-utils'),
+										'edit.php?post_type=page' => __('Pages', 'tka-wp-utils'),
+										'edit-comments.php' => __('Comments', 'tka-wp-utils'),
+										'themes.php' => __('Appearance', 'tka-wp-utils'),
+										'plugins.php' => __('Plugins', 'tka-wp-utils'),
+										'users.php' => __('Users', 'tka-wp-utils'),
+										'tools.php' => __('Tools', 'tka-wp-utils'),
+										'options-general.php' => __('Settings', 'tka-wp-utils'),
+									];
+								}
+								?>
+
+								<!-- Sub-Tabs Navigation for Organizers -->
+								<div class="tka-sub-tabs-container" style="width: 100%;">
+									<div class="tka-sub-tabs-nav">
+										<button type="button" class="tka-sub-tab-btn active" data-subtab="client">
+											<?php esc_html_e('Client Layout (Other Administrators)', 'tka-wp-utils'); ?>
+										</button>
+										<button type="button" class="tka-sub-tab-btn" data-subtab="owner">
+											<?php esc_html_e('Your Account Layout (Original Installer Only)', 'tka-wp-utils'); ?>
+										</button>
+									</div>
+
+									<!-- 1. Client Menu Organizer Tab Content -->
+									<div class="tka-sub-tab-content active" id="tka-subtab-client-content" style="width: 100%;">
+										<div class="tka-setting-row stack" style="margin-top: 15px; border-bottom: none; padding-bottom: 0; width: 100%;">
+											<div class="tka-setting-label">
+												<p><?php esc_html_e('Customize what other administrators see in their sidebar navigation.', 'tka-wp-utils'); ?>
+												</p>
+											</div>
+
+											<div class="tka-menu-organizer" id="tka-menu-organizer-list-client" style="width: 100%;">
+												<?php
+												$menus_to_hide = [];
+												$custom_order = $options['admin_menu_order'] ?? [];
+												foreach ($custom_order as $slug) {
+													if (isset($raw_menus[$slug])) {
+														$menus_to_hide[$slug] = $raw_menus[$slug];
+													}
+												}
+												foreach ($raw_menus as $slug => $label) {
+													if (!isset($menus_to_hide[$slug])) {
+														$menus_to_hide[$slug] = $label;
+													}
+												}
+
+												foreach ($menus_to_hide as $slug => $label):
+													$is_hidden = in_array($slug, $options['hidden_admin_menus'] ?? [], true);
+													?>
+													<div class="tka-organizer-item <?php echo $is_hidden ? 'menu-hidden' : 'menu-visible'; ?>" data-slug="<?php echo esc_attr($slug); ?>">
+														<!-- Sortable Order Input -->
+														<input type="hidden" name="tka_wp_utils_options[admin_menu_order][]" value="<?php echo esc_attr($slug); ?>">
+
+														<!-- Hidden Visibility Checkbox (checked = hidden) -->
+														<input type="checkbox" class="tka-menu-visibility-checkbox" name="tka_wp_utils_options[hidden_admin_menus][]" value="<?php echo esc_attr($slug); ?>" <?php checked($is_hidden); ?> style="display: none;">
+
+														<div class="tka-organizer-drag">
+															<span class="dashicons dashicons-menu"></span>
+														</div>
+
+														<div class="tka-organizer-details">
+															<strong class="tka-organizer-title"><?php echo esc_html($label); ?></strong>
+															<code class="tka-code-badge"><?php echo esc_html($slug); ?></code>
+														</div>
+
+														<div class="tka-organizer-actions">
+															<button type="button" class="tka-organizer-toggle-btn <?php echo $is_hidden ? 'tka-btn-hidden' : 'tka-btn-visible'; ?>" title="<?php esc_attr_e('Toggle Visibility', 'tka-wp-utils'); ?>">
+																<span class="dashicons <?php echo $is_hidden ? 'dashicons-hidden' : 'dashicons-visibility'; ?>"></span>
+															</button>
+														</div>
+													</div>
+												<?php endforeach; ?>
+											</div>
+										</div>
+									</div>
+
+									<!-- 2. Owner Menu Organizer Tab Content -->
+									<div class="tka-sub-tab-content" id="tka-subtab-owner-content" style="display: none; width: 100%;">
+										<div class="tka-setting-row stack" style="margin-top: 15px; border-bottom: none; padding-bottom: 0; width: 100%;">
+											<div class="tka-setting-label">
+												<p><?php esc_html_e('Customize your own personal sidebar navigation order and visibility.', 'tka-wp-utils'); ?>
+												</p>
+											</div>
+
+											<div class="tka-menu-organizer" id="tka-menu-organizer-list-owner" style="width: 100%;">
+												<?php
+												$owner_menus_to_hide = [];
+												$owner_custom_order = $options['owner_admin_menu_order'] ?? [];
+												foreach ($owner_custom_order as $slug) {
+													if (isset($raw_menus[$slug])) {
+														$owner_menus_to_hide[$slug] = $raw_menus[$slug];
+													}
+												}
+												foreach ($raw_menus as $slug => $label) {
+													if (!isset($owner_menus_to_hide[$slug])) {
+														$owner_menus_to_hide[$slug] = $label;
+													}
+												}
+
+												foreach ($owner_menus_to_hide as $slug => $label):
+													$is_hidden = in_array($slug, $options['owner_hidden_admin_menus'] ?? [], true);
+													?>
+													<div class="tka-organizer-item <?php echo $is_hidden ? 'menu-hidden' : 'menu-visible'; ?>" data-slug="<?php echo esc_attr($slug); ?>">
+														<!-- Sortable Order Input -->
+														<input type="hidden" name="tka_wp_utils_options[owner_admin_menu_order][]" value="<?php echo esc_attr($slug); ?>">
+
+														<!-- Hidden Visibility Checkbox (checked = hidden) -->
+														<input type="checkbox" class="tka-menu-visibility-checkbox" name="tka_wp_utils_options[owner_hidden_admin_menus][]" value="<?php echo esc_attr($slug); ?>" <?php checked($is_hidden); ?> style="display: none;">
+
+														<div class="tka-organizer-drag">
+															<span class="dashicons dashicons-menu"></span>
+														</div>
+
+														<div class="tka-organizer-details">
+															<strong class="tka-organizer-title"><?php echo esc_html($label); ?></strong>
+															<code class="tka-code-badge"><?php echo esc_html($slug); ?></code>
+														</div>
+
+														<div class="tka-organizer-actions">
+															<button type="button" class="tka-organizer-toggle-btn <?php echo $is_hidden ? 'tka-btn-hidden' : 'tka-btn-visible'; ?>" title="<?php esc_attr_e('Toggle Visibility', 'tka-wp-utils'); ?>">
+																<span class="dashicons <?php echo $is_hidden ? 'dashicons-hidden' : 'dashicons-visibility'; ?>"></span>
+															</button>
+														</div>
+													</div>
+												<?php endforeach; ?>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+
+							<!-- BUTTON WRAPPER -->
+							<div class="tka-submit-section" style="margin-top: 30px;">
+								<?php submit_button(__('Save Menu Organizer', 'tka-wp-utils'), 'primary tka-save-btn', 'submit', false); ?>
+							</div>
+						</form>
+					</main>
+				</div>
+			</div>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Render the standalone Bulk Retroactive Image Optimizer subpage HTML.
+	 */
+	public function renderBulkOptimizerPage(): void
+	{
+		?>
+		<div class="wrap tka-wp-utils-wrap">
+			<div class="tka-dashboard">
+				<!-- Header Section -->
+				<header class="tka-dashboard-header">
+					<div class="tka-header-brand">
+						<h1><?php esc_html_e('TKA WP Utils', 'tka-wp-utils'); ?></h1>
+						<span class="tka-version-badge"><?php esc_html_e('Bulk Optimizer', 'tka-wp-utils'); ?></span>
+					</div>
+					<p class="tka-tagline">
+						<?php esc_html_e('Retroactively compress and convert existing media library JPEGs and PNGs to WebP in bulk.', 'tka-wp-utils'); ?>
+					</p>
+				</header>
+
+				<!-- Settings Body Layout -->
+				<div class="tka-dashboard-body" style="grid-template-columns: 1fr;">
+					<main class="tka-dashboard-content">
+						<h2><?php esc_html_e('Bulk Retroactive Image Optimizer', 'tka-wp-utils'); ?></h2>
+						<p class="section-desc">
+							<?php esc_html_e('This advanced utility processes images sequentially (1 by 1) to guarantee absolute server safety, prevent FPM gateway timeouts, and seamlessly clean up intermediate thumbnails on disk.', 'tka-wp-utils'); ?>
+						</p>
+
+						<!-- Bulk Retroactive Image Optimizer Card -->
+						<div class="tka-settings-card" style="margin-top: 20px;">
+							<?php
+							$images_query = new \WP_Query([
+								'post_type'      => 'attachment',
+								'post_mime_type' => ['image/jpeg', 'image/png'],
+								'post_status'    => 'inherit',
+								'posts_per_page' => -1,
+								'fields'         => 'ids',
+							]);
+							$total_eligible_images = $images_query->post_count;
+							?>
+
+							<div style="background: var(--tka-bg-main); padding: 18px 24px; border-radius: 8px; border: 1px solid var(--tka-border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 15px;">
+								<div>
+									<span style="font-size: 13px; color: var(--tka-text-muted); display: block; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">
+										<?php esc_html_e('Eligible Media Library Images', 'tka-wp-utils'); ?>
+									</span>
+									<strong style="font-size: 24px; color: var(--tka-text-main); margin-top: 4px; display: block;">
+										<span id="tka-bulk-total-count"><?php echo intval($total_eligible_images); ?></span> <?php esc_html_e('images', 'tka-wp-utils'); ?>
+									</strong>
+								</div>
+								<div>
+									<button type="button" id="tka-bulk-optimize-start-btn" class="button button-secondary"
+										style="border-color: var(--tka-primary); color: var(--tka-primary); background: rgba(79, 70, 229, 0.02); font-weight: 600; padding: 6px 18px; border-radius: 8px; height: auto; transition: all 0.15s ease-in-out;"
+										<?php disabled($total_eligible_images, 0); ?>>
+										<span class="dashicons dashicons-performance" style="font-size: 16px; width: 16px; height: 16px; vertical-align: middle; margin-top: -3px; margin-right: 4px;"></span>
+										<?php esc_html_e('Start Bulk Optimization', 'tka-wp-utils'); ?>
+									</button>
+								</div>
+							</div>
+
+							<!-- Interactive Progress Panel (hidden by default) -->
+							<div id="tka-bulk-progress-panel" style="display: none; margin-top: 20px; border-top: 1px solid var(--tka-border); padding-top: 20px; animation: tkaFadeIn 0.3s ease-in-out;">
+								<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 13px; font-weight: 600; color: var(--tka-text-main);">
+									<span id="tka-bulk-progress-status"><?php esc_html_e('Preparing images...', 'tka-wp-utils'); ?></span>
+									<span id="tka-bulk-progress-percentage">0%</span>
+								</div>
+								<div style="width: 100%; background: #e2e8f0; height: 10px; border-radius: 5px; overflow: hidden; margin-bottom: 15px;">
+									<div id="tka-bulk-progress-bar" style="width: 0%; background: var(--tka-primary); height: 100%; transition: width 0.3s ease-in-out; border-radius: 5px;"></div>
+								</div>
+								<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 15px;">
+									<div style="background: rgba(16, 185, 129, 0.03); border: 1px solid rgba(16, 185, 129, 0.1); border-radius: 6px; padding: 12px 16px;">
+										<span style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--tka-text-muted); display: block; letter-spacing: 0.5px;">
+											<?php esc_html_e('Total Storage Saved', 'tka-wp-utils'); ?>
+										</span>
+										<strong id="tka-bulk-total-savings" style="font-size: 18px; color: var(--tka-success); margin-top: 2px; display: block;">
+											0 KB
+										</strong>
+									</div>
+									<div style="background: rgba(79, 70, 229, 0.03); border: 1px solid rgba(79, 70, 229, 0.1); border-radius: 6px; padding: 12px 16px;">
+										<span style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--tka-text-muted); display: block; letter-spacing: 0.5px;">
+											<?php esc_html_e('Optimized Images', 'tka-wp-utils'); ?>
+										</span>
+										<strong style="font-size: 18px; color: var(--tka-primary); margin-top: 2px; display: block;">
+											<span id="tka-bulk-optimized-count">0</span> / <span id="tka-bulk-eligible-total-count"><?php echo intval($total_eligible_images); ?></span>
+										</strong>
+									</div>
+								</div>
+
+								<!-- Live Log Box -->
+								<div id="tka-bulk-log-box" style="margin-top: 15px; background: #0f172a; color: #38bdf8; font-family: SFMono-Regular, Consolas, monospace; font-size: 11px; padding: 12px 16px; border-radius: 6px; height: 170px; overflow-y: auto; line-height: 1.5; border: 1px solid #1e293b;">
+									<div style="color: #64748b;"><?php esc_html_e('>> Ready to begin bulk scan...', 'tka-wp-utils'); ?></div>
+								</div>
+							</div>
+						</div>
+
+						<!-- Media Library Status Table -->
+						<div class="tka-settings-card" style="margin-top: 30px; padding: 24px;">
+							<h3 style="margin-top: 0; margin-bottom: 8px; font-size: 18px; color: var(--tka-text-main); font-weight: 700;">
+								<?php esc_html_e('Media Library Status', 'tka-wp-utils'); ?>
+							</h3>
+							<p class="section-desc" style="margin-bottom: 20px;">
+								<?php esc_html_e('Monitor all JPEG, PNG, and WebP attachments, their current format state, and their calculated disk storage footprint savings.', 'tka-wp-utils'); ?>
+							</p>
+
+							<?php
+							$all_images_query = new \WP_Query([
+								'post_type'      => 'attachment',
+								'post_mime_type' => ['image/jpeg', 'image/png', 'image/webp'],
+								'post_status'    => 'inherit',
+								'posts_per_page' => -1,
+							]);
+							?>
+
+							<div style="overflow-x: auto;">
+								<table class="tka-table" style="margin-top: 0;">
+									<thead>
+										<tr>
+											<th style="width: 60px;"><?php esc_html_e('Preview', 'tka-wp-utils'); ?></th>
+											<th><?php esc_html_e('Filename', 'tka-wp-utils'); ?></th>
+											<th style="width: 120px;"><?php esc_html_e('Current Format', 'tka-wp-utils'); ?></th>
+											<th style="width: 140px;"><?php esc_html_e('Status', 'tka-wp-utils'); ?></th>
+											<th style="width: 140px; text-align: right;"><?php esc_html_e('Size Savings', 'tka-wp-utils'); ?></th>
+										</tr>
+									</thead>
+									<tbody id="tka-bulk-status-table-body">
+										<?php if ($all_images_query->have_posts()) : ?>
+											<?php while ($all_images_query->have_posts()) : $all_images_query->the_post(); 
+												$att_id = get_the_ID();
+												$file_path = get_attached_file($att_id);
+												$filename = $file_path ? basename($file_path) : get_the_title();
+												$mime = get_post_mime_type($att_id);
+												$savings = get_post_meta($att_id, '_tka_image_savings', true);
+												
+												// Format matching class and label
+												$format_class = 'tka-badge-format-jpeg';
+												$format_label = 'JPEG';
+												if ($mime === 'image/png') {
+													$format_class = 'tka-badge-format-png';
+													$format_label = 'PNG';
+												} elseif ($mime === 'image/webp') {
+													$format_class = 'tka-badge-format-webp';
+													$format_label = 'WebP';
+												}
+
+												// Optimization status and savings text
+												$is_optimized = ($mime === 'image/webp' || $savings !== '');
+												if ($is_optimized) {
+													$status_class = 'status-optimized';
+													$status_label = __('Optimized', 'tka-wp-utils');
+													$savings_text = ($savings !== '' && intval($savings) > 0) ? size_format(intval($savings)) : __('0 KB', 'tka-wp-utils');
+													$savings_html = '<span class="tka-savings-value" style="color: var(--tka-success);">' . esc_html($savings_text) . '</span>';
+												} else {
+													$status_class = 'status-pending';
+													$status_label = __('Pending', 'tka-wp-utils');
+													$savings_html = '<span class="tka-savings-pending">' . esc_html__('Pending', 'tka-wp-utils') . '</span>';
+												}
+											?>
+												<tr id="tka-image-row-<?php echo intval($att_id); ?>">
+													<td>
+														<?php echo wp_get_attachment_image($att_id, [40, 40], true, [
+															'style' => 'width: 40px; height: 40px; object-fit: cover; border-radius: 6px; border: 1px solid var(--tka-border); display: block;'
+														]); ?>
+													</td>
+													<td style="font-weight: 500; color: var(--tka-text-main);">
+														<div class="tka-filename-text" title="<?php echo esc_attr($file_path); ?>">
+															<?php echo esc_html($filename); ?>
+														</div>
+													</td>
+													<td>
+														<span class="tka-badge-format <?php echo esc_attr($format_class); ?>" id="tka-format-badge-<?php echo intval($att_id); ?>">
+															<?php echo esc_html($format_label); ?>
+														</span>
+													</td>
+													<td>
+														<span class="tka-status-pill <?php echo esc_attr($status_class); ?>" id="tka-status-pill-<?php echo intval($att_id); ?>">
+															<span class="tka-status-dot"></span>
+															<span class="tka-status-text"><?php echo esc_html($status_label); ?></span>
+														</span>
+													</td>
+													<td style="text-align: right;" id="tka-savings-cell-<?php echo intval($att_id); ?>">
+														<?php echo $savings_html; ?>
+													</td>
+												</tr>
+											<?php endwhile; wp_reset_postdata(); ?>
+										<?php else : ?>
+											<tr>
+												<td colspan="5" style="text-align: center; color: var(--tka-text-muted); padding: 30px 15px;">
+													<?php esc_html_e('No image attachments found in the Media Library.', 'tka-wp-utils'); ?>
+												</td>
+											</tr>
+										<?php endif; ?>
+									</tbody>
+								</table>
+							</div>
+						</div>
 					</main>
 				</div>
 			</div>

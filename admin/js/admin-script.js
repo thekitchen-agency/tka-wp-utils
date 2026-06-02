@@ -28,12 +28,6 @@ document.addEventListener( 'DOMContentLoaded', function () {
 				}
 			} );
 
-			// Hide save settings button on the Sandbox tab since it's an interactive utility
-			if ( targetTab === 'sandbox' ) {
-				submitSection.style.display = 'none';
-			} else {
-				submitSection.style.display = 'block';
-			}
 
 			// Update hash in URL & sessionStorage
 			window.location.hash = targetTab;
@@ -124,122 +118,6 @@ document.addEventListener( 'DOMContentLoaded', function () {
 
 
 
-	// 3. SVG Sandbox Dropzone & AJAX Validation
-	const dropzone  = document.getElementById( 'tka-svg-dropzone' );
-	const fileInput = document.getElementById( 'tka-sandbox-file-input' );
-	const results   = document.getElementById( 'tka-sandbox-results' );
-	const threatsBox = document.getElementById( 'tka-threat-details' );
-
-	if ( dropzone && fileInput ) {
-		// Trigger file input click when dropzone is clicked
-		dropzone.addEventListener( 'click', () => fileInput.click() );
-
-		// Drag & Drop event bindings
-		[ 'dragenter', 'dragover' ].forEach( ( eventName ) => {
-			dropzone.addEventListener( eventName, function ( e ) {
-				e.preventDefault();
-				dropzone.classList.add( 'dragover' );
-			}, false );
-		} );
-
-		[ 'dragleave', 'drop' ].forEach( ( eventName ) => {
-			dropzone.addEventListener( eventName, function ( e ) {
-				e.preventDefault();
-				dropzone.classList.remove( 'dragover' );
-			}, false );
-		} );
-
-		dropzone.addEventListener( 'drop', function ( e ) {
-			const dt    = e.dataTransfer;
-			const files = dt.files;
-
-			if ( files.length > 0 ) {
-				validateSvgFile( files[0] );
-			}
-		} );
-
-		fileInput.addEventListener( 'change', function () {
-			if ( this.files.length > 0 ) {
-				validateSvgFile( this.files[0] );
-			}
-		} );
-	}
-
-	function validateSvgFile( file ) {
-		// Verify basic client side type check
-		if ( file.type !== 'image/svg+xml' && ! file.name.endsWith( '.svg' ) ) {
-			renderResults( false, {
-				message: 'Rejected: File is not an SVG image.',
-				threats: [ 'Invalid File Type: Sandbox only accepts .svg format files.' ]
-			} );
-			return;
-		}
-
-		// Prepare Form Data for WordPress AJAX
-		const formData = new FormData();
-		formData.append( 'action', 'tka_wp_utils_sandbox_validate_svg' );
-		formData.append( 'nonce', tkaWpUtilsAdmin.nonce );
-		formData.append( 'svg_file', file );
-
-		// Render a loading state
-		results.style.display = 'block';
-		results.className     = 'tka-sandbox-results success';
-		results.querySelector( '.tka-results-badge' ).textContent = 'Scanning';
-		results.querySelector( 'h4' ).textContent = 'Reading XML structures and auditing vectors...';
-		threatsBox.style.display = 'none';
-
-		// Perform AJAX Request
-		fetch( tkaWpUtilsAdmin.ajaxUrl, {
-			method: 'POST',
-			body: formData
-		} )
-		.then( ( response ) => response.json() )
-		.then( ( data ) => {
-			if ( data.success ) {
-				renderResults( true, data.data );
-			} else {
-				renderResults( false, data.data );
-			}
-		} )
-		.catch( ( error ) => {
-			renderResults( false, {
-				message: 'AJAX request encountered an issue.',
-				threats: [ 'Validation server was unreachable or returned an error.' ]
-			} );
-		} );
-	}
-
-	function renderResults( success, data ) {
-		results.style.display = 'block';
-		const badge = results.querySelector( '.tka-results-badge' );
-		const title = results.querySelector( 'h4' );
-		const list  = threatsBox.querySelector( '.tka-threat-list' );
-
-		if ( success ) {
-			results.className = 'tka-sandbox-results success';
-			badge.textContent = 'Safe';
-			title.textContent = data.message || 'File is clean and safe to upload.';
-			threatsBox.style.display = 'none';
-		} else {
-			results.className = 'tka-sandbox-results danger';
-			badge.textContent = 'Danger';
-			title.textContent = data.message || 'Malicious components detected.';
-			
-			// Empty old threats
-			list.innerHTML = '';
-			
-			if ( data.threats && data.threats.length > 0 ) {
-				data.threats.forEach( ( threat ) => {
-					const li = document.createElement( 'li' );
-					li.textContent = threat;
-					list.appendChild( li );
-				} );
-				threatsBox.style.display = 'block';
-			} else {
-				threatsBox.style.display = 'none';
-			}
-		}
-	}
 
 	// 4. Admin Menu Organizer Drag & Drop Sortable
 	const organizerLists = jQuery('.tka-menu-organizer');
@@ -350,6 +228,187 @@ document.addEventListener( 'DOMContentLoaded', function () {
 			window.scrollTo( 0, parseInt( savedScroll, 10 ) );
 			sessionStorage.removeItem( 'tka_scroll_pos' );
 		}, 50 );
+	}
+
+	// 7. Image Compression Quality Slider
+	const qualitySlider = document.getElementById( 'tka-image-quality-slider' );
+	const qualityDisplay = document.getElementById( 'tka-image-quality-display' );
+	if ( qualitySlider && qualityDisplay ) {
+		qualitySlider.addEventListener( 'input', function () {
+			qualityDisplay.textContent = this.value + '%';
+		} );
+	}
+
+	// 8. Bulk Retroactive Image Optimizer sequential batch executor
+	const bulkStartBtn = document.getElementById( 'tka-bulk-optimize-start-btn' );
+	if ( bulkStartBtn ) {
+		bulkStartBtn.addEventListener( 'click', function ( e ) {
+			e.preventDefault();
+
+			// Fetch all eligible attachment IDs
+			const formData = new FormData();
+			formData.append( 'action', 'tka_wp_utils_bulk_get_images' );
+
+			bulkStartBtn.disabled = true;
+			bulkStartBtn.textContent = 'Scanning...';
+
+			const progressPanel = document.getElementById( 'tka-bulk-progress-panel' );
+			const progressBar = document.getElementById( 'tka-bulk-progress-bar' );
+			const progressPercentage = document.getElementById( 'tka-bulk-progress-percentage' );
+			const progressStatus = document.getElementById( 'tka-bulk-progress-status' );
+			const optimizedCountSpan = document.getElementById( 'tka-bulk-optimized-count' );
+			const totalSavingsSpan = document.getElementById( 'tka-bulk-total-savings' );
+			const eligibleTotalCount = document.getElementById( 'tka-bulk-eligible-total-count' );
+			const totalCountSpan = document.getElementById( 'tka-bulk-total-count' );
+			const logBox = document.getElementById( 'tka-bulk-log-box' );
+
+			progressPanel.style.display = 'block';
+			logBox.innerHTML = '<div style="color: #64748b;">>> Querying media library database...</div>';
+
+			fetch( tkaWpUtilsAdmin.ajaxUrl, {
+				method: 'POST',
+				body: formData
+			} )
+			.then( response => response.json() )
+			.then( data => {
+				if ( ! data.success || ! data.data.ids || data.data.ids.length === 0 ) {
+					progressStatus.textContent = 'No eligible images found.';
+					logBox.innerHTML += '<div style="color: #ef4444;">>> Error: No unoptimized JPEGs or PNGs found in the library.</div>';
+					bulkStartBtn.disabled = false;
+					bulkStartBtn.textContent = 'Start Bulk Optimization';
+					return;
+				}
+
+				const ids = data.data.ids;
+				const total = ids.length;
+				eligibleTotalCount.textContent = total;
+
+				logBox.innerHTML += '<div style="color: #10b981;">>> Found ' + total + ' images to process. Starting sequential batches...</div>';
+				logBox.scrollTop = logBox.scrollHeight;
+
+				let index = 0;
+				let totalSavings = 0;
+
+				function formatBytes( bytes ) {
+					if ( bytes === 0 ) return '0 KB';
+					const k = 1024;
+					const sizes = [ 'Bytes', 'KB', 'MB', 'GB' ];
+					const i = Math.floor( Math.log( bytes ) / Math.log( k ) );
+					return parseFloat( ( bytes / Math.pow( k, i ) ).toFixed( 2 ) ) + ' ' + sizes[i];
+				}
+
+				function processNext() {
+					if ( index >= total ) {
+						progressStatus.textContent = 'Bulk Optimization Complete!';
+						progressPercentage.textContent = '100%';
+						progressBar.style.width = '100%';
+						bulkStartBtn.textContent = 'Finished';
+						
+						const finalLine = document.createElement( 'div' );
+						finalLine.style.color = '#10b981';
+						finalLine.textContent = '>> Optimization Complete! Saved ' + formatBytes( totalSavings ) + ' storage in total.';
+						logBox.appendChild( finalLine );
+						logBox.scrollTop = logBox.scrollHeight;
+
+						// Update main count on success
+						totalCountSpan.textContent = '0';
+						return;
+					}
+
+					// Update UI progress
+					const pct = Math.round( ( index / total ) * 100 );
+					progressPercentage.textContent = pct + '%';
+					progressBar.style.width = pct + '%';
+					progressStatus.textContent = 'Processing image ' + ( index + 1 ) + ' of ' + total + '...';
+					optimizedCountSpan.textContent = index;
+
+					const singleData = new FormData();
+					singleData.append( 'action', 'tka_wp_utils_bulk_optimize_image' );
+					singleData.append( 'attachment_id', ids[index] );
+
+					fetch( tkaWpUtilsAdmin.ajaxUrl, {
+						method: 'POST',
+						body: singleData
+					} )
+					.then( r => r.json() )
+					.then( res => {
+						const attachmentId = ids[index];
+						const rowEl = document.getElementById( 'tka-image-row-' + attachmentId );
+						const logLine = document.createElement( 'div' );
+
+						if ( res.success ) {
+							totalSavings += res.data.bytes_saved;
+							totalSavingsSpan.textContent = formatBytes( totalSavings );
+							logLine.textContent = '>> ' + res.data.message + ' (Saved ' + formatBytes( res.data.bytes_saved ) + ')';
+							
+							// Real-time table updates
+							if ( rowEl ) {
+								// 1. Update format badge
+								const badgeEl = document.getElementById( 'tka-format-badge-' + attachmentId );
+								if ( badgeEl ) {
+									badgeEl.className = 'tka-badge-format';
+									if ( res.data.mime_type === 'image/webp' ) {
+										badgeEl.classList.add( 'tka-badge-format-webp' );
+										badgeEl.textContent = 'WebP';
+									} else if ( res.data.mime_type === 'image/png' ) {
+										badgeEl.classList.add( 'tka-badge-format-png' );
+										badgeEl.textContent = 'PNG';
+									} else {
+										badgeEl.classList.add( 'tka-badge-format-jpeg' );
+										badgeEl.textContent = 'JPEG';
+									}
+								}
+
+								// 2. Update status pill
+								const statusPill = document.getElementById( 'tka-status-pill-' + attachmentId );
+								if ( statusPill ) {
+									statusPill.className = 'tka-status-pill status-optimized';
+									const statusText = statusPill.querySelector( '.tka-status-text' );
+									if ( statusText ) {
+										statusText.textContent = 'Optimized';
+									}
+								}
+
+								// 3. Update size savings
+								const savingsCell = document.getElementById( 'tka-savings-cell-' + attachmentId );
+								if ( savingsCell ) {
+									const savingsVal = res.data.bytes_saved > 0 ? formatBytes( res.data.bytes_saved ) : '0 KB';
+									savingsCell.innerHTML = `<span class="tka-savings-value" style="color: var(--tka-success);">${savingsVal}</span>`;
+								}
+
+								// 4. Add subtle micro-animation flash
+								rowEl.classList.add( 'tka-row-optimized' );
+							}
+						} else {
+							logLine.style.color = '#f59e0b';
+							logLine.textContent = '>> Skip: ' + ( res.data.message || 'Error occurred.' );
+						}
+						logBox.appendChild( logLine );
+						logBox.scrollTop = logBox.scrollHeight;
+
+						index++;
+						processNext();
+					} )
+					.catch( err => {
+						const logLine = document.createElement( 'div' );
+						logLine.style.color = '#ef4444';
+						logLine.textContent = '>> Failed: Connection error processing ID: ' + ids[index];
+						logBox.appendChild( logLine );
+						logBox.scrollTop = logBox.scrollHeight;
+
+						index++;
+						processNext();
+					} );
+				}
+
+				processNext();
+			} )
+			.catch( error => {
+				progressStatus.textContent = 'Scan encountered a network error.';
+				bulkStartBtn.disabled = false;
+				bulkStartBtn.textContent = 'Start Bulk Optimization';
+			} );
+		} );
 	}
 } );
 
