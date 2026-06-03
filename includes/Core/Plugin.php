@@ -15,6 +15,8 @@ use TKA\WPUtils\Features\SecurityManager;
 use TKA\WPUtils\Features\AdminColumns;
 use TKA\WPUtils\Features\AcfManager;
 use TKA\WPUtils\Features\ImageOptimizer;
+use TKA\WPUtils\Features\GravityFormsManager;
+use TKA\WPUtils\Features\WooCommerceManager;
 
 /**
  * Main Plugin Coordinator class.
@@ -118,10 +120,26 @@ class Plugin {
 			$admin_columns->hook();
 		}
 
-		// ACF Integration (only runs if ACF is active)
-		if ( class_exists( 'ACF' ) ) {
-			$acf_manager = new AcfManager( $options );
-			$acf_manager->hook();
-		}
+		// Load third-party integrations after all plugins are loaded
+		add_action( 'plugins_loaded', function() use ( $options ) {
+			error_log('plugins_loaded ran. WooCommerce active: ' . (class_exists('WooCommerce') ? 'YES' : 'NO'));
+			// ACF Integration (only runs if ACF is active)
+			if ( class_exists( 'ACF' ) ) {
+				$acf_manager = new AcfManager( $options );
+				$acf_manager->hook();
+			}
+
+			// Gravity Forms Integration (only runs if Gravity Forms is active)
+			if ( class_exists( 'GFCommon' ) ) {
+				$gf_manager = new GravityFormsManager( $options );
+				$gf_manager->hook();
+			}
+
+			// WooCommerce Integration (only runs if WooCommerce is active)
+			if ( class_exists( 'WooCommerce' ) ) {
+				$woocommerce_manager = new WooCommerceManager( $options );
+				$woocommerce_manager->hook();
+			}
+		} );
 	}
 }

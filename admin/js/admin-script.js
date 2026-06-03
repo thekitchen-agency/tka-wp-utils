@@ -114,6 +114,29 @@ document.addEventListener( 'DOMContentLoaded', function () {
 		} );
 	}
 
+	// 2c. Gravity Forms Text Change Toggle
+	const gfTextToggle    = document.getElementById( 'tka-gf-text-change-toggle' );
+	const gfLoadingTextRow = document.querySelector( '.nested-gf-loading-text' );
+
+	if ( gfTextToggle && gfLoadingTextRow ) {
+		gfTextToggle.addEventListener( 'change', function () {
+			if ( this.checked ) {
+				gfLoadingTextRow.style.display = 'block';
+				gfLoadingTextRow.style.opacity = 0;
+				setTimeout( () => {
+					gfLoadingTextRow.style.transition = 'opacity 0.2s ease-in-out';
+					gfLoadingTextRow.style.opacity = 1;
+				}, 10 );
+			} else {
+				gfLoadingTextRow.style.transition = 'opacity 0.15s ease-in-out';
+				gfLoadingTextRow.style.opacity = 0;
+				setTimeout( () => {
+					gfLoadingTextRow.style.display = 'none';
+				}, 150 );
+			}
+		} );
+	}
+
 
 
 

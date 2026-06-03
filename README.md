@@ -56,6 +56,13 @@ A comprehensive suite of utility tools designed for developers and agencies to s
 *   **Dedicated Bulk Optimizer Subpage**: Features an advanced sequential batch retroactive image optimizer page (`tka-wp-utils-bulk-optimizer`) that processes existing media assets safely to prevent gateway timeouts.
 *   **Interactive Media Library Status Table**: Displays a real-time responsive dashboard listing all JPEGs, PNGs, and WebPs in the Media Library. Shows format badges, optimized status pills, and direct database-backed size savings metadata (`_tka_image_savings`). Rows transition dynamically in real-time with visual CSS success flash highlight animations upon process completion.
 
+### 🛒 7. WooCommerce Speed & Bloat Settings
+*   **Scripts & Styles Optimization**: Dequeue heavy WooCommerce scripts and styles on pages that aren't shop pages, cart, checkout, or account pages.
+*   **AJAX Cart Fragments Control**: Disable or selectively defer the resource-intensive `/?wc-ajax=get_refreshed_fragments` AJAX requests. Choose between globally disabling them, keeping them active, or disabling them on non-shop pages only.
+*   **Block Styles Suppression**: Disable WooCommerce Gutenberg blocks styling sheets (`wc-blocks-style.css`) enqueued on the frontend.
+*   **Password Strength Meter Removal**: Dequeue `wc-password-strength-meter` and heavy `zxcvbn.min.js` scripts to speed up checkout and accounts creation pages.
+*   **Admin UI Cleanup**: Hide marketing hub submenus, dashboard status widgets, and remove marketplace extension recommendations and nags.
+
 ---
 
 ## Directory Structure
@@ -90,7 +97,8 @@ tka-wp-utils/
 │       ├── ImageOptimizer.php
 │       ├── SecurityManager.php
 │       ├── SvgValidator.php
-│       └── VariousCleaner.php
+│       ├── VariousCleaner.php
+│       └── WooCommerceManager.php
 ├── LICENSE                       # MIT License
 ├── README.md                     # GitHub Developer Guide
 ├── readme.txt                    # Official WordPress.org Readme

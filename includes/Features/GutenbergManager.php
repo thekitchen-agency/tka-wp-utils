@@ -35,6 +35,9 @@ class GutenbergManager {
 		} elseif ( 'post_types' === $this->mode && ! empty( $this->post_types ) ) {
 			add_filter( 'use_block_editor_for_post', [ $this, 'filterUseBlockEditorForPost' ], 100, 2 );
 			add_filter( 'use_block_editor_for_post_type', [ $this, 'filterUseBlockEditorForPostType' ], 100, 2 );
+		} elseif ( 'wc_except_cart_checkout' === $this->mode ) {
+			add_filter( 'use_block_editor_for_post', [ $this, 'filterWcExceptCartCheckoutPost' ], 100, 2 );
+			add_filter( 'use_block_editor_for_post_type', [ $this, 'filterWcExceptCartCheckoutPostType' ], 100, 2 );
 		}
 	}
 
@@ -63,5 +66,43 @@ class GutenbergManager {
 		}
 
 		return $use_block_editor;
+	}
+
+	/**
+	 * Suppress Gutenberg everywhere except on WooCommerce Cart and Checkout pages.
+	 */
+	public function filterWcExceptCartCheckoutPost( bool $use_block_editor, $post ): bool {
+		if ( ! $post ) {
+			return $use_block_editor;
+		}
+
+		$post_type = get_post_type( $post );
+		if ( 'page' !== $post_type ) {
+			return false;
+		}
+
+		// It is a page. Check if it's WooCommerce Cart or Checkout.
+		$post_id = is_object( $post ) ? $post->ID : (int) $post;
+		if ( function_exists( 'wc_get_page_id' ) ) {
+			$cart_id     = (int) wc_get_page_id( 'cart' );
+			$checkout_id = (int) wc_get_page_id( 'checkout' );
+
+			if ( $post_id === $cart_id || $post_id === $checkout_id ) {
+				return $use_block_editor;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Suppress Gutenberg for all post types except 'page'.
+	 */
+	public function filterWcExceptCartCheckoutPostType( bool $use_block_editor, string $post_type ): bool {
+		if ( 'page' === $post_type ) {
+			return $use_block_editor;
+		}
+
+		return false;
 	}
 }

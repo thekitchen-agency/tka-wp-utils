@@ -1,9 +1,9 @@
 === TKA WP Utils ===
 Contributors: thekitchen-agency
-Tags: classic editor, svg upload, admin columns, menu organizer, hardening, image optimization
+Tags: classic editor, svg upload, admin columns, menu organizer, hardening, image optimization, woocommerce, woocommerce optimization
 Requires at least: 6.0
 Tested up to: 6.5
-Stable tag: 1.2.0
+Stable tag: 1.3.0
 Requires PHP: 8.3
 License: MIT
 License URI: https://opensource.org/licenses/MIT
@@ -29,6 +29,7 @@ TKA WP Utils is an all-in-one utility plugin designed to help developers and age
 *   **ACF Flexible Content Copy/Paste Engine**: Copy and paste layout blocks inside Flexible Content fields, supporting both single block duplication and bulk multiselect operations across different posts and pages. Supports deep, recursive mapping for standard inputs, WYSIWYG, Images, Files, Galleries, Repeaters, Groups, and relational fields (Post Object, Taxonomy, Relationship).
 *   **Dedicated Bulk Retroactive Image Optimizer**: Features a sequential batch retroactive image optimizer subpage that safely processes JPEGs and PNGs to prevent FPM gateway timeouts.
 *   **Interactive Media Library Status Table**: A premium, real-time reactive table displaying JPEG, PNG, and WebP assets with color-coded format badges (slate JPEG, indigo PNG, success green WebP), status indicators, and direct database-backed size savings metadata display with smooth success highlight animations.
+*   **WooCommerce Speed & Bloat Settings**: Speed up WooCommerce stores by dequeuing WooCommerce scripts/styles on non-shop pages, disabling or selectively loading AJAX cart fragments, suppressing Gutenberg blocks stylesheets, removing the heavy password strength meter script, and cleaning up marketing menu/dashboard widgets.
 
 == Installation ==
 
@@ -51,6 +52,13 @@ Our plugin uses a database-first approach: it converts physical files to WebP an
 Since images are permanently converted to WebP in the database, deactivating the plugin leaves WebP files active in your media library. If you want to keep original JPEGs/PNGs for safe backup, make sure the "Keep Original Images" setting is toggled on before running bulk optimization.
 
 == Changelog ==
+
+= 1.3.0 =
+*   Added WooCommerce Speed & Bloat settings tab (available if WooCommerce is active).
+*   Implemented option to disable WooCommerce scripts and styles on non-WooCommerce pages.
+*   Implemented cart fragments AJAX control (keep active, disable globally, or disable on non-shop pages).
+*   Implemented options to disable WooCommerce block styles and customer password strength meter scripts.
+*   Implemented WooCommerce Admin UI cleaning to remove marketing links and dashboard status/reviews widgets.
 
 = 1.2.0 =
 *   Reorganized Settings Dashboard to move advanced utilities to dedicated submenu subpages.

@@ -198,7 +198,7 @@ class Settings
 		$sanitized['classic_widgets'] = isset($input['classic_widgets']) ? 1 : 0;
 
 		$gutenberg_mode = $input['disable_gutenberg'] ?? 'none';
-		$sanitized['disable_gutenberg'] = in_array($gutenberg_mode, ['none', 'all', 'post_types'], true) ? $gutenberg_mode : 'none';
+		$sanitized['disable_gutenberg'] = in_array($gutenberg_mode, ['none', 'all', 'post_types', 'wc_except_cart_checkout'], true) ? $gutenberg_mode : 'none';
 
 		$sanitized['gutenberg_post_types'] = [];
 		if (isset($input['gutenberg_post_types']) && is_array($input['gutenberg_post_types'])) {
@@ -451,6 +451,18 @@ class Settings
 								<span class="dashicons dashicons-format-image"></span>
 								<?php esc_html_e('Image Optimization', 'tka-wp-utils'); ?>
 							</a>
+							<?php if (class_exists('GFCommon')): ?>
+								<a href="#gravity-forms" class="tka-nav-item" data-tab="gravity-forms">
+									<span class="dashicons dashicons-feedback"></span>
+									<?php esc_html_e('Gravity Forms', 'tka-wp-utils'); ?>
+								</a>
+							<?php endif; ?>
+							<?php if (class_exists('WooCommerce')): ?>
+								<a href="#woocommerce" class="tka-nav-item" data-tab="woocommerce">
+									<span class="dashicons dashicons-cart"></span>
+									<?php esc_html_e('WooCommerce', 'tka-wp-utils'); ?>
+								</a>
+							<?php endif; ?>
 						</nav>
 
 						<div class="tka-sidebar-info">
@@ -560,6 +572,17 @@ class Settings
 													<span><?php esc_html_e('Selectively revert back to Classic Editor on specific post types.', 'tka-wp-utils'); ?></span>
 												</div>
 											</label>
+
+											<?php if (class_exists('WooCommerce')): ?>
+												<label class="tka-radio-card">
+													<input type="radio" name="tka_wp_utils_options[disable_gutenberg]"
+														value="wc_except_cart_checkout" <?php checked('wc_except_cart_checkout', $options['disable_gutenberg'] ?? 'none'); ?>>
+													<div class="radio-card-content">
+														<strong><?php esc_html_e('Disable everywhere except Cart & Checkout', 'tka-wp-utils'); ?></strong>
+														<span><?php esc_html_e('Suppresses Gutenberg everywhere, but preserves it on WooCommerce Cart and Checkout pages.', 'tka-wp-utils'); ?></span>
+													</div>
+												</label>
+											<?php endif; ?>
 										</div>
 									</div>
 
@@ -1342,6 +1365,194 @@ class Settings
 									</ul>
 								</div>
 							</section>
+
+							<?php if (class_exists('GFCommon')): ?>
+								<!-- GRAVITY FORMS PANEL -->
+								<section id="panel-gravity-forms" class="tka-tab-panel">
+									<h2><?php esc_html_e('Gravity Forms Integrations & Enhancements', 'tka-wp-utils'); ?></h2>
+									<p class="section-desc">
+										<?php esc_html_e('Customize and optimize your Gravity Forms workflows. Clean up markup, disable default styling, and prevent double form submissions.', 'tka-wp-utils'); ?>
+									</p>
+
+									<div class="tka-settings-card">
+										<!-- Disable GF CSS Toggle -->
+										<div class="tka-setting-row">
+											<div class="tka-setting-label">
+												<strong><?php esc_html_e('Disable Default CSS completely', 'tka-wp-utils'); ?></strong>
+												<p><?php esc_html_e('Blocks all built-in Gravity Forms styles and stylesheets from loading on the frontend. Highly recommended when building custom themes or using Tailwind/bootstrap styles.', 'tka-wp-utils'); ?>
+												</p>
+											</div>
+											<div class="tka-setting-control">
+												<label class="tka-switch">
+													<input type="checkbox" name="tka_wp_utils_options[gf_disable_css]" value="1"
+														<?php checked(1, $options['gf_disable_css'] ?? 0); ?>>
+													<span class="tka-slider"></span>
+												</label>
+											</div>
+										</div>
+
+										<!-- Change Submit Input to Button Toggle -->
+										<div class="tka-setting-row">
+											<div class="tka-setting-label">
+												<strong><?php esc_html_e('Convert Submit Input to Button', 'tka-wp-utils'); ?></strong>
+												<p><?php esc_html_e('Converts standard <input type="submit"> tags into modern <button type="submit"> elements, allowing for much better flex/grid layout control and pseudo-elements.', 'tka-wp-utils'); ?>
+												</p>
+											</div>
+											<div class="tka-setting-control">
+												<label class="tka-switch">
+													<input type="checkbox" name="tka_wp_utils_options[gf_submit_button_to_button]" value="1"
+														<?php checked(1, $options['gf_submit_button_to_button'] ?? 0); ?>>
+													<span class="tka-slider"></span>
+												</label>
+											</div>
+										</div>
+
+										<!-- Change Submit Button Text on Click Toggle -->
+										<div class="tka-setting-row">
+											<div class="tka-setting-label">
+												<strong><?php esc_html_e('Enable Button Submit Loading Text', 'tka-wp-utils'); ?></strong>
+												<p><?php esc_html_e('Temporarily changes the button text to a loading feedback string (e.g. "Sending...") upon form submit to prevent multiple clicks and double submissions.', 'tka-wp-utils'); ?>
+												</p>
+											</div>
+											<div class="tka-setting-control">
+												<label class="tka-switch">
+													<input type="checkbox" id="tka-gf-text-change-toggle" name="tka_wp_utils_options[gf_submit_button_text_change]" value="1"
+														<?php checked(1, $options['gf_submit_button_text_change'] ?? 0); ?>>
+													<span class="tka-slider"></span>
+												</label>
+											</div>
+										</div>
+
+										<!-- Loading text input field -->
+										<div class="tka-setting-row nested-gf-loading-text"
+											style="<?php echo (!empty($options['gf_submit_button_text_change'])) ? 'display: block;' : 'display: none;'; ?>">
+											<div class="tka-setting-label">
+												<strong><?php esc_html_e('Custom Submit Loading Text', 'tka-wp-utils'); ?></strong>
+												<p><?php esc_html_e('Specify the custom text to display during form submission.', 'tka-wp-utils'); ?>
+												</p>
+											</div>
+											<div class="tka-setting-control">
+												<input type="text" name="tka_wp_utils_options[gf_submit_button_loading_text]"
+													value="<?php echo esc_attr($options['gf_submit_button_loading_text'] ?? 'Sending...'); ?>"
+													class="regular-text" style="border-radius: 8px; padding: 8px 12px; border-color: var(--tka-border);">
+											</div>
+										</div>
+									</div>
+								</section>
+							<?php endif; ?>
+
+							<?php if (class_exists('WooCommerce')): ?>
+								<!-- WOOCOMMERCE PANEL -->
+								<section id="panel-woocommerce" class="tka-tab-panel">
+									<h2><?php esc_html_e('WooCommerce Speed & Bloat Settings', 'tka-wp-utils'); ?></h2>
+									<p class="section-desc">
+										<?php esc_html_e('Optimize your WooCommerce store frontend load speed and declutter the admin dashboard.', 'tka-wp-utils'); ?>
+									</p>
+
+									<div class="tka-settings-card">
+										<!-- Disable scripts/styles non-shop pages -->
+										<div class="tka-setting-row">
+											<div class="tka-setting-label">
+												<strong><?php esc_html_e('Disable Scripts & Styles on Non-Shop Pages', 'tka-wp-utils'); ?></strong>
+												<p><?php esc_html_e('Dequeues WooCommerce frontend styles and scripts on non-shop pages like homepage, blog posts, and custom pages to optimize asset payload size.', 'tka-wp-utils'); ?>
+												</p>
+											</div>
+											<div class="tka-setting-control">
+												<label class="tka-switch">
+													<input type="checkbox" name="tka_wp_utils_options[wc_disable_scripts_non_wc]" value="1"
+														<?php checked(1, $options['wc_disable_scripts_non_wc'] ?? 0); ?>>
+													<span class="tka-slider"></span>
+												</label>
+											</div>
+										</div>
+
+										<!-- Cart Fragments AJAX mode -->
+										<div class="tka-setting-row stack">
+											<div class="tka-setting-label">
+												<strong><?php esc_html_e('Disable Cart Fragments AJAX', 'tka-wp-utils'); ?></strong>
+												<p><?php esc_html_e('Choose how to restrict the AJAX cart fragments request on the frontend.', 'tka-wp-utils'); ?>
+												</p>
+											</div>
+											<div class="tka-setting-control-radios">
+												<label class="tka-radio-card">
+													<input type="radio" name="tka_wp_utils_options[wc_disable_cart_fragments]" value="none"
+														<?php checked('none', $options['wc_disable_cart_fragments'] ?? 'none'); ?>>
+													<div class="radio-card-content">
+														<strong><?php esc_html_e('Keep Active', 'tka-wp-utils'); ?></strong>
+														<span><?php esc_html_e('Default WooCommerce cart updating behaviour.', 'tka-wp-utils'); ?></span>
+													</div>
+												</label>
+
+												<label class="tka-radio-card">
+													<input type="radio" name="tka_wp_utils_options[wc_disable_cart_fragments]" value="all"
+														<?php checked('all', $options['wc_disable_cart_fragments'] ?? 'none'); ?>>
+													<div class="radio-card-content">
+														<strong><?php esc_html_e('Disable Completely', 'tka-wp-utils'); ?></strong>
+														<span><?php esc_html_e('Globally block AJAX cart fragments (maximum performance).', 'tka-wp-utils'); ?></span>
+													</div>
+												</label>
+
+												<label class="tka-radio-card">
+													<input type="radio" name="tka_wp_utils_options[wc_disable_cart_fragments]" value="non_shop"
+														<?php checked('non_shop', $options['wc_disable_cart_fragments'] ?? 'none'); ?>>
+													<div class="radio-card-content">
+														<strong><?php esc_html_e('Disable on Non-Shop Pages', 'tka-wp-utils'); ?></strong>
+														<span><?php esc_html_e('Keep fragments enabled on shop pages/checkout; block them everywhere else.', 'tka-wp-utils'); ?></span>
+													</div>
+												</label>
+											</div>
+										</div>
+
+										<!-- Disable block styles -->
+										<div class="tka-setting-row">
+											<div class="tka-setting-label">
+												<strong><?php esc_html_e('Disable Gutenberg Block Styles', 'tka-wp-utils'); ?></strong>
+												<p><?php esc_html_e('Blocks WooCommerce built-in blocks layout styles from loading on the frontend. Recommended if your theme does not use WooCommerce blocks.', 'tka-wp-utils'); ?>
+												</p>
+											</div>
+											<div class="tka-setting-control">
+												<label class="tka-switch">
+													<input type="checkbox" name="tka_wp_utils_options[wc_disable_block_styles]" value="1"
+														<?php checked(1, $options['wc_disable_block_styles'] ?? 0); ?>>
+													<span class="tka-slider"></span>
+												</label>
+											</div>
+										</div>
+
+										<!-- Disable password strength meter -->
+										<div class="tka-setting-row">
+											<div class="tka-setting-label">
+												<strong><?php esc_html_e('Disable Password Strength Meter JS', 'tka-wp-utils'); ?></strong>
+												<p><?php esc_html_e('Dequeues zxcvbn.min.js and the password strength meter on checkout/my-account pages to save up to 400KB of page weight.', 'tka-wp-utils'); ?>
+												</p>
+											</div>
+											<div class="tka-setting-control">
+												<label class="tka-switch">
+													<input type="checkbox" name="tka_wp_utils_options[wc_disable_password_meter]" value="1"
+														<?php checked(1, $options['wc_disable_password_meter'] ?? 0); ?>>
+													<span class="tka-slider"></span>
+												</label>
+											</div>
+										</div>
+
+										<!-- Clean Admin UI -->
+										<div class="tka-setting-row">
+											<div class="tka-setting-label">
+												<strong><?php esc_html_e('Clean WooCommerce Admin UI & Nags', 'tka-wp-utils'); ?></strong>
+												<p><?php esc_html_e('Hides the WooCommerce marketing menu tab, removes status widgets from the dashboard, and disables marketplace suggestions.', 'tka-wp-utils'); ?>
+												</p>
+											</div>
+											<div class="tka-setting-control">
+												<label class="tka-switch">
+													<input type="checkbox" name="tka_wp_utils_options[wc_clean_admin_ui]" value="1"
+														<?php checked(1, $options['wc_clean_admin_ui'] ?? 0); ?>>
+													<span class="tka-slider"></span>
+												</label>
+											</div>
+										</div>
+									</div>
+								</section>
+							<?php endif; ?>
 
 							<!-- BUTTON WRAPPER -->
 							<div class="tka-submit-section">
