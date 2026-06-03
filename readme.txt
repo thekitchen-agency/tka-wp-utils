@@ -3,7 +3,7 @@ Contributors: thekitchen-agency
 Tags: classic editor, svg upload, admin columns, menu organizer, hardening, image optimization, woocommerce, woocommerce optimization
 Requires at least: 6.0
 Tested up to: 6.5
-Stable tag: 1.3.0
+Stable tag: 1.4.0
 Requires PHP: 8.3
 License: MIT
 License URI: https://opensource.org/licenses/MIT
@@ -30,6 +30,7 @@ TKA WP Utils is an all-in-one utility plugin designed to help developers and age
 *   **Dedicated Bulk Retroactive Image Optimizer**: Features a sequential batch retroactive image optimizer subpage that safely processes JPEGs and PNGs to prevent FPM gateway timeouts.
 *   **Interactive Media Library Status Table**: A premium, real-time reactive table displaying JPEG, PNG, and WebP assets with color-coded format badges (slate JPEG, indigo PNG, success green WebP), status indicators, and direct database-backed size savings metadata display with smooth success highlight animations.
 *   **WooCommerce Speed & Bloat Settings**: Speed up WooCommerce stores by dequeuing WooCommerce scripts/styles on non-shop pages, disabling or selectively loading AJAX cart fragments, suppressing Gutenberg blocks stylesheets, removing the heavy password strength meter script, and cleaning up marketing menu/dashboard widgets.
+*   **Gravity Forms Integrations**: Clean up markup by converting `<input type="submit">` tags into modern `<button type="submit">` tags, block default Gravity Forms CSS stylesheets, and prevent double form submissions by displaying custom loading text (e.g. "Sending...") during form posts.
 
 == Installation ==
 
@@ -52,6 +53,18 @@ Our plugin uses a database-first approach: it converts physical files to WebP an
 Since images are permanently converted to WebP in the database, deactivating the plugin leaves WebP files active in your media library. If you want to keep original JPEGs/PNGs for safe backup, make sure the "Keep Original Images" setting is toggled on before running bulk optimization.
 
 == Changelog ==
+
+= 1.4.0 =
+*   Added Gravity Forms integration tab (available if Gravity Forms is active) to disable default CSS, convert submit inputs to modern buttons, and customize submit button loading/sending feedback text.
+*   Added WooCommerce Helpers & Extras setting card under WooCommerce tab.
+*   Implemented "Buy Now" button direct-to-checkout option on single product pages.
+*   Implemented automatic SKU redirects for URLs matching active product SKUs.
+*   Implemented referer redirection for "add-to-cart" actions to remove URL query strings.
+*   Implemented AJAX "View Cart" hide control for shop archive pages.
+*   Implemented interactive Plus/Minus quantity buttons for product pages.
+*   Implemented WooCommerce quantity input to select dropdown converter (up to 20 options).
+*   Added support for WooCommerce Cart & Checkout Gutenberg exclusions.
+*   Fixed settings serialization loss for WooCommerce and Gravity Forms settings keys in the Admin Settings panel.
 
 = 1.3.0 =
 *   Added WooCommerce Speed & Bloat settings tab (available if WooCommerce is active).

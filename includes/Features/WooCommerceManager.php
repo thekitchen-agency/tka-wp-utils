@@ -64,6 +64,33 @@ class WooCommerceManager {
 			// CSS fallback to ensure menu items are hidden even if re-injected via JS
 			add_action( 'admin_head', [ $this, 'injectCleanAdminUiStyles' ] );
 		}
+
+		// 6. Direct Buy Now Button
+		if ( ! empty( $this->options['wc_buy_now_button'] ) ) {
+			add_action( 'woocommerce_after_add_to_cart_button', [ $this, 'addBuyNowButton' ], 1 );
+		}
+
+		// 7. Redirect SKU in URL to single product page
+		if ( ! empty( $this->options['wc_redirect_sku'] ) ) {
+			add_action( 'template_redirect', [ $this, 'redirectSkuInUrlToProduct' ] );
+		}
+
+		// 8. Remove add-to-cart from URL on redirect
+		if ( ! empty( $this->options['wc_remove_add_to_cart_from_url'] ) ) {
+			add_filter( 'woocommerce_add_to_cart_redirect', 'wp_get_referer' );
+		}
+
+		// 9. Hide "View Cart" AJAX button on Shop page
+		if ( ! empty( $this->options['wc_hide_view_cart_shop'] ) ) {
+			add_action( 'wp_footer', [ $this, 'hideAjaxViewCartButton' ] );
+		}
+
+		// 10. Plus / Minus quantity buttons
+		if ( ! empty( $this->options['wc_plus_minus_quantity'] ) ) {
+			add_action( 'woocommerce_before_quantity_input_field', [ $this, 'displayQuantityMinus' ] );
+			add_action( 'woocommerce_after_quantity_input_field', [ $this, 'displayQuantityPlus' ] );
+			add_action( 'woocommerce_before_single_product', [ $this, 'addCartQuantityPlusMinus' ] );
+		}
 	}
 
 	/**
@@ -216,5 +243,116 @@ class WooCommerceManager {
 	public function cleanDashboardWidgets(): void {
 		remove_meta_box( 'woocommerce_dashboard_status', 'dashboard', 'normal' );
 		remove_meta_box( 'woocommerce_dashboard_recent_reviews', 'dashboard', 'normal' );
+	}
+
+	/**
+	 * Add "Buy Now" Button on single product page.
+	 */
+	public function addBuyNowButton(): void {
+		global $product;
+		if ( ! $product ) {
+			return;
+		}
+
+		$product_id  = $product->get_id();
+		$buy_now_url = esc_url( add_query_arg(
+			[ 'products' => $product_id . ':1' ],
+			'/checkout-link/'
+		) );
+
+		echo ' &mdash; OR &mdash; <a href="' . esc_url( $buy_now_url ) . '" class="single_add_to_cart_button button buy_now_button" data-product-id="' . esc_attr( $product_id ) . '">' . esc_html__( 'Buy Now', 'tka-wp-utils' ) . '</a>';
+
+		wc_enqueue_js( "
+			function updateBuyNowURL() {
+				var qty = jQuery('form.cart').find('input.qty').val() || 1;
+				var productId = jQuery('a.buy_now_button').data('product-id');
+				var variationId = jQuery('form.cart').find('input[name=\"variation_id\"]').val();
+				if (variationId && variationId !== '0') {
+					productId = variationId;
+				}
+				var newUrl = '/checkout-link/?products=' + productId + ':' + qty;
+				jQuery('.buy_now_button').attr('href', newUrl);
+			}
+			jQuery(document).on('change input', 'form.cart input.qty', updateBuyNowURL);
+			jQuery('form.cart').on('show_variation hide_variation', updateBuyNowURL);
+			updateBuyNowURL();
+		" );
+	}
+
+	/**
+	 * Redirect custom SKU URLs (which fall back to a 404 page) to their single product permalinks.
+	 */
+	public function redirectSkuInUrlToProduct(): void {
+		if ( is_404() && isset( $GLOBALS['wp']->request ) ) {
+			$sku = sanitize_text_field( $GLOBALS['wp']->request );
+			if ( function_exists( 'wc_get_product_id_by_sku' ) ) {
+				$id = wc_get_product_id_by_sku( $sku );
+				if ( $id ) {
+					wp_safe_redirect( get_permalink( $id ) );
+					exit;
+				}
+			}
+		}
+	}
+
+	/**
+	 * Enqueue JS script to hide the AJAX-injected "View Cart" button on Shop pages.
+	 */
+	public function hideAjaxViewCartButton(): void {
+		wc_enqueue_js( "
+			jQuery( document.body ).on('wc_cart_button_updated', function(){
+				jQuery('.added_to_cart.wc-forward').remove();
+			});
+		" );
+	}
+
+	/**
+	 * Output minus button before quantity input field.
+	 */
+	public function displayQuantityMinus(): void {
+		if ( ! is_product() ) {
+			return;
+		}
+		echo '<button type="button" class="minus">-</button>';
+	}
+
+	/**
+	 * Output plus button after quantity input field.
+	 */
+	public function displayQuantityPlus(): void {
+		if ( ! is_product() ) {
+			return;
+		}
+		echo '<button type="button" class="plus">+</button>';
+	}
+
+	/**
+	 * Enqueue JavaScript to support Plus & Minus interactive increment/decrement.
+	 */
+	public function addCartQuantityPlusMinus(): void {
+		wc_enqueue_js( "
+			jQuery('form.cart').on('click', 'button.plus, button.minus', function() {
+				var qty = jQuery(this).closest('form.cart').find('.qty');
+				var val = parseFloat(qty.val()) || 0;
+				var max = parseFloat(qty.attr('max'));
+				var min = parseFloat(qty.attr('min')) || 1;
+				var step = parseFloat(qty.attr('step')) || 1;
+
+				if (jQuery(this).is('.plus')) {
+					if (max && (max <= val)) {
+						qty.val(max);
+					} else {
+						qty.val(val + step);
+					}
+				} else {
+					if (min && (min >= val)) {
+						qty.val(min);
+					} else if (val > min) {
+						qty.val(val - step);
+					}
+				}
+				qty.trigger('change');
+			});
+		" );
 	}
 }

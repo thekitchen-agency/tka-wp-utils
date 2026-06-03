@@ -139,6 +139,24 @@ class Settings
 					'image_compression_quality' => 82,
 					'compress_original_images' => 0,
 					'strip_image_metadata' => 0,
+					// WooCommerce Speed & Bloat
+					'wc_disable_scripts_non_wc' => 0,
+					'wc_disable_cart_fragments' => 'none',
+					'wc_disable_block_styles' => 0,
+					'wc_disable_password_meter' => 0,
+					'wc_clean_admin_ui' => 0,
+					// WooCommerce Helpers & Extras
+					'wc_buy_now_button' => 0,
+					'wc_redirect_sku' => 0,
+					'wc_remove_add_to_cart_from_url' => 0,
+					'wc_hide_view_cart_shop' => 0,
+					'wc_plus_minus_quantity' => 0,
+					'wc_quantity_dropdown' => 0,
+					// Gravity Forms
+					'gf_disable_css' => 0,
+					'gf_submit_button_to_button' => 0,
+					'gf_submit_button_text_change' => 0,
+					'gf_submit_button_loading_text' => 'Sending...',
 				],
 			]
 		);
@@ -302,6 +320,27 @@ class Settings
 		$sanitized['image_compression_quality'] = isset($input['image_compression_quality']) ? max(50, min(100, intval($input['image_compression_quality']))) : 82;
 		$sanitized['compress_original_images'] = isset($input['compress_original_images']) ? 1 : 0;
 		$sanitized['strip_image_metadata'] = isset($input['strip_image_metadata']) ? 1 : 0;
+
+		// Sanitize WooCommerce options
+		$sanitized['wc_disable_scripts_non_wc'] = isset($input['wc_disable_scripts_non_wc']) ? 1 : 0;
+		$sanitized['wc_disable_cart_fragments'] = isset($input['wc_disable_cart_fragments']) && in_array($input['wc_disable_cart_fragments'], ['none', 'all', 'non_shop'], true) ? $input['wc_disable_cart_fragments'] : 'none';
+		$sanitized['wc_disable_block_styles'] = isset($input['wc_disable_block_styles']) ? 1 : 0;
+		$sanitized['wc_disable_password_meter'] = isset($input['wc_disable_password_meter']) ? 1 : 0;
+		$sanitized['wc_clean_admin_ui'] = isset($input['wc_clean_admin_ui']) ? 1 : 0;
+
+		// Sanitize WooCommerce helper options
+		$sanitized['wc_buy_now_button'] = isset($input['wc_buy_now_button']) ? 1 : 0;
+		$sanitized['wc_redirect_sku'] = isset($input['wc_redirect_sku']) ? 1 : 0;
+		$sanitized['wc_remove_add_to_cart_from_url'] = isset($input['wc_remove_add_to_cart_from_url']) ? 1 : 0;
+		$sanitized['wc_hide_view_cart_shop'] = isset($input['wc_hide_view_cart_shop']) ? 1 : 0;
+		$sanitized['wc_plus_minus_quantity'] = isset($input['wc_plus_minus_quantity']) ? 1 : 0;
+		$sanitized['wc_quantity_dropdown'] = isset($input['wc_quantity_dropdown']) ? 1 : 0;
+
+		// Sanitize Gravity Forms options
+		$sanitized['gf_disable_css'] = isset($input['gf_disable_css']) ? 1 : 0;
+		$sanitized['gf_submit_button_to_button'] = isset($input['gf_submit_button_to_button']) ? 1 : 0;
+		$sanitized['gf_submit_button_text_change'] = isset($input['gf_submit_button_text_change']) ? 1 : 0;
+		$sanitized['gf_submit_button_loading_text'] = isset($input['gf_submit_button_loading_text']) ? sanitize_text_field($input['gf_submit_button_loading_text']) : 'Sending...';
 
 		return $sanitized;
 	}
@@ -1546,6 +1585,109 @@ class Settings
 												<label class="tka-switch">
 													<input type="checkbox" name="tka_wp_utils_options[wc_clean_admin_ui]" value="1"
 														<?php checked(1, $options['wc_clean_admin_ui'] ?? 0); ?>>
+													<span class="tka-slider"></span>
+												</label>
+											</div>
+										</div>
+									</div>
+
+									<div class="tka-settings-card" style="margin-top: 20px;">
+										<h3><?php esc_html_e('WooCommerce Helpers & Extras', 'tka-wp-utils'); ?></h3>
+										<p class="card-desc" style="margin-bottom: 20px; color: var(--tka-text-muted);">
+											<?php esc_html_e('Configure helpful tweaks and extra features for your WooCommerce shop.', 'tka-wp-utils'); ?>
+										</p>
+
+										<!-- Buy Now Button -->
+										<div class="tka-setting-row">
+											<div class="tka-setting-label">
+												<strong><?php esc_html_e('Enable "Buy Now" Button', 'tka-wp-utils'); ?></strong>
+												<p><?php esc_html_e('Adds a direct checkout button on single product pages, bypassing the cart page.', 'tka-wp-utils'); ?>
+												</p>
+											</div>
+											<div class="tka-setting-control">
+												<label class="tka-switch">
+													<input type="checkbox" name="tka_wp_utils_options[wc_buy_now_button]" value="1"
+														<?php checked(1, $options['wc_buy_now_button'] ?? 0); ?>>
+													<span class="tka-slider"></span>
+												</label>
+											</div>
+										</div>
+
+										<!-- Redirect SKU to Product -->
+										<div class="tka-setting-row">
+											<div class="tka-setting-label">
+												<strong><?php esc_html_e('Redirect SKU to Product Page', 'tka-wp-utils'); ?></strong>
+												<p><?php esc_html_e('Automatically redirects users typing or requesting a product SKU in the URL (e.g. /your-sku/) to that product page.', 'tka-wp-utils'); ?>
+												</p>
+											</div>
+											<div class="tka-setting-control">
+												<label class="tka-switch">
+													<input type="checkbox" name="tka_wp_utils_options[wc_redirect_sku]" value="1"
+														<?php checked(1, $options['wc_redirect_sku'] ?? 0); ?>>
+													<span class="tka-slider"></span>
+												</label>
+											</div>
+										</div>
+
+										<!-- Remove add-to-cart from URL -->
+										<div class="tka-setting-row">
+											<div class="tka-setting-label">
+												<strong><?php esc_html_e('Remove "add-to-cart" From URL', 'tka-wp-utils'); ?></strong>
+												<p><?php esc_html_e('Redirects the user back to the referrer page after adding a product to cart, removing the add-to-cart query string from the URL.', 'tka-wp-utils'); ?>
+												</p>
+											</div>
+											<div class="tka-setting-control">
+												<label class="tka-switch">
+													<input type="checkbox" name="tka_wp_utils_options[wc_remove_add_to_cart_from_url]" value="1"
+														<?php checked(1, $options['wc_remove_add_to_cart_from_url'] ?? 0); ?>>
+													<span class="tka-slider"></span>
+												</label>
+											</div>
+										</div>
+
+										<!-- Hide View Cart on Shop -->
+										<div class="tka-setting-row">
+											<div class="tka-setting-label">
+												<strong><?php esc_html_e('Hide "View Cart" Link on Shop', 'tka-wp-utils'); ?></strong>
+												<p><?php esc_html_e('Hides the AJAX-injected "View Cart" secondary link after adding a product to cart on the shop archive pages.', 'tka-wp-utils'); ?>
+												</p>
+											</div>
+											<div class="tka-setting-control">
+												<label class="tka-switch">
+													<input type="checkbox" name="tka_wp_utils_options[wc_hide_view_cart_shop]" value="1"
+														<?php checked(1, $options['wc_hide_view_cart_shop'] ?? 0); ?>>
+													<span class="tka-slider"></span>
+												</label>
+											</div>
+										</div>
+
+										<!-- Plus/Minus quantity buttons -->
+										<div class="tka-setting-row">
+											<div class="tka-setting-label">
+												<strong><?php esc_html_e('Plus/Minus Quantity Buttons', 'tka-wp-utils'); ?></strong>
+												<p><?php esc_html_e('Injects interactive "-" and "+" buttons around the product quantity inputs on single product pages.', 'tka-wp-utils'); ?>
+												</p>
+											</div>
+											<div class="tka-setting-control">
+												<label class="tka-switch">
+													<input type="checkbox" name="tka_wp_utils_options[wc_plus_minus_quantity]" value="1"
+														<?php checked(1, $options['wc_plus_minus_quantity'] ?? 0); ?>>
+													<span class="tka-slider"></span>
+												</label>
+											</div>
+										</div>
+
+										<!-- Quantity dropdown -->
+										<div class="tka-setting-row">
+											<div class="tka-setting-label">
+												<strong><?php esc_html_e('Quantity Dropdown Select', 'tka-wp-utils'); ?></strong>
+												<p><?php esc_html_e('Converts the standard numeric input field for quantity into a select dropdown (max value limit 20).', 'tka-wp-utils'); ?>
+												</p>
+											</div>
+											<div class="tka-setting-control">
+												<label class="tka-switch">
+													<input type="checkbox" name="tka_wp_utils_options[wc_quantity_dropdown]" value="1"
+														<?php checked(1, $options['wc_quantity_dropdown'] ?? 0); ?>>
 													<span class="tka-slider"></span>
 												</label>
 											</div>
