@@ -46,6 +46,16 @@ class AcfManager
 		if (!empty($this->options['acf_layout_modal'])) {
 			add_action('admin_enqueue_scripts', [$this, 'enqueueLayoutModalAssets']);
 		}
+
+		if (!empty($this->options['acf_layout_toggle']) || !empty($this->options['acf_layout_rename'])) {
+			add_action('admin_enqueue_scripts', [$this, 'enqueueLayoutToggleAssets']);
+		}
+
+		if (!empty($this->options['acf_layout_toggle'])) {
+			add_action('acf/render_field', [$this, 'renderLayoutDisabledSetting'], 10, 1);
+			add_filter('acf/prepare_field/type=flexible_content', [$this, 'prepareFlexibleContentFieldForEditor'], 10, 1);
+			add_filter('acf/format_value/type=flexible_content', [$this, 'filterFormattedFlexibleContentValue'], 10, 3);
+		}
 	}
 
 	/**
@@ -293,5 +303,133 @@ class AcfManager
 			$paths[] = $custom_path;
 		}
 		return $paths;
+	}
+
+	/**
+	 * Enqueue ACF layout enable/disable visibility toggle assets on post and field group edit pages.
+	 */
+	public function enqueueLayoutToggleAssets(string $hook): void
+	{
+		if (!in_array($hook, ['post.php', 'post-new.php'], true)) {
+			return;
+		}
+
+		$css_path = TKA_WP_UTILS_PATH . 'admin/css/acf-layout-toggle.css';
+		$js_path = TKA_WP_UTILS_PATH . 'admin/js/acf-layout-toggle.js';
+
+		$css_version = file_exists($css_path) ? filemtime($css_path) : TKA_WP_UTILS_VERSION;
+		$js_version = file_exists($js_path) ? filemtime($js_path) : TKA_WP_UTILS_VERSION;
+
+		wp_enqueue_style(
+			'tka-acf-layout-toggle-css',
+			TKA_WP_UTILS_URL . 'admin/css/acf-layout-toggle.css',
+			[],
+			$css_version
+		);
+
+		wp_enqueue_script(
+			'tka-acf-layout-toggle-js',
+			TKA_WP_UTILS_URL . 'admin/js/acf-layout-toggle.js',
+			['jquery'],
+			$js_version,
+			true
+		);
+
+		wp_localize_script('tka-acf-layout-toggle-js', 'tkaAcfLayoutToggleSettings', [
+			'enableToggle' => !empty($this->options['acf_layout_toggle']) ? 1 : 0,
+			'enableRename' => !empty($this->options['acf_layout_rename']) ? 1 : 0,
+		]);
+	}
+
+	/**
+	 * Hook into field settings rendering to output the disabled state input.
+	 */
+	public function renderLayoutDisabledSetting(array $field): void
+	{
+		// In acf/render_field, the field name has been prepared and looks like:
+		// acf_fields[39][layouts][layout_6a161244d8df5][label]
+		if (empty($field['name'])) {
+			return;
+		}
+
+		if (preg_match('/^acf_fields\[(?P<parent_field_key>field_[a-zA-Z0-9_]+|[0-9]+)\]\[layouts\]\[(?P<layout_key>layout_[a-zA-Z0-9_]+)\]\[label\]$/', $field['name'], $matches)) {
+			$parent_field_key = $matches['parent_field_key'];
+			$layout_key = $matches['layout_key'];
+
+			// Load the parent field to get the layout's saved disabled state
+			$parent_field = acf_get_field($parent_field_key);
+			$disabled = 0;
+
+			if ($parent_field && !empty($parent_field['layouts'])) {
+				foreach ($parent_field['layouts'] as $layout) {
+					if ($layout['key'] === $layout_key) {
+						$disabled = !empty($layout['disabled']) ? 1 : 0;
+						break;
+					}
+				}
+			}
+
+			// Render the hidden input for the layout's disabled state
+			$input_name = preg_replace('/\[label\]$/', '[disabled]', $field['name']);
+			echo '<input type="hidden" class="tka-layout-disabled-input" name="' . esc_attr($input_name) . '" value="' . esc_attr($disabled) . '">';
+		}
+	}
+
+	/**
+	 * Hook into prepare flexible content field for editor to inject disabled layout names.
+	 */
+	public function prepareFlexibleContentFieldForEditor(array $field): array
+	{
+		$disabled_layouts = [];
+		if (!empty($field['layouts'])) {
+			foreach ($field['layouts'] as $layout) {
+				if (!empty($layout['disabled'])) {
+					$disabled_layouts[] = $layout['name'];
+				}
+			}
+		}
+
+		if (!empty($disabled_layouts)) {
+			// Add a custom data attribute to the field wrapper
+			$field['wrapper']['data-tka-disabled-layouts'] = implode(',', $disabled_layouts);
+		}
+
+		return $field;
+	}
+
+	/**
+	 * Filter the formatted flexible content value on the front-end to exclude disabled rows.
+	 */
+	public function filterFormattedFlexibleContentValue($value, $post_id, $field)
+	{
+		// Only filter on the front-end (exclude admin view)
+		if (is_admin()) {
+			return $value;
+		}
+
+		if (!is_array($value) || empty($value)) {
+			return $value;
+		}
+
+		// Map layouts to their disabled status
+		$disabled_layouts = [];
+		if (!empty($field['layouts'])) {
+			foreach ($field['layouts'] as $layout) {
+				if (!empty($layout['disabled'])) {
+					$disabled_layouts[$layout['name']] = true;
+				}
+			}
+		}
+
+		$filtered_value = [];
+		foreach ($value as $row) {
+			$layout_name = $row['acf_fc_layout'] ?? '';
+			// If layout is not disabled globally, keep it
+			if (empty($disabled_layouts[$layout_name])) {
+				$filtered_value[] = $row;
+			}
+		}
+
+		return $filtered_value;
 	}
 }

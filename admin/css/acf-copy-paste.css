@@ -115,6 +115,14 @@
 	margin-right: 6px !important;
 	transition: color 0.15s ease, background-color 0.15s ease !important;
 	border-radius: 4px !important;
+	visibility: hidden !important;
+}
+
+.acf-field-flexible-content .layout:hover .tka-acf-copy-btn,
+.acf-field-flexible-content .layout.-hover .tka-acf-copy-btn,
+.acf-fc-layout:hover .tka-acf-copy-btn,
+.acf-fc-layout.-hover .tka-acf-copy-btn {
+	visibility: visible !important;
 }
 
 .acf-fc-layout-controls a.acf-icon.tka-acf-copy-btn:hover {

@@ -131,6 +131,8 @@ class Settings
 					'acf_copy_paste' => 0,
 					'acf_copy_paste_multiselect' => 0,
 					'acf_layout_modal' => 0,
+					'acf_layout_toggle' => 0,
+					'acf_layout_rename' => 0,
 					'image_optimization_enabled' => 0,
 					'webp_conversion_enabled' => 0,
 					'webp_keep_original' => 1,
@@ -292,6 +294,8 @@ class Settings
 		$sanitized['acf_copy_paste'] = isset($input['acf_copy_paste']) ? 1 : 0;
 		$sanitized['acf_copy_paste_multiselect'] = isset($input['acf_copy_paste_multiselect']) ? 1 : 0;
 		$sanitized['acf_layout_modal'] = isset($input['acf_layout_modal']) ? 1 : 0;
+		$sanitized['acf_layout_toggle'] = isset($input['acf_layout_toggle']) ? 1 : 0;
+		$sanitized['acf_layout_rename'] = isset($input['acf_layout_rename']) ? 1 : 0;
 		$sanitized['image_optimization_enabled'] = isset($input['image_optimization_enabled']) ? 1 : 0;
 		$sanitized['webp_conversion_enabled'] = isset($input['webp_conversion_enabled']) ? 1 : 0;
 		$sanitized['webp_keep_original'] = isset($input['webp_keep_original']) ? 1 : 0;
@@ -1141,6 +1145,36 @@ class Settings
 												<label class="tka-switch">
 													<input type="checkbox" name="tka_wp_utils_options[acf_layout_modal]" value="1"
 														<?php checked(1, $options['acf_layout_modal'] ?? 0); ?>>
+													<span class="tka-slider"></span>
+												</label>
+											</div>
+										</div>
+
+										<div class="tka-setting-row">
+											<div class="tka-setting-label">
+												<strong><?php esc_html_e('Enable Flexible Layout Toggle (Visibility)', 'tka-wp-utils'); ?></strong>
+												<p><?php esc_html_e('Adds a visibility toggle button (eye icon) to each layout block in the ACF Field Group editor. Allows developers to disable individual layouts globally, hiding them from post editors and frontend output.', 'tka-wp-utils'); ?>
+												</p>
+											</div>
+											<div class="tka-setting-control">
+												<label class="tka-switch">
+													<input type="checkbox" name="tka_wp_utils_options[acf_layout_toggle]" value="1"
+														<?php checked(1, $options['acf_layout_toggle'] ?? 0); ?>>
+													<span class="tka-slider"></span>
+												</label>
+											</div>
+										</div>
+
+										<div class="tka-setting-row">
+											<div class="tka-setting-label">
+												<strong><?php esc_html_e('Enable Layout Click-to-Rename Hijack', 'tka-wp-utils'); ?></strong>
+												<p><?php esc_html_e('Allows editors to rename flexible layout blocks directly by clicking on their title text inside the post editor, bypassing the need to open the action menu (three dots dropdown).', 'tka-wp-utils'); ?>
+												</p>
+											</div>
+											<div class="tka-setting-control">
+												<label class="tka-switch">
+													<input type="checkbox" name="tka_wp_utils_options[acf_layout_rename]" value="1"
+														<?php checked(1, $options['acf_layout_rename'] ?? 0); ?>>
 													<span class="tka-slider"></span>
 												</label>
 											</div>
