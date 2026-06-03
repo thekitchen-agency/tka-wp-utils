@@ -103,6 +103,7 @@ dialog.tka-acf-layout-modal::backdrop {
 	display: flex;
 	flex-direction: column;
 	gap: 16px;
+	flex-shrink: 0;
 }
 
 .tka-acf-modal-header h2 {
@@ -206,6 +207,7 @@ dialog.tka-acf-layout-modal::backdrop {
 	border-bottom: 1px solid var(--tka-modal-border);
 	overflow-x: auto;
 	scrollbar-width: none; /* Hide scrollbar for Firefox */
+	flex-shrink: 0;
 }
 
 .tka-acf-modal-cats::-webkit-scrollbar {
@@ -415,6 +417,7 @@ dialog.tka-acf-layout-modal::backdrop {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+	flex-shrink: 0;
 }
 
 .tka-acf-modal-stats {

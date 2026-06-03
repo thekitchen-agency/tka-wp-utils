@@ -237,8 +237,8 @@
 
 			this.layouts.forEach((layout, index) => {
 				// Construct primary screenshot source URL
-				const imgSrc = `${themeUrl}/resources/images/builder/${layout.slug}.png`;
-				const altImgSrc = `${themeUrl}/resources/images/builder/block_${layout.slug.replace('block_', '')}.png`;
+				const imgSrc = `${themeUrl}/public/images/builder/${layout.slug}.png`;
+				const altImgSrc = `${themeUrl}/public/images/builder/block_${layout.slug.replace('block_', '')}.png`;
 
 				const card = `
 					<div class="tka-layout-card" data-index="${index}" data-slug="${layout.slug}" data-cat="${layout.category}">
