@@ -56,12 +56,22 @@ A comprehensive suite of utility tools designed for developers and agencies to s
 *   **Dedicated Bulk Optimizer Subpage**: Features an advanced sequential batch retroactive image optimizer page (`tka-wp-utils-bulk-optimizer`) that processes existing media assets safely to prevent gateway timeouts.
 *   **Interactive Media Library Status Table**: Displays a real-time responsive dashboard listing all JPEGs, PNGs, and WebPs in the Media Library. Shows format badges, optimized status pills, and direct database-backed size savings metadata (`_tka_image_savings`). Rows transition dynamically in real-time with visual CSS success flash highlight animations upon process completion.
 
-### 🛒 7. WooCommerce Speed & Bloat Settings
+### 🛒 7. WooCommerce Settings & Helpers
 *   **Scripts & Styles Optimization**: Dequeue heavy WooCommerce scripts and styles on pages that aren't shop pages, cart, checkout, or account pages.
 *   **AJAX Cart Fragments Control**: Disable or selectively defer the resource-intensive `/?wc-ajax=get_refreshed_fragments` AJAX requests. Choose between globally disabling them, keeping them active, or disabling them on non-shop pages only.
 *   **Block Styles Suppression**: Disable WooCommerce Gutenberg blocks styling sheets (`wc-blocks-style.css`) enqueued on the frontend.
 *   **Password Strength Meter Removal**: Dequeue `wc-password-strength-meter` and heavy `zxcvbn.min.js` scripts to speed up checkout and accounts creation pages.
 *   **Admin UI Cleanup**: Hide marketing hub submenus, dashboard status widgets, and remove marketplace extension recommendations and nags.
+*   **Direct "Buy Now" Checkout Button**: Direct checkout button on single product pages, bypassing the cart page (`/checkout-link/?products=ID:QTY`).
+*   **SKU Slug URL Redirects**: Automatically redirects requests that match a product SKU in the URL (e.g. `/your-sku/`) to that product page.
+*   **Redirection Parameters Cleanup**: Removes URL parameters on add-to-cart by returning to referer.
+*   **AJAX View Cart Suppressor**: Hides AJAX-injected secondary "View Cart" links on the shop archive page.
+*   **Quantity Selector Overrides**: Plus/Minus interactive buttons around numeric inputs, or full conversion to select dropdowns (max limit 20).
+
+### 📝 8. Gravity Forms Integrations & Enhancements
+*   **Markup Cleanup**: Convert standard submit input tags to semantic HTML5 `<button type="submit">` tags for better flex/grid layout control.
+*   **Stylesheet Suppressor**: Disable default Gravity Forms CSS styles completely to make custom styling with frameworks (Tailwind, bootstrap) easier.
+*   **Submit Loading Feedback**: Set up custom loading/sending text feedback upon button clicks to prevent double clicks and double submissions.
 
 ---
 
@@ -85,20 +95,22 @@ tka-wp-utils/
 │   │   └── Settings.php          # Settings coordinators, registration & markup
 │   ├── Core/
 │   │   └── Plugin.php            # Main Singleton COORDINATOR
-│   └── Features/                 # 12 core feature classes
-│       ├── AcfManager.php        # ACF controls & asset loader
-│       ├── AdminColumns.php
-│       ├── AdminInterface.php
-│       ├── ClassicEditor.php
-│       ├── ClassicWidgets.php
-│       ├── ContentDuplicate.php
-│       ├── ContentOrder.php
-│       ├── GutenbergManager.php
-│       ├── ImageOptimizer.php
-│       ├── SecurityManager.php
-│       ├── SvgValidator.php
-│       ├── VariousCleaner.php
-│       └── WooCommerceManager.php
+│   ├── Features/                 # 13 core feature classes
+│   │   ├── AcfManager.php        # ACF controls & asset loader
+│   │   ├── AdminColumns.php
+│   │   ├── AdminInterface.php
+│   │   ├── ClassicEditor.php
+│   │   ├── ClassicWidgets.php
+│   │   ├── ContentDuplicate.php
+│   │   ├── ContentOrder.php
+│   │   ├── GravityFormsManager.php # Gravity Forms enhancements
+│   │   ├── GutenbergManager.php
+│   │   ├── ImageOptimizer.php
+│   │   ├── SecurityManager.php
+│   │   ├── SvgValidator.php
+│   │   ├── VariousCleaner.php
+│   │   └── WooCommerceManager.php
+│   └── pluggables.php            # Pluggable function overrides (WooCommerce templates)
 ├── LICENSE                       # MIT License
 ├── README.md                     # GitHub Developer Guide
 ├── readme.txt                    # Official WordPress.org Readme
