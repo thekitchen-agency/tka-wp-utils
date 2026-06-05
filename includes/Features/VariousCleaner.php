@@ -44,6 +44,9 @@ class VariousCleaner {
 		if ( ! empty( $this->options['disable_front_dashicons'] ) ) {
 			$this->disableFrontDashicons();
 		}
+		if ( ! empty( $this->options['disable_wp_cron'] ) ) {
+			$this->disableWpCron();
+		}
 	}
 
 	/**
@@ -229,6 +232,15 @@ class VariousCleaner {
 		if ( ! is_admin() && ! is_user_logged_in() ) {
 			wp_dequeue_style( 'dashicons' );
 			wp_deregister_style( 'dashicons' );
+		}
+	}
+
+	/**
+	 * 9. Disable Virtual Cron (WP-Cron) loopback requests.
+	 */
+	private function disableWpCron(): void {
+		if ( ! defined( 'DISABLE_WP_CRON' ) ) {
+			define( 'DISABLE_WP_CRON', true );
 		}
 	}
 

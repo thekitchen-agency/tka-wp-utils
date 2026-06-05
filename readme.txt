@@ -3,7 +3,7 @@ Contributors: thekitchen-agency
 Tags: classic editor, svg upload, admin columns, menu organizer, hardening, image optimization, woocommerce, woocommerce optimization
 Requires at least: 6.0
 Tested up to: 6.5
-Stable tag: 1.4.0
+Stable tag: 1.4.1
 Requires PHP: 8.3
 License: MIT
 License URI: https://opensource.org/licenses/MIT
@@ -53,6 +53,10 @@ Our plugin uses a database-first approach: it converts physical files to WebP an
 Since images are permanently converted to WebP in the database, deactivating the plugin leaves WebP files active in your media library. If you want to keep original JPEGs/PNGs for safe backup, make sure the "Keep Original Images" setting is toggled on before running bulk optimization.
 
 == Changelog ==
+
+= 1.4.1 =
+*   Added Virtual Cron (WP-Cron) disable toggle under the Various Settings tab.
+*   Added dynamic system cron configuration instruction note with the site's exact cron command.
 
 = 1.4.0 =
 *   Added Gravity Forms integration tab (available if Gravity Forms is active) to disable default CSS, convert submit inputs to modern buttons, and customize submit button loading/sending feedback text.

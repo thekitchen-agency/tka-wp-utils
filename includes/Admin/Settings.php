@@ -96,6 +96,7 @@ class Settings
 				'default' => [
 					'classic_editor' => 0,
 					'classic_widgets' => 0,
+					'disable_wp_cron' => 0,
 					'disable_gutenberg' => 'none',
 					'gutenberg_post_types' => [],
 					'svg_upload' => 0,
@@ -214,6 +215,7 @@ class Settings
 
 		$sanitized['classic_editor'] = isset($input['classic_editor']) ? 1 : 0;
 		$sanitized['classic_widgets'] = isset($input['classic_widgets']) ? 1 : 0;
+		$sanitized['disable_wp_cron'] = isset($input['disable_wp_cron']) ? 1 : 0;
 
 		$gutenberg_mode = $input['disable_gutenberg'] ?? 'none';
 		$sanitized['disable_gutenberg'] = in_array($gutenberg_mode, ['none', 'all', 'post_types', 'wc_except_cart_checkout'], true) ? $gutenberg_mode : 'none';
@@ -825,6 +827,41 @@ class Settings
 													value="1" <?php checked(1, $options['disable_front_dashicons'] ?? 0); ?>>
 												<span class="tka-slider"></span>
 											</label>
+										</div>
+									</div>
+
+									<div class="tka-setting-row">
+										<div class="tka-setting-label">
+											<strong><?php esc_html_e('Disable Virtual Cron (WP-Cron)', 'tka-wp-utils'); ?></strong>
+											<p><?php esc_html_e('Disables the default pseudo-cron that runs on page loads. Requires setting up a real system-level cron job to execute scheduled events.', 'tka-wp-utils'); ?>
+											</p>
+										</div>
+										<div class="tka-setting-control">
+											<label class="tka-switch">
+												<input type="checkbox" id="tka-disable-wp-cron-toggle" name="tka_wp_utils_options[disable_wp_cron]" value="1"
+													<?php checked(1, $options['disable_wp_cron'] ?? 0); ?>>
+												<span class="tka-slider"></span>
+											</label>
+										</div>
+									</div>
+
+									<div class="tka-setting-row nested-wp-cron-notice" style="<?php echo (!empty($options['disable_wp_cron'])) ? 'display: block;' : 'display: none;'; ?> width: 100%; border-bottom: none; padding-bottom: 0;">
+										<div class="tka-setting-label" style="max-width: 100%; width: 100%;">
+											<div class="tka-info-box" style="background-color: var(--tka-success-bg); border: 1px solid var(--tka-border); border-radius: var(--tka-radius); padding: 15px 20px; width: 100%; box-sizing: border-box;">
+												<strong style="color: var(--tka-text-main); font-size: 14px; display: block; margin-bottom: 8px;">
+													<span class="dashicons dashicons-info" style="color: var(--tka-primary); vertical-align: text-bottom; margin-right: 5px;"></span>
+													<?php esc_html_e('System Cron Configuration Note', 'tka-wp-utils'); ?>
+												</strong>
+												<p style="margin: 0 0 12px 0; font-size: 13px; color: var(--tka-text-muted); line-height: 1.5;">
+													<?php esc_html_e('Since WP-Cron is disabled, scheduled tasks (like backups, publishing scheduled posts, and background updates) will not run automatically. You MUST set up a real cron job in your hosting panel (cPanel, Plesk, SSH, etc.) to trigger this file at regular intervals (e.g., every 15 minutes).', 'tka-wp-utils'); ?>
+												</p>
+												<p style="margin: 0 0 8px 0; font-size: 13px; color: var(--tka-text-muted); font-weight: 600;">
+													<?php esc_html_e('Recommended Cron Command:', 'tka-wp-utils'); ?>
+												</p>
+												<code class="tka-code-badge" style="display: block; font-size: 12px; padding: 10px 12px; background: var(--tka-bg-main); border: 1px solid var(--tka-border); border-radius: 6px; font-family: SFMono-Regular, Consolas, monospace; overflow-x: auto; word-break: break-all; color: var(--tka-text-main);">
+													*/15 * * * * wget -q -O - <?php echo esc_url( site_url( 'wp-cron.php?doing_wp_cron' ) ); ?> &gt;/dev/null 2&gt;&amp;1
+												</code>
+											</div>
 										</div>
 									</div>
 								</div>

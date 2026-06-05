@@ -15,7 +15,7 @@ A comprehensive suite of utility tools designed for developers and agencies to s
 *   **Strict SVG XML Sanitization**: Securely upload SVG vector graphics. The plugin runs structural XML analysis upon upload to block XML External Entity (XXE) and Cross-Site Scripting (XSS) injection vectors. Includes a visual Sandbox Playground for developers to inspect SVGs before upload.
 *   **Obfuscate Author URLs & REST User Slugs**: Hide author slugs in public archives and guest REST API endpoints (`/wp-json/wp/v2/users`) to protect against user enumeration brute-force attacks.
 *   **Email Obfuscation**: Scans post, page, and widget contents to convert email addresses into randomized decimal/hexadecimal HTML entities, shielding them from automatic scraping bots.
-*   **Hardening Cleanups**: Block guest REST endpoints, feeds, emojis, embeds, XML-RPC, trackbacks, pingbacks, front-end dashicons, and WP generator version metadata enqueues.
+*   **Hardening Cleanups**: Block guest REST endpoints, feeds, emojis, embeds, XML-RPC, trackbacks, pingbacks, front-end dashicons, disable virtual cron (WP-Cron) with system-level setup guides, and WP generator version metadata enqueues.
 
 ### 🎨 2. Agency White-Labeling
 *   ** wp-login.php Rebranding**: Rebrand the default login screen with a custom logo and login page CSS (backgrounds, buttons, brand identity overrides).

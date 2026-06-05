@@ -137,6 +137,29 @@ document.addEventListener( 'DOMContentLoaded', function () {
 		} );
 	}
 
+	// 2d. WP Cron Toggle
+	const wpCronToggle    = document.getElementById( 'tka-disable-wp-cron-toggle' );
+	const wpCronNoticeRow = document.querySelector( '.nested-wp-cron-notice' );
+
+	if ( wpCronToggle && wpCronNoticeRow ) {
+		wpCronToggle.addEventListener( 'change', function () {
+			if ( this.checked ) {
+				wpCronNoticeRow.style.display = 'block';
+				wpCronNoticeRow.style.opacity = 0;
+				setTimeout( () => {
+					wpCronNoticeRow.style.transition = 'opacity 0.2s ease-in-out';
+					wpCronNoticeRow.style.opacity = 1;
+				}, 10 );
+			} else {
+				wpCronNoticeRow.style.transition = 'opacity 0.15s ease-in-out';
+				wpCronNoticeRow.style.opacity = 0;
+				setTimeout( () => {
+					wpCronNoticeRow.style.display = 'none';
+				}, 150 );
+			}
+		} );
+	}
+
 
 
 
