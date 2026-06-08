@@ -26,6 +26,8 @@ class AcfManager
 	 */
 	public function hook(): void
 	{
+		$acfe_active = class_exists('ACFE') || defined('ACFE') || function_exists('acfe');
+
 		if (!empty($this->options['hide_acf_menu'])) {
 			add_filter('acf/settings/show_admin', [$this, 'controlAdminVisibility'], 999);
 		}
@@ -39,22 +41,24 @@ class AcfManager
 			add_filter('acf/settings/load_json', [$this, 'getCustomJsonLoadPaths']);
 		}
 
-		if (!empty($this->options['acf_copy_paste'])) {
-			add_action('admin_enqueue_scripts', [$this, 'enqueueCopyPasteAssets']);
-		}
+		if (!$acfe_active) {
+			if (!empty($this->options['acf_copy_paste'])) {
+				add_action('admin_enqueue_scripts', [$this, 'enqueueCopyPasteAssets']);
+			}
 
-		if (!empty($this->options['acf_layout_modal'])) {
-			add_action('admin_enqueue_scripts', [$this, 'enqueueLayoutModalAssets']);
-		}
+			if (!empty($this->options['acf_layout_modal'])) {
+				add_action('admin_enqueue_scripts', [$this, 'enqueueLayoutModalAssets']);
+			}
 
-		if (!empty($this->options['acf_layout_toggle']) || !empty($this->options['acf_layout_rename'])) {
-			add_action('admin_enqueue_scripts', [$this, 'enqueueLayoutToggleAssets']);
-		}
+			if (!empty($this->options['acf_layout_toggle']) || !empty($this->options['acf_layout_rename'])) {
+				add_action('admin_enqueue_scripts', [$this, 'enqueueLayoutToggleAssets']);
+			}
 
-		if (!empty($this->options['acf_layout_toggle'])) {
-			add_action('acf/render_field', [$this, 'renderLayoutDisabledSetting'], 10, 1);
-			add_filter('acf/prepare_field/type=flexible_content', [$this, 'prepareFlexibleContentFieldForEditor'], 10, 1);
-			add_filter('acf/format_value/type=flexible_content', [$this, 'filterFormattedFlexibleContentValue'], 10, 3);
+			if (!empty($this->options['acf_layout_toggle'])) {
+				add_action('acf/render_field', [$this, 'renderLayoutDisabledSetting'], 10, 1);
+				add_filter('acf/prepare_field/type=flexible_content', [$this, 'prepareFlexibleContentFieldForEditor'], 10, 1);
+				add_filter('acf/format_value/type=flexible_content', [$this, 'filterFormattedFlexibleContentValue'], 10, 3);
+			}
 		}
 	}
 

@@ -17,6 +17,7 @@ use TKA\WPUtils\Features\AcfManager;
 use TKA\WPUtils\Features\ImageOptimizer;
 use TKA\WPUtils\Features\GravityFormsManager;
 use TKA\WPUtils\Features\WooCommerceManager;
+use TKA\WPUtils\Features\MaintenanceMode;
 
 /**
  * Main Plugin Coordinator class.
@@ -99,6 +100,12 @@ class Plugin {
 		if ( ! empty( $options['duplicate_enabled'] ) && ! empty( $options['duplicate_post_types'] ) ) {
 			$content_duplicate = new ContentDuplicate( $options['duplicate_post_types'] );
 			$content_duplicate->hook();
+		}
+
+		// Maintenance Mode
+		if ( ! empty( $options['maintenance_enabled'] ) ) {
+			$maintenance_mode = new MaintenanceMode( $options );
+			$maintenance_mode->hook();
 		}
 
 		// Admin Interface menu hiding

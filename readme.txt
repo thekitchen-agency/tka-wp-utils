@@ -3,7 +3,7 @@ Contributors: thekitchen-agency
 Tags: classic editor, svg upload, admin columns, menu organizer, hardening, image optimization, woocommerce, woocommerce optimization
 Requires at least: 6.0
 Tested up to: 6.5
-Stable tag: 1.4.1
+Stable tag: 1.5.1
 Requires PHP: 8.3
 License: MIT
 License URI: https://opensource.org/licenses/MIT
@@ -53,6 +53,19 @@ Our plugin uses a database-first approach: it converts physical files to WebP an
 Since images are permanently converted to WebP in the database, deactivating the plugin leaves WebP files active in your media library. If you want to keep original JPEGs/PNGs for safe backup, make sure the "Keep Original Images" setting is toggled on before running bulk optimization.
 
 == Changelog ==
+
+= 1.5.1 =
+*   Fixed Advanced Custom Fields (ACF) layouts copy/paste functionality by implementing a synchronous queue tied to ACF's append hook.
+*   Added compatibility check to disable conflicting plugin layout features when Advanced Custom Fields Extended (ACFE) is active.
+*   Fixed CPT duplication where fields were copied as empty by switching from add_post_meta to direct database inserts ($wpdb->insert) and clearing cache.
+*   Removed conflicting theme-level duplicate post actions from the functions.php file.
+
+= 1.5.0 =
+*   Added Premium Maintenance Mode feature allowing custom titles, messages, logo, and background images.
+*   Fixed settings saving logic resetting options to null when submitting individual subpages/contexts.
+*   Fixed post duplication functionality to ensure custom field metadata, taxonomy terms, password protection, and filtered content are cloned properly.
+*   Enhanced ACF Copy & Paste Engine to manually initialize uninstantiated fields and fall back to direct DOM values, fixing empty blocks when pasting.
+*   Added comprehensive unit test suite covering Maintenance Mode, settings sanitization, and duplication logic.
 
 = 1.4.1 =
 *   Added Virtual Cron (WP-Cron) disable toggle under the Various Settings tab.

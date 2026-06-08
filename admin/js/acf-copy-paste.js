@@ -8,6 +8,7 @@
 
 	const enableMultiselect = parseInt(tkaAcfSettings.enableMultiselect, 10) === 1;
 	const i18n = tkaAcfSettings.i18n;
+	let layoutsToPopulate = [];
 
 	// Hook into ACF Flexible Content Initialization
 	acf.add_action('ready_field/type=flexible_content', function (field) {
@@ -23,6 +24,12 @@
 				if (field) {
 					initFlexibleField(field);
 				}
+			}
+
+			// Check if we have copied layout data waiting to populate
+			if (layoutsToPopulate.length > 0) {
+				const copiedFields = layoutsToPopulate.shift();
+				populateLayout($el, copiedFields);
 			}
 		}
 	});
@@ -154,29 +161,55 @@
 	 * Recursively serialize an ACF field (supporting repeaters, groups, and standard fields).
 	 */
 	function serializeField($fieldEl) {
-		const field = acf.getField($fieldEl);
-		if (!field) return null;
+		let field = acf.getField($fieldEl);
+		if (!field && typeof acf.newField === 'function') {
+			field = acf.newField($fieldEl);
+		}
 
-		const key = field.get('key');
-		const type = field.get('type');
+		const key = field ? (field.get('key') || (field.data && field.data.key)) : $fieldEl.data('key');
+		const type = field ? (field.get('type') || (field.data && field.data.type)) : $fieldEl.data('type');
+
+		if (!key || !type) {
+			return null;
+		}
 
 		if (type === 'repeater') {
 			const rows = [];
-			field.$rows().each(function () {
-				const $row = $(this);
-				const rowData = {};
-				$row.find('.acf-field').each(function () {
-					const $subfieldEl = $(this);
-					// Process only direct children of this row (not nested deeper inside other subfields in the same row)
-					if (isDirectChildField($subfieldEl, $row)) {
-						const subSerialized = serializeField($subfieldEl);
-						if (subSerialized) {
-							rowData[subSerialized.key] = subSerialized;
+			if (field && typeof field.$rows === 'function') {
+				field.$rows().each(function () {
+					const $row = $(this);
+					const rowData = {};
+					$row.find('.acf-field').each(function () {
+						const $subfieldEl = $(this);
+						if (isDirectChildField($subfieldEl, $row)) {
+							const subSerialized = serializeField($subfieldEl);
+							if (subSerialized) {
+								rowData[subSerialized.key] = subSerialized;
+							}
 						}
-					}
+					});
+					rows.push(rowData);
 				});
-				rows.push(rowData);
-			});
+			} else {
+				// Fallback: serialize repeater rows directly from DOM if field instance is missing
+				$fieldEl.find('.acf-row').each(function () {
+					const $row = $(this);
+					if ($row.hasClass('acf-clone')) {
+						return; // Skip prototype template row
+					}
+					const rowData = {};
+					$row.find('.acf-field').each(function () {
+						const $subfieldEl = $(this);
+						if (isDirectChildField($subfieldEl, $row)) {
+							const subSerialized = serializeField($subfieldEl);
+							if (subSerialized) {
+								rowData[subSerialized.key] = subSerialized;
+							}
+						}
+					});
+					rows.push(rowData);
+				});
+			}
 			return { key: key, type: type, value: rows };
 		} else if (type === 'group') {
 			const groupData = {};
@@ -193,7 +226,7 @@
 			return { key: key, type: type, value: groupData };
 		} else {
 			// Standard or complex field
-			let val = field.val();
+			let val = field ? field.val() : null;
 
 			// Fallback: extract directly from DOM inputs if field.val() is empty/null/empty-array
 			if (val === null || val === undefined || val === '' || (Array.isArray(val) && val.length === 0)) {
@@ -269,20 +302,27 @@
 	 */
 	function populateField($fieldEl, serializedData, prefix) {
 		if (!serializedData) return;
-		const field = acf.getField($fieldEl);
-		if (!field) return;
+		let field = acf.getField($fieldEl);
+		if (!field && typeof acf.newField === 'function') {
+			field = acf.newField($fieldEl);
+		}
 
 		const type = serializedData.type;
 		const val = serializedData.value;
 
 		if (type === 'repeater') {
+			if (!field) {
+				return; // Repeater strictly requires a field instance to add rows
+			}
 			// Clear existing rows (if any)
-			field.$rows().each(function () {
-				$(this).remove();
-			});
+			if (typeof field.$rows === 'function') {
+				field.$rows().each(function () {
+					$(this).remove();
+				});
+			}
 
 			// Add rows and populate recursively
-			if (Array.isArray(val)) {
+			if (Array.isArray(val) && typeof field.add === 'function') {
 				val.forEach(function (rowData) {
 					const $newRow = field.add(); // Programmatically append new row
 					if ($newRow && $newRow.length) {
@@ -377,7 +417,7 @@
 			}
 
 			// 3. Try setting via ACF JS API
-			if (typeof field.val === 'function') {
+			if (field && typeof field.val === 'function') {
 				try {
 					field.val(val);
 				} catch (e) {
@@ -386,10 +426,11 @@
 			}
 
 			// 4. Special handling for WYSIWYG editors
-			if (type === 'wysiwyg' && typeof tinymce !== 'undefined') {
+			if (type === 'wysiwyg' && (typeof tinymce !== 'undefined' || typeof tinyMCE !== 'undefined')) {
 				const textareaId = $fieldEl.find('textarea').first().attr('id');
 				if (textareaId) {
-					const editor = tinymce.get(textareaId);
+					const tMc = typeof tinymce !== 'undefined' ? tinymce : tinyMCE;
+					const editor = tMc.get(textareaId);
 					if (editor) {
 						try {
 							editor.setContent(val);
@@ -453,42 +494,7 @@
 		}
 	}
 
-	/**
-	 * Recursively paste layouts queue sequentially to support complex DOM loading.
-	 */
-	function pasteLayoutsQueue(field, layouts, index) {
-		if (index >= layouts.length) {
-			updatePasteButtonsVisibility();
-			return;
-		}
 
-		const copiedLayout = layouts[index];
-		const $beforeRows = field.$el.find('.acf-fc-layout, .layout');
-
-		// Programmatically add the layout
-		field.add({
-			layout: copiedLayout.layoutSlug
-		});
-
-		// Set a safe timeout to let ACF instantiate the layouts HTML and nested JS fields
-		setTimeout(function () {
-			const $afterRows = field.$el.find('.acf-fc-layout, .layout');
-			let $newRow = null;
-
-			$afterRows.each(function () {
-				if ($beforeRows.index(this) === -1) {
-					$newRow = $(this);
-				}
-			});
-
-			if ($newRow && $newRow.length) {
-				populateLayout($newRow, copiedLayout.fields);
-			}
-
-			// Process next item in the queue
-			pasteLayoutsQueue(field, layouts, index + 1);
-		}, 150);
-	}
 
 	// ==========================================
 	// DOM EVENT BINDINGS
@@ -598,7 +604,14 @@
 		try {
 			const layouts = JSON.parse(copied);
 			if (Array.isArray(layouts) && layouts.length > 0) {
-				pasteLayoutsQueue(field, layouts, 0);
+				layoutsToPopulate = [];
+				layouts.forEach(function (l) {
+					layoutsToPopulate.push(l.fields);
+					field.add({
+						layout: l.layoutSlug
+					});
+				});
+				updatePasteButtonsVisibility();
 			}
 		} catch (err) {
 			alert(i18n.nothingCopied);

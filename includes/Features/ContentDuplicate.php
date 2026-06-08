@@ -100,16 +100,18 @@ class ContentDuplicate {
 		$current_user = wp_get_current_user();
 
 		$args = [
-			'post_title'     => $post->post_title . ' ' . __( '(Copy)', 'tka-wp-utils' ),
-			'post_content'   => $post->post_content,
-			'post_excerpt'   => $post->post_excerpt,
-			'post_status'    => 'draft',
-			'post_type'      => $post->post_type,
-			'post_author'    => $current_user->ID,
-			'post_parent'    => $post->post_parent,
-			'menu_order'     => $post->menu_order,
-			'comment_status' => $post->comment_status,
-			'ping_status'    => $post->ping_status,
+			'post_title'            => $post->post_title . ' ' . __( '(Copy)', 'tka-wp-utils' ),
+			'post_content'          => $post->post_content,
+			'post_excerpt'          => $post->post_excerpt,
+			'post_status'           => 'draft',
+			'post_type'             => $post->post_type,
+			'post_author'           => $current_user->ID,
+			'post_parent'           => $post->post_parent,
+			'menu_order'            => $post->menu_order,
+			'comment_status'        => $post->comment_status,
+			'ping_status'           => $post->ping_status,
+			'post_password'         => $post->post_password ?? '',
+			'post_content_filtered' => $post->post_content_filtered ?? '',
 		];
 
 		$new_post_id = wp_insert_post( $args );
@@ -117,22 +119,43 @@ class ContentDuplicate {
 			return false;
 		}
 
-		// 1. Duplicate post custom fields (metadata)
-		$meta_keys = get_post_custom_keys( $post_id );
-		if ( $meta_keys ) {
-			foreach ( $meta_keys as $key ) {
-				$values = get_post_custom_values( $key, $post_id );
-				foreach ( $values as $value ) {
-					add_post_meta( $new_post_id, $key, maybe_unserialize( $value ) );
+		// 1. Duplicate post custom fields (metadata) using direct database query to bypass filters
+		global $wpdb;
+		$meta_data = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT meta_key, meta_value FROM $wpdb->postmeta WHERE post_id = %d",
+				$post_id
+			)
+		);
+
+		if ( ! empty( $meta_data ) ) {
+			foreach ( $meta_data as $meta ) {
+				$key = $meta->meta_key;
+				if ( in_array( $key, [ '_edit_lock', '_edit_last', '_wp_old_slug' ], true ) ) {
+					continue;
 				}
+				$wpdb->insert(
+					$wpdb->postmeta,
+					[
+						'post_id'    => $new_post_id,
+						'meta_key'   => $key,
+						'meta_value' => $meta->meta_value,
+					]
+				);
 			}
 		}
 
+		clean_post_cache( $new_post_id );
+
 		// 2. Duplicate taxonomies (categories, tags, custom taxs)
 		$taxonomies = get_object_taxonomies( $post->post_type );
-		foreach ( $taxonomies as $taxonomy ) {
-			$terms = wp_get_object_terms( $post_id, $taxonomy, [ 'fields' => 'ids' ] );
-			wp_set_object_terms( $new_post_id, $terms, $taxonomy );
+		if ( ! empty( $taxonomies ) && ! is_wp_error( $taxonomies ) ) {
+			foreach ( $taxonomies as $taxonomy ) {
+				$terms = wp_get_object_terms( $post_id, $taxonomy, [ 'fields' => 'ids' ] );
+				if ( ! is_wp_error( $terms ) && ! empty( $terms ) ) {
+					wp_set_object_terms( $new_post_id, array_map( 'intval', $terms ), $taxonomy );
+				}
+			}
 		}
 
 		return $new_post_id;

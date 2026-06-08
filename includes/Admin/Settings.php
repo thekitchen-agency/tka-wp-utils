@@ -158,6 +158,11 @@ class Settings
 					'gf_submit_button_to_button' => 0,
 					'gf_submit_button_text_change' => 0,
 					'gf_submit_button_loading_text' => 'Sending...',
+					'maintenance_enabled' => 0,
+					'maintenance_title' => 'Under Maintenance',
+					'maintenance_message' => 'Our website is currently undergoing scheduled maintenance. We will be back shortly. Thank you for your patience!',
+					'maintenance_logo' => '',
+					'maintenance_background' => '',
 				],
 			]
 		);
@@ -211,138 +216,246 @@ class Settings
 	 */
 	public function sanitizeOptions(array $input): array
 	{
-		$sanitized = [];
+		$existing = get_option('tka_wp_utils_options', []);
+		if (!is_array($existing)) {
+			$existing = [];
+		}
 
-		$sanitized['classic_editor'] = isset($input['classic_editor']) ? 1 : 0;
-		$sanitized['classic_widgets'] = isset($input['classic_widgets']) ? 1 : 0;
-		$sanitized['disable_wp_cron'] = isset($input['disable_wp_cron']) ? 1 : 0;
+		// Merge existing options with defaults to ensure all keys exist
+		$defaults = [
+			'classic_editor' => 0,
+			'classic_widgets' => 0,
+			'disable_wp_cron' => 0,
+			'disable_gutenberg' => 'none',
+			'gutenberg_post_types' => [],
+			'svg_upload' => 0,
+			'disable_emojis' => 0,
+			'hide_help_screen_options' => 0,
+			'disable_comments' => 0,
+			'disable_rest_api' => 0,
+			'disable_feeds' => 0,
+			'disable_embeds' => 0,
+			'disable_version_strings' => 0,
+			'disable_front_dashicons' => 0,
+			'hide_admin_notices' => 0,
+			'order_enabled' => 0,
+			'order_post_types' => [],
+			'duplicate_enabled' => 0,
+			'duplicate_post_types' => [],
+			'hidden_admin_menus' => [],
+			'admin_bar_cleanup' => [],
+			'disabled_dashboard_widgets' => [],
+			'admin_menu_order' => [],
+			'owner_hidden_admin_menus' => [],
+			'owner_admin_menu_order' => [],
+			'obfuscate_author_urls' => 0,
+			'obfuscate_emails' => 0,
+			'disable_xmlrpc' => 0,
+			'login_logo' => '',
+			'admin_logo' => '',
+			'login_custom_css' => '',
+			'remove_footer_text' => 0,
+			'hide_acf_menu' => 0,
+			'disable_acf_shortcode' => 0,
+			'acf_custom_json_path' => 0,
+			'acf_copy_paste' => 0,
+			'acf_copy_paste_multiselect' => 0,
+			'acf_layout_modal' => 0,
+			'acf_layout_toggle' => 0,
+			'acf_layout_rename' => 0,
+			'image_optimization_enabled' => 0,
+			'webp_conversion_enabled' => 0,
+			'webp_keep_original' => 1,
+			'image_compression_quality' => 82,
+			'compress_original_images' => 0,
+			'strip_image_metadata' => 0,
+			'wc_disable_scripts_non_wc' => 0,
+			'wc_disable_cart_fragments' => 'none',
+			'wc_disable_block_styles' => 0,
+			'wc_disable_password_meter' => 0,
+			'wc_clean_admin_ui' => 0,
+			'wc_buy_now_button' => 0,
+			'wc_redirect_sku' => 0,
+			'wc_remove_add_to_cart_from_url' => 0,
+			'wc_hide_view_cart_shop' => 0,
+			'wc_plus_minus_quantity' => 0,
+			'wc_quantity_dropdown' => 0,
+			'gf_disable_css' => 0,
+			'gf_submit_button_to_button' => 0,
+			'gf_submit_button_text_change' => 0,
+			'gf_submit_button_loading_text' => 'Sending...',
+			'maintenance_enabled' => 0,
+			'maintenance_title' => 'Under Maintenance',
+			'maintenance_message' => 'Our website is currently undergoing scheduled maintenance. We will be back shortly. Thank you for your patience!',
+			'maintenance_logo' => '',
+			'maintenance_background' => '',
+		];
 
-		$gutenberg_mode = $input['disable_gutenberg'] ?? 'none';
-		$sanitized['disable_gutenberg'] = in_array($gutenberg_mode, ['none', 'all', 'post_types', 'wc_except_cart_checkout'], true) ? $gutenberg_mode : 'none';
+		$sanitized = array_merge($defaults, $existing);
 
-		$sanitized['gutenberg_post_types'] = [];
-		if (isset($input['gutenberg_post_types']) && is_array($input['gutenberg_post_types'])) {
-			foreach ($input['gutenberg_post_types'] as $post_type) {
-				$sanitized['gutenberg_post_types'][] = sanitize_text_field($post_type);
+		$form_context = $input['form_context'] ?? '';
+		if (empty($form_context)) {
+			if (isset($input['classic_editor']) || isset($input['image_optimization_enabled']) || isset($input['disable_gutenberg'])) {
+				$form_context = 'general_settings';
+			} elseif (isset($input['admin_menu_order']) || isset($input['hidden_admin_menus']) || isset($input['owner_admin_menu_order']) || isset($input['owner_hidden_admin_menus'])) {
+				$form_context = 'menu_organizer';
 			}
 		}
 
-		$sanitized['svg_upload'] = isset($input['svg_upload']) ? 1 : 0;
+		if ($form_context === 'menu_organizer') {
+			$is_owner = AdminInterface::isCurrentUserInstaller();
+			if ($is_owner) {
+				$sanitized['owner_hidden_admin_menus'] = [];
+				if (isset($input['owner_hidden_admin_menus']) && is_array($input['owner_hidden_admin_menus'])) {
+					foreach ($input['owner_hidden_admin_menus'] as $menu) {
+						$sanitized['owner_hidden_admin_menus'][] = sanitize_text_field($menu);
+					}
+				}
 
-		// Sanitize various utilities toggles
-		$sanitized['disable_emojis'] = isset($input['disable_emojis']) ? 1 : 0;
-		$sanitized['hide_help_screen_options'] = isset($input['hide_help_screen_options']) ? 1 : 0;
-		$sanitized['disable_comments'] = isset($input['disable_comments']) ? 1 : 0;
-		$sanitized['disable_rest_api'] = isset($input['disable_rest_api']) ? 1 : 0;
-		$sanitized['disable_feeds'] = isset($input['disable_feeds']) ? 1 : 0;
-		$sanitized['disable_embeds'] = isset($input['disable_embeds']) ? 1 : 0;
-		$sanitized['disable_version_strings'] = isset($input['disable_version_strings']) ? 1 : 0;
-		$sanitized['disable_front_dashicons'] = isset($input['disable_front_dashicons']) ? 1 : 0;
-		$sanitized['hide_admin_notices'] = isset($input['hide_admin_notices']) ? 1 : 0;
+				$sanitized['owner_admin_menu_order'] = [];
+				if (isset($input['owner_admin_menu_order']) && is_array($input['owner_admin_menu_order'])) {
+					foreach ($input['owner_admin_menu_order'] as $slug) {
+						$sanitized['owner_admin_menu_order'][] = sanitize_text_field($slug);
+					}
+				}
+			} else {
+				$sanitized['hidden_admin_menus'] = [];
+				if (isset($input['hidden_admin_menus']) && is_array($input['hidden_admin_menus'])) {
+					foreach ($input['hidden_admin_menus'] as $menu) {
+						$sanitized['hidden_admin_menus'][] = sanitize_text_field($menu);
+					}
+				}
 
-		// Sanitize Content Management toggles
-		$sanitized['order_enabled'] = isset($input['order_enabled']) ? 1 : 0;
-		$sanitized['order_post_types'] = [];
-		if (isset($input['order_post_types']) && is_array($input['order_post_types'])) {
-			foreach ($input['order_post_types'] as $post_type) {
-				$sanitized['order_post_types'][] = sanitize_text_field($post_type);
+				$sanitized['admin_menu_order'] = [];
+				if (isset($input['admin_menu_order']) && is_array($input['admin_menu_order'])) {
+					foreach ($input['admin_menu_order'] as $slug) {
+						$sanitized['admin_menu_order'][] = sanitize_text_field($slug);
+					}
+				}
 			}
-		}
+		} elseif ($form_context === 'general_settings') {
+			$sanitized['classic_editor'] = isset($input['classic_editor']) ? 1 : 0;
+			$sanitized['classic_widgets'] = isset($input['classic_widgets']) ? 1 : 0;
+			$sanitized['disable_wp_cron'] = isset($input['disable_wp_cron']) ? 1 : 0;
 
-		$sanitized['duplicate_enabled'] = isset($input['duplicate_enabled']) ? 1 : 0;
-		$sanitized['duplicate_post_types'] = [];
-		if (isset($input['duplicate_post_types']) && is_array($input['duplicate_post_types'])) {
-			foreach ($input['duplicate_post_types'] as $post_type) {
-				$sanitized['duplicate_post_types'][] = sanitize_text_field($post_type);
+			$gutenberg_mode = $input['disable_gutenberg'] ?? 'none';
+			$sanitized['disable_gutenberg'] = in_array($gutenberg_mode, ['none', 'all', 'post_types', 'wc_except_cart_checkout'], true) ? $gutenberg_mode : 'none';
+
+			$sanitized['gutenberg_post_types'] = [];
+			if (isset($input['gutenberg_post_types']) && is_array($input['gutenberg_post_types'])) {
+				foreach ($input['gutenberg_post_types'] as $post_type) {
+					$sanitized['gutenberg_post_types'][] = sanitize_text_field($post_type);
+				}
 			}
-		}
 
-		$sanitized['hidden_admin_menus'] = [];
-		if (isset($input['hidden_admin_menus']) && is_array($input['hidden_admin_menus'])) {
-			foreach ($input['hidden_admin_menus'] as $menu) {
-				$sanitized['hidden_admin_menus'][] = sanitize_text_field($menu);
+			$sanitized['svg_upload'] = isset($input['svg_upload']) ? 1 : 0;
+
+			// Sanitize various utilities toggles
+			$sanitized['disable_emojis'] = isset($input['disable_emojis']) ? 1 : 0;
+			$sanitized['disable_comments'] = isset($input['disable_comments']) ? 1 : 0;
+			$sanitized['disable_rest_api'] = isset($input['disable_rest_api']) ? 1 : 0;
+			$sanitized['disable_feeds'] = isset($input['disable_feeds']) ? 1 : 0;
+			$sanitized['disable_embeds'] = isset($input['disable_embeds']) ? 1 : 0;
+			$sanitized['disable_version_strings'] = isset($input['disable_version_strings']) ? 1 : 0;
+			$sanitized['disable_front_dashicons'] = isset($input['disable_front_dashicons']) ? 1 : 0;
+
+			// Sanitize Content Management toggles
+			$sanitized['order_enabled'] = isset($input['order_enabled']) ? 1 : 0;
+			$sanitized['order_post_types'] = [];
+			if (isset($input['order_post_types']) && is_array($input['order_post_types'])) {
+				foreach ($input['order_post_types'] as $post_type) {
+					$sanitized['order_post_types'][] = sanitize_text_field($post_type);
+				}
 			}
-		}
 
-		$sanitized['admin_bar_cleanup'] = [];
-		if (isset($input['admin_bar_cleanup']) && is_array($input['admin_bar_cleanup'])) {
-			foreach ($input['admin_bar_cleanup'] as $item) {
-				$sanitized['admin_bar_cleanup'][] = sanitize_text_field($item);
+			$sanitized['duplicate_enabled'] = isset($input['duplicate_enabled']) ? 1 : 0;
+			$sanitized['duplicate_post_types'] = [];
+			if (isset($input['duplicate_post_types']) && is_array($input['duplicate_post_types'])) {
+				foreach ($input['duplicate_post_types'] as $post_type) {
+					$sanitized['duplicate_post_types'][] = sanitize_text_field($post_type);
+				}
 			}
-		}
 
-		$sanitized['disabled_dashboard_widgets'] = [];
-		if (isset($input['disabled_dashboard_widgets']) && is_array($input['disabled_dashboard_widgets'])) {
-			foreach ($input['disabled_dashboard_widgets'] as $widget) {
-				$sanitized['disabled_dashboard_widgets'][] = sanitize_text_field($widget);
+			$sanitized['obfuscate_author_urls'] = isset($input['obfuscate_author_urls']) ? 1 : 0;
+			$sanitized['obfuscate_emails'] = isset($input['obfuscate_emails']) ? 1 : 0;
+			$sanitized['disable_xmlrpc'] = isset($input['disable_xmlrpc']) ? 1 : 0;
+
+			// Admin Interface (conditional)
+			if (AdminInterface::isCurrentUserInstaller()) {
+				$sanitized['hide_help_screen_options'] = isset($input['hide_help_screen_options']) ? 1 : 0;
+				$sanitized['hide_admin_notices'] = isset($input['hide_admin_notices']) ? 1 : 0;
+				$sanitized['remove_footer_text'] = isset($input['remove_footer_text']) ? 1 : 0;
+
+				$sanitized['admin_bar_cleanup'] = [];
+				if (isset($input['admin_bar_cleanup']) && is_array($input['admin_bar_cleanup'])) {
+					foreach ($input['admin_bar_cleanup'] as $item) {
+						$sanitized['admin_bar_cleanup'][] = sanitize_text_field($item);
+					}
+				}
+
+				$sanitized['disabled_dashboard_widgets'] = [];
+				if (isset($input['disabled_dashboard_widgets']) && is_array($input['disabled_dashboard_widgets'])) {
+					foreach ($input['disabled_dashboard_widgets'] as $widget) {
+						$sanitized['disabled_dashboard_widgets'][] = sanitize_text_field($widget);
+					}
+				}
+
+				$sanitized['login_logo'] = isset($input['login_logo']) ? sanitize_text_field($input['login_logo']) : '';
+				$sanitized['admin_logo'] = isset($input['admin_logo']) ? sanitize_text_field($input['admin_logo']) : '';
+				$sanitized['login_custom_css'] = isset($input['login_custom_css']) ? wp_strip_all_tags($input['login_custom_css']) : '';
 			}
-		}
 
-		$sanitized['admin_menu_order'] = [];
-		if (isset($input['admin_menu_order']) && is_array($input['admin_menu_order'])) {
-			foreach ($input['admin_menu_order'] as $slug) {
-				$sanitized['admin_menu_order'][] = sanitize_text_field($slug);
+			// ACF Integration (conditional)
+			if (class_exists('ACF')) {
+				$sanitized['hide_acf_menu'] = isset($input['hide_acf_menu']) ? 1 : 0;
+				$sanitized['disable_acf_shortcode'] = isset($input['disable_acf_shortcode']) ? 1 : 0;
+				$sanitized['acf_custom_json_path'] = isset($input['acf_custom_json_path']) ? 1 : 0;
+				$sanitized['acf_copy_paste'] = isset($input['acf_copy_paste']) ? 1 : 0;
+				$sanitized['acf_copy_paste_multiselect'] = isset($input['acf_copy_paste_multiselect']) ? 1 : 0;
+				$sanitized['acf_layout_modal'] = isset($input['acf_layout_modal']) ? 1 : 0;
+				$sanitized['acf_layout_toggle'] = isset($input['acf_layout_toggle']) ? 1 : 0;
+				$sanitized['acf_layout_rename'] = isset($input['acf_layout_rename']) ? 1 : 0;
 			}
-		}
 
-		$sanitized['owner_hidden_admin_menus'] = [];
-		if (isset($input['owner_hidden_admin_menus']) && is_array($input['owner_hidden_admin_menus'])) {
-			foreach ($input['owner_hidden_admin_menus'] as $menu) {
-				$sanitized['owner_hidden_admin_menus'][] = sanitize_text_field($menu);
+			// Image Optimization
+			$sanitized['image_optimization_enabled'] = isset($input['image_optimization_enabled']) ? 1 : 0;
+			$sanitized['webp_conversion_enabled'] = isset($input['webp_conversion_enabled']) ? 1 : 0;
+			$sanitized['webp_keep_original'] = isset($input['webp_keep_original']) ? 1 : 0;
+			$sanitized['image_compression_quality'] = isset($input['image_compression_quality']) ? max(50, min(100, intval($input['image_compression_quality']))) : 82;
+			$sanitized['compress_original_images'] = isset($input['compress_original_images']) ? 1 : 0;
+			$sanitized['strip_image_metadata'] = isset($input['strip_image_metadata']) ? 1 : 0;
+
+			// WooCommerce (conditional)
+			if (class_exists('WooCommerce')) {
+				$sanitized['wc_disable_scripts_non_wc'] = isset($input['wc_disable_scripts_non_wc']) ? 1 : 0;
+				$sanitized['wc_disable_cart_fragments'] = isset($input['wc_disable_cart_fragments']) && in_array($input['wc_disable_cart_fragments'], ['none', 'all', 'non_shop'], true) ? $input['wc_disable_cart_fragments'] : 'none';
+				$sanitized['wc_disable_block_styles'] = isset($input['wc_disable_block_styles']) ? 1 : 0;
+				$sanitized['wc_disable_password_meter'] = isset($input['wc_disable_password_meter']) ? 1 : 0;
+				$sanitized['wc_clean_admin_ui'] = isset($input['wc_clean_admin_ui']) ? 1 : 0;
+
+				$sanitized['wc_buy_now_button'] = isset($input['wc_buy_now_button']) ? 1 : 0;
+				$sanitized['wc_redirect_sku'] = isset($input['wc_redirect_sku']) ? 1 : 0;
+				$sanitized['wc_remove_add_to_cart_from_url'] = isset($input['wc_remove_add_to_cart_from_url']) ? 1 : 0;
+				$sanitized['wc_hide_view_cart_shop'] = isset($input['wc_hide_view_cart_shop']) ? 1 : 0;
+				$sanitized['wc_plus_minus_quantity'] = isset($input['wc_plus_minus_quantity']) ? 1 : 0;
+				$sanitized['wc_quantity_dropdown'] = isset($input['wc_quantity_dropdown']) ? 1 : 0;
 			}
-		}
 
-		$sanitized['owner_admin_menu_order'] = [];
-		if (isset($input['owner_admin_menu_order']) && is_array($input['owner_admin_menu_order'])) {
-			foreach ($input['owner_admin_menu_order'] as $slug) {
-				$sanitized['owner_admin_menu_order'][] = sanitize_text_field($slug);
+			// Gravity Forms (conditional)
+			if (class_exists('GFCommon')) {
+				$sanitized['gf_disable_css'] = isset($input['gf_disable_css']) ? 1 : 0;
+				$sanitized['gf_submit_button_to_button'] = isset($input['gf_submit_button_to_button']) ? 1 : 0;
+				$sanitized['gf_submit_button_text_change'] = isset($input['gf_submit_button_text_change']) ? 1 : 0;
+				$sanitized['gf_submit_button_loading_text'] = isset($input['gf_submit_button_loading_text']) ? sanitize_text_field($input['gf_submit_button_loading_text']) : 'Sending...';
 			}
+
+			// Maintenance Mode
+			$sanitized['maintenance_enabled'] = isset($input['maintenance_enabled']) ? 1 : 0;
+			$sanitized['maintenance_title'] = isset($input['maintenance_title']) ? sanitize_text_field($input['maintenance_title']) : 'Under Maintenance';
+			$sanitized['maintenance_message'] = isset($input['maintenance_message']) ? sanitize_textarea_field($input['maintenance_message']) : '';
+			$sanitized['maintenance_logo'] = isset($input['maintenance_logo']) ? sanitize_text_field($input['maintenance_logo']) : '';
+			$sanitized['maintenance_background'] = isset($input['maintenance_background']) ? sanitize_text_field($input['maintenance_background']) : '';
 		}
-
-		$sanitized['obfuscate_author_urls'] = isset($input['obfuscate_author_urls']) ? 1 : 0;
-		$sanitized['obfuscate_emails'] = isset($input['obfuscate_emails']) ? 1 : 0;
-		$sanitized['disable_xmlrpc'] = isset($input['disable_xmlrpc']) ? 1 : 0;
-
-		$sanitized['login_logo'] = isset($input['login_logo']) ? sanitize_text_field($input['login_logo']) : '';
-		$sanitized['admin_logo'] = isset($input['admin_logo']) ? sanitize_text_field($input['admin_logo']) : '';
-		$sanitized['login_custom_css'] = isset($input['login_custom_css']) ? wp_strip_all_tags($input['login_custom_css']) : '';
-		$sanitized['remove_footer_text'] = isset($input['remove_footer_text']) ? 1 : 0;
-
-		$sanitized['hide_acf_menu'] = isset($input['hide_acf_menu']) ? 1 : 0;
-		$sanitized['disable_acf_shortcode'] = isset($input['disable_acf_shortcode']) ? 1 : 0;
-		$sanitized['acf_custom_json_path'] = isset($input['acf_custom_json_path']) ? 1 : 0;
-		$sanitized['acf_copy_paste'] = isset($input['acf_copy_paste']) ? 1 : 0;
-		$sanitized['acf_copy_paste_multiselect'] = isset($input['acf_copy_paste_multiselect']) ? 1 : 0;
-		$sanitized['acf_layout_modal'] = isset($input['acf_layout_modal']) ? 1 : 0;
-		$sanitized['acf_layout_toggle'] = isset($input['acf_layout_toggle']) ? 1 : 0;
-		$sanitized['acf_layout_rename'] = isset($input['acf_layout_rename']) ? 1 : 0;
-		$sanitized['image_optimization_enabled'] = isset($input['image_optimization_enabled']) ? 1 : 0;
-		$sanitized['webp_conversion_enabled'] = isset($input['webp_conversion_enabled']) ? 1 : 0;
-		$sanitized['webp_keep_original'] = isset($input['webp_keep_original']) ? 1 : 0;
-		$sanitized['image_compression_quality'] = isset($input['image_compression_quality']) ? max(50, min(100, intval($input['image_compression_quality']))) : 82;
-		$sanitized['compress_original_images'] = isset($input['compress_original_images']) ? 1 : 0;
-		$sanitized['strip_image_metadata'] = isset($input['strip_image_metadata']) ? 1 : 0;
-
-		// Sanitize WooCommerce options
-		$sanitized['wc_disable_scripts_non_wc'] = isset($input['wc_disable_scripts_non_wc']) ? 1 : 0;
-		$sanitized['wc_disable_cart_fragments'] = isset($input['wc_disable_cart_fragments']) && in_array($input['wc_disable_cart_fragments'], ['none', 'all', 'non_shop'], true) ? $input['wc_disable_cart_fragments'] : 'none';
-		$sanitized['wc_disable_block_styles'] = isset($input['wc_disable_block_styles']) ? 1 : 0;
-		$sanitized['wc_disable_password_meter'] = isset($input['wc_disable_password_meter']) ? 1 : 0;
-		$sanitized['wc_clean_admin_ui'] = isset($input['wc_clean_admin_ui']) ? 1 : 0;
-
-		// Sanitize WooCommerce helper options
-		$sanitized['wc_buy_now_button'] = isset($input['wc_buy_now_button']) ? 1 : 0;
-		$sanitized['wc_redirect_sku'] = isset($input['wc_redirect_sku']) ? 1 : 0;
-		$sanitized['wc_remove_add_to_cart_from_url'] = isset($input['wc_remove_add_to_cart_from_url']) ? 1 : 0;
-		$sanitized['wc_hide_view_cart_shop'] = isset($input['wc_hide_view_cart_shop']) ? 1 : 0;
-		$sanitized['wc_plus_minus_quantity'] = isset($input['wc_plus_minus_quantity']) ? 1 : 0;
-		$sanitized['wc_quantity_dropdown'] = isset($input['wc_quantity_dropdown']) ? 1 : 0;
-
-		// Sanitize Gravity Forms options
-		$sanitized['gf_disable_css'] = isset($input['gf_disable_css']) ? 1 : 0;
-		$sanitized['gf_submit_button_to_button'] = isset($input['gf_submit_button_to_button']) ? 1 : 0;
-		$sanitized['gf_submit_button_text_change'] = isset($input['gf_submit_button_text_change']) ? 1 : 0;
-		$sanitized['gf_submit_button_loading_text'] = isset($input['gf_submit_button_loading_text']) ? sanitize_text_field($input['gf_submit_button_loading_text']) : 'Sending...';
 
 		return $sanitized;
 	}
@@ -504,6 +617,10 @@ class Settings
 									<?php esc_html_e('WooCommerce', 'tka-wp-utils'); ?>
 								</a>
 							<?php endif; ?>
+							<a href="#maintenance" class="tka-nav-item" data-tab="maintenance">
+								<span class="dashicons dashicons-clock"></span>
+								<?php esc_html_e('Maintenance Mode', 'tka-wp-utils'); ?>
+							</a>
 						</nav>
 
 						<div class="tka-sidebar-info">
@@ -531,6 +648,7 @@ class Settings
 							<?php
 							settings_fields('tka_wp_utils_group');
 							?>
+							<input type="hidden" name="tka_wp_utils_options[form_context]" value="general_settings">
 
 							<!-- GENERAL PANEL -->
 							<section id="panel-general" class="tka-tab-panel active">
@@ -1165,14 +1283,16 @@ class Settings
 								</section>
 							<?php endif; ?>
 
-							<?php if (class_exists('ACF')): ?>
+							<?php if (class_exists('ACF')): 
+								$acfe_active = class_exists('ACFE') || defined('ACFE') || function_exists('acfe');
+							?>
 								<!-- ACF PANEL -->
 								<section id="panel-acf" class="tka-tab-panel">
 									<h2><?php esc_html_e('Advanced Custom Fields (ACF) Integration', 'tka-wp-utils'); ?></h2>
 									<p class="section-desc">
 										<?php esc_html_e('Optimize and secure your ACF setup for client-facing websites.', 'tka-wp-utils'); ?>
 									</p>
-
+ 
 									<div class="tka-settings-card">
 										<div class="tka-setting-row">
 											<div class="tka-setting-label">
@@ -1188,7 +1308,7 @@ class Settings
 												</label>
 											</div>
 										</div>
-
+ 
 										<div class="tka-setting-row">
 											<div class="tka-setting-label">
 												<strong><?php esc_html_e('Disable [acf] Shortcode', 'tka-wp-utils'); ?></strong>
@@ -1203,7 +1323,7 @@ class Settings
 												</label>
 											</div>
 										</div>
-
+ 
 										<div class="tka-setting-row">
 											<div class="tka-setting-label">
 												<strong><?php esc_html_e('Theme-Independent Local JSON', 'tka-wp-utils'); ?></strong>
@@ -1218,62 +1338,74 @@ class Settings
 												</label>
 											</div>
 										</div>
-
-										<div class="tka-setting-row">
+ 
+										<div class="tka-setting-row" <?php if ($acfe_active): ?>style="opacity: 0.6;"<?php endif; ?>>
 											<div class="tka-setting-label">
 												<strong><?php esc_html_e('Enable Flexible Layout Copy & Paste', 'tka-wp-utils'); ?></strong>
 												<p><?php esc_html_e('Adds Copy/Paste buttons and selection checkboxes to each Flexible Content layout in the WordPress editor. Copied blocks can be bulk pasted across fields and posts.', 'tka-wp-utils'); ?>
+													<?php if ($acfe_active): ?>
+														<br><span style="color: var(--tka-primary); font-weight: 600;"><?php esc_html_e('Note: This feature is managed by ACF Extended.', 'tka-wp-utils'); ?></span>
+													<?php endif; ?>
 												</p>
 											</div>
 											<div class="tka-setting-control">
 												<label class="tka-switch">
 													<input type="checkbox" name="tka_wp_utils_options[acf_copy_paste]" value="1"
-														<?php checked(1, $options['acf_copy_paste'] ?? 0); ?>>
+														<?php checked(1, $options['acf_copy_paste'] ?? 0); ?> <?php if ($acfe_active): ?>disabled<?php endif; ?>>
 													<span class="tka-slider"></span>
 												</label>
 											</div>
 										</div>
-
-										<div class="tka-setting-row">
+ 
+										<div class="tka-setting-row" <?php if ($acfe_active): ?>style="opacity: 0.6;"<?php endif; ?>>
 											<div class="tka-setting-label">
 												<strong><?php esc_html_e('Flexible Layout Selection Modal', 'tka-wp-utils'); ?></strong>
 												<p><?php esc_html_e('Replaces the default ACF Flexible Content "Add Row" dropdown list with a beautiful, searchable modal overlay supporting visual previews and category filtering.', 'tka-wp-utils'); ?>
+													<?php if ($acfe_active): ?>
+														<br><span style="color: var(--tka-primary); font-weight: 600;"><?php esc_html_e('Note: This feature is managed by ACF Extended.', 'tka-wp-utils'); ?></span>
+													<?php endif; ?>
 												</p>
 											</div>
 											<div class="tka-setting-control">
 												<label class="tka-switch">
 													<input type="checkbox" name="tka_wp_utils_options[acf_layout_modal]" value="1"
-														<?php checked(1, $options['acf_layout_modal'] ?? 0); ?>>
+														<?php checked(1, $options['acf_layout_modal'] ?? 0); ?> <?php if ($acfe_active): ?>disabled<?php endif; ?>>
 													<span class="tka-slider"></span>
 												</label>
 											</div>
 										</div>
-
-										<div class="tka-setting-row">
+ 
+										<div class="tka-setting-row" <?php if ($acfe_active): ?>style="opacity: 0.6;"<?php endif; ?>>
 											<div class="tka-setting-label">
 												<strong><?php esc_html_e('Enable Flexible Layout Toggle (Visibility)', 'tka-wp-utils'); ?></strong>
 												<p><?php esc_html_e('Adds a visibility toggle button (eye icon) to each layout block in the ACF Field Group editor. Allows developers to disable individual layouts globally, hiding them from post editors and frontend output.', 'tka-wp-utils'); ?>
+													<?php if ($acfe_active): ?>
+														<br><span style="color: var(--tka-primary); font-weight: 600;"><?php esc_html_e('Note: This feature is managed by ACF Extended.', 'tka-wp-utils'); ?></span>
+													<?php endif; ?>
 												</p>
 											</div>
 											<div class="tka-setting-control">
 												<label class="tka-switch">
 													<input type="checkbox" name="tka_wp_utils_options[acf_layout_toggle]" value="1"
-														<?php checked(1, $options['acf_layout_toggle'] ?? 0); ?>>
+														<?php checked(1, $options['acf_layout_toggle'] ?? 0); ?> <?php if ($acfe_active): ?>disabled<?php endif; ?>>
 													<span class="tka-slider"></span>
 												</label>
 											</div>
 										</div>
-
-										<div class="tka-setting-row">
+ 
+										<div class="tka-setting-row" <?php if ($acfe_active): ?>style="opacity: 0.6;"<?php endif; ?>>
 											<div class="tka-setting-label">
 												<strong><?php esc_html_e('Enable Layout Click-to-Rename Hijack', 'tka-wp-utils'); ?></strong>
 												<p><?php esc_html_e('Allows editors to rename flexible layout blocks directly by clicking on their title text inside the post editor, bypassing the need to open the action menu (three dots dropdown).', 'tka-wp-utils'); ?>
+													<?php if ($acfe_active): ?>
+														<br><span style="color: var(--tka-primary); font-weight: 600;"><?php esc_html_e('Note: This feature is managed by ACF Extended.', 'tka-wp-utils'); ?></span>
+													<?php endif; ?>
 												</p>
 											</div>
 											<div class="tka-setting-control">
 												<label class="tka-switch">
 													<input type="checkbox" name="tka_wp_utils_options[acf_layout_rename]" value="1"
-														<?php checked(1, $options['acf_layout_rename'] ?? 0); ?>>
+														<?php checked(1, $options['acf_layout_rename'] ?? 0); ?> <?php if ($acfe_active): ?>disabled<?php endif; ?>>
 													<span class="tka-slider"></span>
 												</label>
 											</div>
@@ -1733,6 +1865,97 @@ class Settings
 								</section>
 							<?php endif; ?>
 
+							<!-- MAINTENANCE PANEL -->
+							<section id="panel-maintenance" class="tka-tab-panel">
+								<h2><?php esc_html_e('Maintenance Mode Settings', 'tka-wp-utils'); ?></h2>
+								<p class="section-desc">
+									<?php esc_html_e('Take your site offline temporarily for scheduled maintenance while showing a beautiful message to visitors.', 'tka-wp-utils'); ?>
+								</p>
+
+								<div class="tka-settings-card">
+									<div class="tka-setting-row">
+										<div class="tka-setting-label">
+											<strong><?php esc_html_e('Enable Maintenance Mode', 'tka-wp-utils'); ?></strong>
+											<p><?php esc_html_e('When active, non-logged-in visitors will be redirected to a temporary maintenance page with a 503 Service Unavailable status.', 'tka-wp-utils'); ?></p>
+										</div>
+										<div class="tka-setting-control">
+											<label class="tka-switch">
+												<input type="checkbox" name="tka_wp_utils_options[maintenance_enabled]" value="1"
+													<?php checked(1, $options['maintenance_enabled'] ?? 0); ?>>
+												<span class="tka-slider"></span>
+											</label>
+										</div>
+									</div>
+
+									<div class="tka-setting-row">
+										<div class="tka-setting-label">
+											<strong><?php esc_html_e('Maintenance Page Title', 'tka-wp-utils'); ?></strong>
+											<p><?php esc_html_e('Enter the title to display on the maintenance screen.', 'tka-wp-utils'); ?></p>
+										</div>
+										<div class="tka-setting-control">
+											<input type="text" name="tka_wp_utils_options[maintenance_title]"
+												value="<?php echo esc_attr($options['maintenance_title'] ?? __('Under Maintenance', 'tka-wp-utils')); ?>"
+												class="regular-text" style="width: 100%; max-width: 400px; border-radius: 8px; padding: 8px 12px; border-color: var(--tka-border);">
+										</div>
+									</div>
+
+									<div class="tka-setting-row">
+										<div class="tka-setting-label">
+											<strong><?php esc_html_e('Maintenance Message', 'tka-wp-utils'); ?></strong>
+											<p><?php esc_html_e('Enter a descriptive message for visitors.', 'tka-wp-utils'); ?></p>
+										</div>
+										<div class="tka-setting-control">
+											<textarea name="tka_wp_utils_options[maintenance_message]" rows="5" class="large-text"
+												style="width: 100%; max-width: 400px; border-radius: 6px; padding: 8px 12px; border-color: var(--tka-border);"><?php echo esc_textarea($options['maintenance_message'] ?? 'Our website is currently undergoing scheduled maintenance. We will be back shortly. Thank you for your patience!'); ?></textarea>
+										</div>
+									</div>
+
+									<!-- Logo Upload -->
+									<div class="tka-setting-row">
+										<div class="tka-setting-label">
+											<strong><?php esc_html_e('Maintenance Page Logo', 'tka-wp-utils'); ?></strong>
+											<p><?php esc_html_e('Upload or select a custom logo to display on the maintenance screen.', 'tka-wp-utils'); ?></p>
+										</div>
+										<div class="tka-setting-control">
+											<div class="tka-image-upload-control">
+												<input type="text" name="tka_wp_utils_options[maintenance_logo]"
+													class="tka-logo-input" value="<?php echo esc_url($options['maintenance_logo'] ?? ''); ?>" style="display:none;">
+												<div class="tka-logo-preview" style="margin-bottom: 10px;">
+													<?php if (!empty($options['maintenance_logo'])): ?>
+														<img src="<?php echo esc_url($options['maintenance_logo']); ?>"
+															style="max-height: 80px; display: block; border-radius: 4px; border: 1px solid var(--tka-border);">
+													<?php endif; ?>
+												</div>
+												<button class="button tka-upload-btn"><?php esc_html_e('Choose Image', 'tka-wp-utils'); ?></button>
+												<button class="button tka-remove-btn"><?php esc_html_e('Remove', 'tka-wp-utils'); ?></button>
+											</div>
+										</div>
+									</div>
+
+									<!-- Background Image Upload -->
+									<div class="tka-setting-row">
+										<div class="tka-setting-label">
+											<strong><?php esc_html_e('Maintenance Page Background', 'tka-wp-utils'); ?></strong>
+											<p><?php esc_html_e('Upload or select a background image for the maintenance screen.', 'tka-wp-utils'); ?></p>
+										</div>
+										<div class="tka-setting-control">
+											<div class="tka-image-upload-control">
+												<input type="text" name="tka_wp_utils_options[maintenance_background]"
+													class="tka-logo-input" value="<?php echo esc_url($options['maintenance_background'] ?? ''); ?>" style="display:none;">
+												<div class="tka-logo-preview" style="margin-bottom: 10px;">
+													<?php if (!empty($options['maintenance_background'])): ?>
+														<img src="<?php echo esc_url($options['maintenance_background']); ?>"
+															style="max-height: 80px; display: block; border-radius: 4px; border: 1px solid var(--tka-border);">
+													<?php endif; ?>
+												</div>
+												<button class="button tka-upload-btn"><?php esc_html_e('Choose Image', 'tka-wp-utils'); ?></button>
+												<button class="button tka-remove-btn"><?php esc_html_e('Remove', 'tka-wp-utils'); ?></button>
+											</div>
+										</div>
+									</div>
+								</div>
+							</section>
+
 							<!-- BUTTON WRAPPER -->
 							<div class="tka-submit-section">
 								<?php submit_button(__('Save Settings', 'tka-wp-utils'), 'primary tka-save-btn', 'submit', false); ?>
@@ -1975,6 +2198,7 @@ class Settings
 							<?php
 							settings_fields('tka_wp_utils_group');
 							?>
+							<input type="hidden" name="tka_wp_utils_options[form_context]" value="menu_organizer">
 
 							<h2><?php esc_html_e('Admin Menu Organizer', 'tka-wp-utils'); ?></h2>
 							<p class="section-desc">

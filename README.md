@@ -73,6 +73,12 @@ A comprehensive suite of utility tools designed for developers and agencies to s
 *   **Stylesheet Suppressor**: Disable default Gravity Forms CSS styles completely to make custom styling with frameworks (Tailwind, bootstrap) easier.
 *   **Submit Loading Feedback**: Set up custom loading/sending text feedback upon button clicks to prevent double clicks and double submissions.
 
+### 🛠️ 9. Premium Maintenance Mode
+*   **Seamless Site Suspension**: Take the site offline temporarily for scheduled maintenance while serving a beautiful glassmorphic dark-themed screen.
+*   **HTTP 503 SEO Integrity**: Responds with a proper `503 Service Unavailable` status and `Retry-After` HTTP headers to protect search engine indexes.
+*   **Bypasses**: Bypasses logged-in administrators (users with `manage_options`), the login/registration pages, REST requests, and XML-RPC.
+*   **Customization**: Configurable page titles, description messages, custom logo, and full-screen background image uploads.
+
 ---
 
 ## Directory Structure
@@ -108,6 +114,7 @@ tka-wp-utils/
 │   │   ├── ImageOptimizer.php
 │   │   ├── SecurityManager.php
 │   │   ├── SvgValidator.php
+│   │   ├── MaintenanceMode.php
 │   │   ├── VariousCleaner.php
 │   │   └── WooCommerceManager.php
 │   └── pluggables.php            # Pluggable function overrides (WooCommerce templates)
