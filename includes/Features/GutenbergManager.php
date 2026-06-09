@@ -18,11 +18,17 @@ class GutenbergManager {
 	private array $post_types;
 
 	/**
+	 * Whether to dequeue block stylesheets on the frontend.
+	 */
+	private bool $dequeue_styles;
+
+	/**
 	 * Constructor.
 	 */
-	public function __construct( string $mode, array $post_types ) {
-		$this->mode       = $mode;
-		$this->post_types = $post_types;
+	public function __construct( string $mode, array $post_types, bool $dequeue_styles = false ) {
+		$this->mode           = $mode;
+		$this->post_types     = $post_types;
+		$this->dequeue_styles = $dequeue_styles;
 	}
 
 	/**
@@ -38,6 +44,22 @@ class GutenbergManager {
 		} elseif ( 'wc_except_cart_checkout' === $this->mode ) {
 			add_filter( 'use_block_editor_for_post', [ $this, 'filterWcExceptCartCheckoutPost' ], 100, 2 );
 			add_filter( 'use_block_editor_for_post_type', [ $this, 'filterWcExceptCartCheckoutPostType' ], 100, 2 );
+		}
+
+		if ( $this->dequeue_styles ) {
+			add_action( 'wp_enqueue_scripts', [ $this, 'dequeueBlockStyles' ], 100 );
+		}
+	}
+
+	/**
+	 * Dequeue Gutenberg block stylesheets on frontend.
+	 */
+	public function dequeueBlockStyles(): void {
+		if ( ! is_admin() ) {
+			wp_dequeue_style( 'wp-block-library' );
+			wp_dequeue_style( 'wp-block-library-theme' );
+			wp_dequeue_style( 'wc-blocks-style' );
+			wp_dequeue_style( 'wc-block-style' );
 		}
 	}
 

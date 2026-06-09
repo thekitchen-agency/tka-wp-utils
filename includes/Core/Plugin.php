@@ -19,6 +19,9 @@ use TKA\WPUtils\Features\GravityFormsManager;
 use TKA\WPUtils\Features\WooCommerceManager;
 use TKA\WPUtils\Features\MaintenanceMode;
 use TKA\WPUtils\Features\MediaFolders;
+use TKA\WPUtils\Features\PageTransitions;
+use TKA\WPUtils\Features\WpmlOptimizer;
+use TKA\WPUtils\Features\HeartbeatRevisionManager;
 
 /**
  * Main Plugin Coordinator class.
@@ -74,10 +77,11 @@ class Plugin {
 			$classic_widgets->hook();
 		}
 
-		// Gutenberg disable check
+		// Gutenberg features check
 		$gutenberg_mode = $options['disable_gutenberg'] ?? 'none';
-		if ( 'none' !== $gutenberg_mode ) {
-			$gutenberg_manager = new GutenbergManager( $gutenberg_mode, $options['gutenberg_post_types'] ?? [] );
+		$dequeue_styles = ! empty( $options['gutenberg_dequeue_block_styles'] );
+		if ( 'none' !== $gutenberg_mode || $dequeue_styles ) {
+			$gutenberg_manager = new GutenbergManager( $gutenberg_mode, $options['gutenberg_post_types'] ?? [], $dequeue_styles );
 			$gutenberg_manager->hook();
 		}
 
@@ -90,6 +94,10 @@ class Plugin {
 		// Various cleaner utilities
 		$various_cleaner = new VariousCleaner( $options );
 		$various_cleaner->hook();
+
+		// Heartbeat and Revisions manager
+		$heartbeat_revision_manager = new HeartbeatRevisionManager( $options );
+		$heartbeat_revision_manager->hook();
 
 		// Content ordering
 		if ( ! empty( $options['order_enabled'] ) && ! empty( $options['order_post_types'] ) ) {
@@ -107,6 +115,12 @@ class Plugin {
 		if ( ! empty( $options['media_folders_enabled'] ) ) {
 			$media_folders = new MediaFolders();
 			$media_folders->hook();
+		}
+
+		// Page Transitions
+		if ( ! empty( $options['page_transitions_enabled'] ) ) {
+			$page_transitions = new PageTransitions( $options );
+			$page_transitions->hook();
 		}
 
 		// Maintenance Mode
@@ -153,6 +167,12 @@ class Plugin {
 			if ( class_exists( 'WooCommerce' ) ) {
 				$woocommerce_manager = new WooCommerceManager( $options );
 				$woocommerce_manager->hook();
+			}
+
+			// WPML Integration (only runs if WPML is active)
+			if ( class_exists( 'SitePress' ) || defined( 'ICL_SITEPRESS_VERSION' ) ) {
+				$wpml_optimizer = new WpmlOptimizer( $options );
+				$wpml_optimizer->hook();
 			}
 		} );
 	}

@@ -225,11 +225,12 @@ class ImageOptimizer
 		}
 
 		$query = new \WP_Query([
-			'post_type'      => 'attachment',
-			'post_mime_type' => ['image/jpeg', 'image/png'],
-			'post_status'    => 'inherit',
-			'posts_per_page' => -1,
-			'fields'         => 'ids',
+			'post_type'        => 'attachment',
+			'post_mime_type'   => ['image/jpeg', 'image/png'],
+			'post_status'      => 'inherit',
+			'posts_per_page'   => -1,
+			'fields'           => 'ids',
+			'suppress_filters' => true,
 		]);
 
 		wp_send_json_success(['ids' => $query->posts]);
