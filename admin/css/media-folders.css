@@ -1,0 +1,391 @@
+:root {
+	--folders-primary: hsl(220, 85%, 57%);
+	--folders-primary-hover: hsl(220, 85%, 50%);
+	--folders-primary-glow: hsla(220, 85%, 57%, 0.15);
+	--folders-text: hsl(215, 28%, 17%);
+	--folders-text-muted: hsl(215, 16%, 47%);
+	--folders-bg: rgba(255, 255, 255, 0.75);
+	--folders-border: rgba(226, 232, 240, 0.9);
+	--folders-radius: 8px;
+	--folders-hover-bg: rgba(241, 245, 249, 0.85);
+	--folders-active-bg: hsla(220, 85%, 57%, 0.08);
+	--folders-drag-over-bg: hsla(220, 85%, 57%, 0.12);
+	--folders-drag-over-border: hsl(220, 85%, 57%);
+}
+
+/* Sidebar Container */
+.tka-media-folders-sidebar {
+	position: absolute;
+	top: 0;
+	/* Span full height of the media container */
+	left: 0;
+	bottom: 0;
+	width: 250px;
+	min-height: 450px;
+	border-right: 1px solid var(--folders-border);
+	background: var(--folders-bg);
+	backdrop-filter: blur(12px);
+	-webkit-backdrop-filter: blur(12px);
+	box-sizing: border-box;
+	padding: 15px;
+	overflow-y: auto;
+	z-index: 11;
+	/* Sit above media-toolbar which has z-index: 9 */
+	transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s ease;
+	display: flex;
+	flex-direction: column;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+}
+
+/* Ensure container has minimum height and doesn't collapse if empty */
+.attachments-browser.tka-has-folders {
+	min-height: 450px !important;
+}
+
+/* Collapsed Sidebar State */
+.tka-media-folders-sidebar.collapsed {
+	width: 52px;
+	padding: 15px 6px;
+}
+
+.tka-media-folders-sidebar.collapsed .tka-folders-header h3,
+.tka-media-folders-sidebar.collapsed .tka-folders-new-btn span,
+.tka-media-folders-sidebar.collapsed .folder-name,
+.tka-media-folders-sidebar.collapsed .folder-count,
+.tka-media-folders-sidebar.collapsed .folder-actions,
+.tka-media-folders-sidebar.collapsed .folder-expander {
+	display: none !important;
+}
+
+.tka-media-folders-sidebar.collapsed .tka-folders-new-btn {
+	padding: 8px 0;
+	justify-content: center;
+	border-radius: 50%;
+	width: 38px;
+	height: 38px;
+	margin: 0 auto 15px auto;
+}
+
+.tka-media-folders-sidebar.collapsed .tka-folder-item {
+	padding: 10px 0;
+	justify-content: center;
+}
+
+.tka-media-folders-sidebar.collapsed .tka-folder-item .dashicons-portfolio,
+.tka-media-folders-sidebar.collapsed .tka-folder-item .dashicons-admin-media {
+	margin: 0 !important;
+	font-size: 20px;
+	width: 20px;
+	height: 20px;
+}
+
+/* Container padding to make room for the sidebar */
+.wp-core-ui .attachments-browser.tka-has-folders {
+	padding-left: 266px !important;
+	box-sizing: border-box !important;
+	transition: padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.wp-core-ui .attachments-browser.tka-has-folders.tka-folders-collapsed {
+	padding-left: 68px !important;
+}
+
+/* Ensure default children flow inside the padded content area and don't overflow (left: 266px shifts absolute elements, ignored for static elements) */
+.wp-core-ui .media-frame .attachments-browser.tka-has-folders .media-toolbar,
+.wp-core-ui .media-frame .attachments-browser.tka-has-folders .uploader-inline,
+.wp-core-ui .media-frame .attachments-browser.tka-has-folders .attachments,
+.wp-core-ui .media-frame .attachments-browser.tka-has-folders .attachments-wrapper {
+	left: 266px !important;
+	right: 0 !important;
+	width: auto !important;
+	transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.wp-core-ui .media-frame .attachments-browser.tka-has-folders.tka-folders-collapsed .media-toolbar,
+.wp-core-ui .media-frame .attachments-browser.tka-has-folders.tka-folders-collapsed .uploader-inline,
+.wp-core-ui .media-frame .attachments-browser.tka-has-folders.tka-folders-collapsed .attachments,
+.wp-core-ui .media-frame .attachments-browser.tka-has-folders.tka-folders-collapsed .attachments-wrapper {
+	left: 68px !important;
+}
+
+/* Sidebar Header & Brand */
+.tka-folders-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 15px;
+	border-bottom: 1px solid var(--folders-border);
+	padding-bottom: 10px;
+}
+
+.tka-folders-header h3 {
+	margin: 0;
+	font-size: 15px;
+	font-weight: 600;
+	color: var(--folders-text);
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.tka-folders-header h3 span {
+	color: var(--folders-primary);
+}
+
+.tka-folders-collapse-btn {
+	background: transparent;
+	border: none;
+	cursor: pointer;
+	color: var(--folders-text-muted);
+	padding: 4px;
+	border-radius: 4px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: background 0.2s, color 0.2s;
+}
+
+.tka-folders-collapse-btn:hover {
+	background: var(--folders-hover-bg);
+	color: var(--folders-primary);
+}
+
+/* New Folder Button */
+.tka-folders-new-btn {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	background: linear-gradient(135deg, var(--folders-primary) 0%, hsl(220, 85%, 50%) 100%);
+	color: #fff !important;
+	border: none;
+	border-radius: var(--folders-radius);
+	padding: 8px 12px;
+	font-size: 12px;
+	font-weight: 600;
+	cursor: pointer;
+	margin-bottom: 15px;
+	box-shadow: 0 4px 6px -1px var(--folders-primary-glow);
+	transition: transform 0.2s, box-shadow 0.2s, filter 0.2s;
+	text-decoration: none;
+}
+
+.tka-folders-new-btn:hover {
+	transform: translateY(-1px);
+	box-shadow: 0 6px 12px -2px var(--folders-primary-glow);
+	filter: brightness(1.05);
+}
+
+.tka-folders-new-btn:active {
+	transform: translateY(0);
+}
+
+/* Folders List Tree */
+.tka-folders-tree {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	flex-grow: 1;
+}
+
+.tka-folders-tree ul {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+/* Folder Item Block */
+.tka-folder-node {
+	margin-bottom: 2px;
+}
+
+.tka-folder-item {
+	display: flex;
+	align-items: center;
+	padding: 8px 10px;
+	border-radius: var(--folders-radius);
+	cursor: pointer;
+	user-select: none;
+	color: var(--folders-text-muted);
+	font-size: 13px;
+	font-weight: 500;
+	transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+	border: 1px solid transparent;
+	position: relative;
+}
+
+/* Prevent child elements from blocking HTML5 drag and drop hover states */
+.tka-folder-item>*:not(.folder-actions):not(.folder-expander) {
+	pointer-events: none;
+}
+
+.tka-folder-item:hover {
+	background-color: var(--folders-hover-bg);
+	color: var(--folders-text);
+}
+
+.tka-folder-item.active {
+	background-color: var(--folders-active-bg);
+	color: var(--folders-primary);
+	font-weight: 600;
+	border-color: hsla(220, 85%, 57%, 0.15);
+}
+
+.tka-folder-item .folder-expander {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 16px;
+	height: 16px;
+	margin-right: 4px;
+	color: var(--folders-text-muted);
+	transition: transform 0.2s ease;
+	cursor: pointer;
+}
+
+.tka-folder-node.expanded>.tka-folder-item>.folder-expander {
+	transform: rotate(90deg);
+}
+
+.tka-folder-item .dashicons {
+	margin-right: 6px;
+	font-size: 18px;
+	width: 18px;
+	height: 18px;
+	line-height: 18px;
+}
+
+.tka-folder-item.active .dashicons-portfolio {
+	color: var(--folders-primary);
+}
+
+.tka-folder-item .folder-name {
+	flex-grow: 1;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	padding-right: 10px;
+}
+
+.tka-folder-item .folder-count {
+	font-size: 11px;
+	background: rgba(226, 232, 240, 0.7);
+	padding: 2px 6px;
+	border-radius: 10px;
+	color: var(--folders-text-muted);
+	font-weight: 500;
+}
+
+.tka-folder-item.active .folder-count {
+	background: var(--folders-primary);
+	color: #ffffff;
+}
+
+/* Folder Inline Actions */
+.tka-folder-item .folder-actions {
+	display: none;
+	position: absolute;
+	right: 8px;
+	top: 50%;
+	transform: translateY(-50%);
+	background: var(--folders-hover-bg);
+	padding-left: 5px;
+	border-radius: var(--folders-radius);
+	gap: 4px;
+}
+
+.tka-folder-item.active .folder-actions {
+	background: hsl(220, 85%, 98%);
+}
+
+.tka-folder-item:hover .folder-actions {
+	display: flex;
+}
+
+.tka-folder-action-btn {
+	background: transparent;
+	border: none;
+	color: var(--folders-text-muted);
+	cursor: pointer;
+	padding: 2px;
+	border-radius: 4px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: background 0.15s, color 0.15s;
+}
+
+.tka-folder-action-btn:hover {
+	background: rgba(226, 232, 240, 0.9);
+	color: var(--folders-primary);
+}
+
+.tka-folder-action-btn.delete:hover {
+	color: hsl(0, 84%, 60%);
+	background: hsl(0, 100%, 97%);
+}
+
+.tka-folder-action-btn .dashicons {
+	margin: 0;
+	font-size: 14px;
+	width: 14px;
+	height: 14px;
+}
+
+/* HTML5 Drag & Drop Feedback styling */
+.tka-folder-item.drag-over {
+	background-color: var(--folders-drag-over-bg) !important;
+	border-color: var(--folders-drag-over-border) !important;
+	color: var(--folders-primary) !important;
+	transform: scale(1.02);
+	box-shadow: 0 4px 12px var(--folders-primary-glow);
+}
+
+.tka-folder-item.drag-over .dashicons {
+	animation: pulse 1s infinite alternate;
+}
+
+/* Draggable Items inside WP Media Grid */
+.attachments-browser .attachment {
+	cursor: grab !important;
+}
+
+.attachments-browser .attachment:active {
+	cursor: grabbing !important;
+}
+
+/* Native drag image override styling or animations */
+@keyframes pulse {
+	0% {
+		transform: scale(1);
+	}
+
+	100% {
+		transform: scale(1.15);
+	}
+}
+
+/* Scrollbar styling for sidebar */
+.tka-media-folders-sidebar::-webkit-scrollbar {
+	width: 6px;
+}
+
+.tka-media-folders-sidebar::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.tka-media-folders-sidebar::-webkit-scrollbar-thumb {
+	background: rgba(203, 213, 225, 0.6);
+	border-radius: 3px;
+}
+
+.tka-media-folders-sidebar::-webkit-scrollbar-thumb:hover {
+	background: rgba(148, 163, 184, 0.8);
+}
+
+/* Hide WordPress default drag-to-upload screen when dragging internal attachments */
+body.tka-dragging-attachment .uploader-window {
+	display: none !important;
+	visibility: hidden !important;
+	opacity: 0 !important;
+	pointer-events: none !important;
+}

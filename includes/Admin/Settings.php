@@ -242,6 +242,7 @@ class Settings
 			'order_post_types' => [],
 			'duplicate_enabled' => 0,
 			'duplicate_post_types' => [],
+			'media_folders_enabled' => 0,
 			'hidden_admin_menus' => [],
 			'admin_bar_cleanup' => [],
 			'disabled_dashboard_widgets' => [],
@@ -375,6 +376,8 @@ class Settings
 					$sanitized['duplicate_post_types'][] = sanitize_text_field($post_type);
 				}
 			}
+
+			$sanitized['media_folders_enabled'] = isset($input['media_folders_enabled']) ? 1 : 0;
 
 			$sanitized['obfuscate_author_urls'] = isset($input['obfuscate_author_urls']) ? 1 : 0;
 			$sanitized['obfuscate_emails'] = isset($input['obfuscate_emails']) ? 1 : 0;
@@ -1064,6 +1067,24 @@ class Settings
 															class="tka-code-badge"><?php echo esc_html($post_type->name); ?></code></span>
 												</label>
 											<?php endforeach; ?>
+										</div>
+									</div>
+
+									<hr style="border: 0; border-top: 1px solid var(--tka-border); margin: 20px 0;">
+
+									<!-- Media Folders toggle -->
+									<div class="tka-setting-row">
+										<div class="tka-setting-label">
+											<strong><?php esc_html_e('Enable Media Folders', 'tka-wp-utils'); ?></strong>
+											<p><?php esc_html_e('Adds virtual folders and drag-and-drop file organization inside the WordPress Media Library grid view and selection modals.', 'tka-wp-utils'); ?>
+											</p>
+										</div>
+										<div class="tka-setting-control">
+											<label class="tka-switch">
+												<input type="checkbox" id="tka-media-folders-enabled-toggle"
+													name="tka_wp_utils_options[media_folders_enabled]" value="1" <?php checked(1, $options['media_folders_enabled'] ?? 0); ?>>
+												<span class="tka-slider"></span>
+											</label>
 										</div>
 									</div>
 								</div>

@@ -18,6 +18,7 @@ use TKA\WPUtils\Features\ImageOptimizer;
 use TKA\WPUtils\Features\GravityFormsManager;
 use TKA\WPUtils\Features\WooCommerceManager;
 use TKA\WPUtils\Features\MaintenanceMode;
+use TKA\WPUtils\Features\MediaFolders;
 
 /**
  * Main Plugin Coordinator class.
@@ -100,6 +101,12 @@ class Plugin {
 		if ( ! empty( $options['duplicate_enabled'] ) && ! empty( $options['duplicate_post_types'] ) ) {
 			$content_duplicate = new ContentDuplicate( $options['duplicate_post_types'] );
 			$content_duplicate->hook();
+		}
+
+		// Media Folders
+		if ( ! empty( $options['media_folders_enabled'] ) ) {
+			$media_folders = new MediaFolders();
+			$media_folders->hook();
 		}
 
 		// Maintenance Mode
