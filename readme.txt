@@ -3,7 +3,7 @@ Contributors: thekitchen-agency
 Tags: classic editor, svg upload, admin columns, menu organizer, hardening, image optimization, woocommerce, woocommerce optimization
 Requires at least: 6.0
 Tested up to: 6.5
-Stable tag: 1.7.1
+Stable tag: 1.7.2
 Requires PHP: 8.3
 License: MIT
 License URI: https://opensource.org/licenses/MIT
@@ -57,6 +57,13 @@ Our plugin uses a database-first approach: it converts physical files to WebP an
 Since images are permanently converted to WebP in the database, deactivating the plugin leaves WebP files active in your media library. If you want to keep original JPEGs/PNGs for safe backup, make sure the "Keep Original Images" setting is toggled on before running bulk optimization.
 
 == Changelog ==
+
+= 1.7.2 =
+*   Added .htaccess Control & Hardening settings panel to configure root and uploads .htaccess rules.
+*   Implemented root .htaccess protection for wp-config.php, user.ini, and .htaccess files, directory indexes block, XML-RPC block, author scans block, CORS headers, Gzip compression, and browser caching (mod_headers and mod_expires).
+*   Implemented secondary uploads directory .htaccess to block direct execution of PHP files.
+*   Developed robust fallback getHomePath() method to support Bedrock, WP-CLI, and subdirectory environments.
+*   Integrated automatic cache-clearing for WP Super Cache, W3 Total Cache, WP Rocket, and SiteGround Optimizer on settings updates and image optimizations.
 
 = 1.7.1 =
 *   Fixed page transition script TypeErrors on push/replace navigations and page reloads.

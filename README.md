@@ -100,6 +100,11 @@ A comprehensive suite of utility tools designed for developers and agencies to s
 *   **Post Revisions & Autosave Control**: Reduce database growth and bloat by programmatically setting a cap on post revisions (Unlimited, Disabled, or 1-10 Revisions). Adjust the autosave interval frequency (60s to 300s) early in the plugin lifecycle to override WordPress defaults.
 *   **Gutenberg Stylesheet Dequeuer**: Dequeue the heavy core block editor stylesheets (`wp-block-library.css` and `wp-block-library-theme.css`) globally on the frontend when Gutenberg is disabled or block elements are not used.
 
+### 🌐 14. .htaccess Control & Hardening
+*   **Root .htaccess Customizations**: Enable directory browsing block, deny direct access to `wp-config.php`, `user.ini`, and `.htaccess` files, XML-RPC block, author scans block, CORS headers, Gzip compression, and browser caching (mod_headers and mod_expires rules).
+*   **Subdirectory Protection**: Automatically places/removes a secondary `.htaccess` file inside `wp-content/uploads/` to deny execution of `.php` and similar executable scripts.
+*   **Cache-Clearing Integration**: Purges popular caching plugins (WP Super Cache, W3 Total Cache, WP Rocket, SiteGround Optimizer) when saving configuration settings or running bulk image optimizations.
+
 ---
 
 ## Directory Structure
@@ -139,6 +144,7 @@ tka-wp-utils/
 │   │   ├── GravityFormsManager.php # Gravity Forms enhancements
 │   │   ├── GutenbergManager.php
 │   │   ├── HeartbeatRevisionManager.php     # Heartbeat API & Post Revisions optimizer class
+│   │   ├── HtaccessManager.php              # Root & uploads .htaccess manager class
 │   │   ├── ImageOptimizer.php
 │   │   ├── MediaFolders.php                     # Virtual media folders manager class
 │   │   ├── PageTransitionAnimation.php          # Value object representing a transition animation

@@ -184,6 +184,11 @@ class Settings
 					'heartbeat_frequency' => 60,
 					'revisions_limit' => -1,
 					'autosave_interval' => 60,
+					'htaccess_security' => 0,
+					'htaccess_uploads_prevent_php' => 0,
+					'htaccess_performance' => 0,
+					'htaccess_cors' => 0,
+					'htaccess_prevent_author_scan' => 0,
 				],
 			]
 		);
@@ -332,6 +337,11 @@ class Settings
 			'heartbeat_frequency' => 60,
 			'revisions_limit' => -1,
 			'autosave_interval' => 60,
+			'htaccess_security' => 0,
+			'htaccess_uploads_prevent_php' => 0,
+			'htaccess_performance' => 0,
+			'htaccess_cors' => 0,
+			'htaccess_prevent_author_scan' => 0,
 		];
 
 		$sanitized = array_merge($defaults, $existing);
@@ -427,6 +437,12 @@ class Settings
 			$sanitized['obfuscate_author_urls'] = isset($input['obfuscate_author_urls']) ? 1 : 0;
 			$sanitized['obfuscate_emails'] = isset($input['obfuscate_emails']) ? 1 : 0;
 			$sanitized['disable_xmlrpc'] = isset($input['disable_xmlrpc']) ? 1 : 0;
+
+			$sanitized['htaccess_security'] = isset($input['htaccess_security']) ? 1 : 0;
+			$sanitized['htaccess_uploads_prevent_php'] = isset($input['htaccess_uploads_prevent_php']) ? 1 : 0;
+			$sanitized['htaccess_performance'] = isset($input['htaccess_performance']) ? 1 : 0;
+			$sanitized['htaccess_cors'] = isset($input['htaccess_cors']) ? 1 : 0;
+			$sanitized['htaccess_prevent_author_scan'] = isset($input['htaccess_prevent_prevent_author_scan']) || isset($input['htaccess_prevent_author_scan']) ? 1 : 0;
 
 			// Admin Interface (conditional)
 			if (AdminInterface::isCurrentUserInstaller()) {
@@ -747,6 +763,10 @@ class Settings
 									<a href="#maintenance" class="tka-nav-item" data-tab="maintenance">
 										<span class="dashicons dashicons-clock"></span>
 										<?php esc_html_e('Maintenance Mode', 'tka-wp-utils'); ?>
+									</a>
+									<a href="#htaccess" class="tka-nav-item" data-tab="htaccess">
+										<span class="dashicons dashicons-editor-code"></span>
+										<?php esc_html_e('.htaccess Control', 'tka-wp-utils'); ?>
 									</a>
 							
 								</nav>
@@ -2535,6 +2555,170 @@ class Settings
 											</div>
 										</section>
 									<?php endif; ?>
+
+									<!-- HTACCESS PANEL -->
+									<section id="panel-htaccess" class="tka-tab-panel">
+										<h2><?php esc_html_e('.htaccess Control & Hardening', 'tka-wp-utils'); ?></h2>
+										<p class="section-desc">
+											<?php esc_html_e('Optimize and harden your Apache/LiteSpeed server configuration directly from WordPress.', 'tka-wp-utils'); ?>
+										</p>
+
+										<!-- Server Status Card -->
+										<div class="tka-settings-card" style="background: var(--tka-bg-main); border-color: var(--tka-border);">
+											<h3 style="margin-top: 0; margin-bottom: 15px; font-size: 16px; color: var(--tka-text-main);">
+												<span class="dashicons dashicons-info" style="color: var(--tka-primary); vertical-align: text-bottom; margin-right: 5px;"></span>
+												<?php esc_html_e('Server & Write Status', 'tka-wp-utils'); ?>
+											</h3>
+											<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+												<div style="background: #ffffff; padding: 15px; border-radius: 8px; border: 1px solid var(--tka-border);">
+													<span style="font-size: 12px; color: var(--tka-text-muted); display: block; margin-bottom: 4px;"><?php esc_html_e('Web Server', 'tka-wp-utils'); ?></span>
+													<strong style="font-size: 14px; color: var(--tka-text-main);">
+														<?php echo esc_html($_SERVER['SERVER_SOFTWARE'] ?? 'Unknown'); ?>
+														<?php if (\TKA\WPUtils\Features\HtaccessManager::isApacheOrLiteSpeed()): ?>
+															<span style="color: var(--tka-success); font-size: 12px; font-weight: normal; margin-left: 5px;">(<?php esc_html_e('Supported', 'tka-wp-utils'); ?>)</span>
+														<?php else: ?>
+															<span style="color: var(--tka-danger); font-size: 12px; font-weight: normal; margin-left: 5px;">(<?php esc_html_e('Rules will not run', 'tka-wp-utils'); ?>)</span>
+														<?php endif; ?>
+													</strong>
+												</div>
+
+												<div style="background: #ffffff; padding: 15px; border-radius: 8px; border: 1px solid var(--tka-border);">
+													<span style="font-size: 12px; color: var(--tka-text-muted); display: block; margin-bottom: 4px;"><?php esc_html_e('Root .htaccess', 'tka-wp-utils'); ?></span>
+													<strong style="font-size: 14px; color: var(--tka-text-main);">
+														<?php if (\TKA\WPUtils\Features\HtaccessManager::isRootHtaccessWritable()): ?>
+															<span style="color: var(--tka-success);"><span class="dashicons dashicons-yes" style="vertical-align: text-bottom; margin-right: 2px;"></span><?php esc_html_e('Writable', 'tka-wp-utils'); ?></span>
+														<?php else: ?>
+															<span style="color: var(--tka-danger);"><span class="dashicons dashicons-no" style="vertical-align: text-bottom; margin-right: 2px;"></span><?php esc_html_e('Read-Only / Protected', 'tka-wp-utils'); ?></span>
+														<?php endif; ?>
+													</strong>
+												</div>
+
+												<div style="background: #ffffff; padding: 15px; border-radius: 8px; border: 1px solid var(--tka-border);">
+													<span style="font-size: 12px; color: var(--tka-text-muted); display: block; margin-bottom: 4px;"><?php esc_html_e('Uploads Directory', 'tka-wp-utils'); ?></span>
+													<strong style="font-size: 14px; color: var(--tka-text-main);">
+														<?php if (\TKA\WPUtils\Features\HtaccessManager::isUploadsHtaccessWritable()): ?>
+															<span style="color: var(--tka-success);"><span class="dashicons dashicons-yes" style="vertical-align: text-bottom; margin-right: 2px;"></span><?php esc_html_e('Writable', 'tka-wp-utils'); ?></span>
+														<?php else: ?>
+															<span style="color: var(--tka-danger);"><span class="dashicons dashicons-no" style="vertical-align: text-bottom; margin-right: 2px;"></span><?php esc_html_e('Protected', 'tka-wp-utils'); ?></span>
+														<?php endif; ?>
+													</strong>
+												</div>
+											</div>
+										</div>
+
+										<div class="tka-settings-card">
+											<!-- Security & Hardening -->
+											<div class="tka-setting-row">
+												<div class="tka-setting-label">
+													<strong><?php esc_html_e('Enable Security Hardening', 'tka-wp-utils'); ?></strong>
+													<p><?php esc_html_e('Protects wp-config.php, user.ini, and .htaccess itself from HTTP access, disables directory indexes, and blocks common sensitive development/configuration files.', 'tka-wp-utils'); ?></p>
+												</div>
+												<div class="tka-setting-control">
+													<label class="tka-switch">
+														<input type="checkbox" name="tka_wp_utils_options[htaccess_security]" value="1"
+															<?php checked(1, $options['htaccess_security'] ?? 0); ?>>
+														<span class="tka-slider"></span>
+													</label>
+												</div>
+											</div>
+
+											<!-- Author Enumeration -->
+											<div class="tka-setting-row">
+												<div class="tka-setting-label">
+													<strong><?php esc_html_e('Prevent Author Enumeration Scans', 'tka-wp-utils'); ?></strong>
+													<p><?php esc_html_e('Blocks username scans through URL queries like /?author=N by returning a 403 Forbidden status code.', 'tka-wp-utils'); ?></p>
+												</div>
+												<div class="tka-setting-control">
+													<label class="tka-switch">
+														<input type="checkbox" name="tka_wp_utils_options[htaccess_prevent_author_scan]" value="1"
+															<?php checked(1, $options['htaccess_prevent_author_scan'] ?? 0); ?>>
+														<span class="tka-slider"></span>
+													</label>
+												</div>
+											</div>
+
+											<!-- Performance / Leverage Caching & Gzip -->
+											<div class="tka-setting-row">
+												<div class="tka-setting-label">
+													<strong><?php esc_html_e('Enable Caching & Gzip Compression', 'tka-wp-utils'); ?></strong>
+													<p><?php esc_html_e('Enables Gzip mod_deflate compression, Cache-Control headers, Keep-Alive, and Expires headers for browser caching (max cache times increased to 1 year for static assets).', 'tka-wp-utils'); ?></p>
+												</div>
+												<div class="tka-setting-control">
+													<label class="tka-switch">
+														<input type="checkbox" name="tka_wp_utils_options[htaccess_performance]" value="1"
+															<?php checked(1, $options['htaccess_performance'] ?? 0); ?>>
+														<span class="tka-slider"></span>
+													</label>
+												</div>
+											</div>
+
+											<!-- CORS Headers -->
+											<div class="tka-setting-row">
+												<div class="tka-setting-label">
+													<strong><?php esc_html_e('Set CORS Headers for Static Assets', 'tka-wp-utils'); ?></strong>
+													<p><?php esc_html_e('Sets Access-Control-Allow-Origin "*" headers for web fonts, CSS, JS, and images to prevent loading issues across multiple domains or CDNs.', 'tka-wp-utils'); ?></p>
+												</div>
+												<div class="tka-setting-control">
+													<label class="tka-switch">
+														<input type="checkbox" name="tka_wp_utils_options[htaccess_cors]" value="1"
+															<?php checked(1, $options['htaccess_cors'] ?? 0); ?>>
+														<span class="tka-slider"></span>
+													</label>
+												</div>
+											</div>
+
+											<!-- Block PHP in uploads directory -->
+											<div class="tka-setting-row">
+												<div class="tka-setting-label">
+													<strong><?php esc_html_e('Block PHP Execution in Uploads', 'tka-wp-utils'); ?></strong>
+													<p><?php esc_html_e('Creates a secondary .htaccess file inside the uploads directory that blocks all direct executions of PHP scripts. Highly recommended for security.', 'tka-wp-utils'); ?></p>
+												</div>
+												<div class="tka-setting-control">
+													<label class="tka-switch">
+														<input type="checkbox" name="tka_wp_utils_options[htaccess_uploads_prevent_php]" value="1"
+															<?php checked(1, $options['htaccess_uploads_prevent_php'] ?? 0); ?>>
+														<span class="tka-slider"></span>
+													</label>
+												</div>
+											</div>
+										</div>
+
+										<!-- Preview Section -->
+										<div class="tka-settings-card">
+											<h3 style="margin-top: 0; font-size: 16px; color: var(--tka-text-main);"><?php esc_html_e('Generated .htaccess Rules Preview', 'tka-wp-utils'); ?></h3>
+											<p style="font-size: 13px; color: var(--tka-text-muted); margin-bottom: 15px;">
+												<?php esc_html_e('Below is a real-time preview of the rules being injected into your configuration files based on the toggles selected above.', 'tka-wp-utils'); ?>
+											</p>
+
+											<?php
+											$preview_mgr = new \TKA\WPUtils\Features\HtaccessManager($options);
+											$root_preview_rules = $preview_mgr->generateRootRules();
+											$uploads_preview_rules = $preview_mgr->generateUploadsRules();
+											?>
+
+											<div style="margin-bottom: 20px;">
+												<strong style="font-size: 13px; color: var(--tka-text-main); display: block; margin-bottom: 5px;">Root .htaccess Block:</strong>
+												<pre style="background: var(--tka-bg-main); border: 1px solid var(--tka-border); padding: 15px; border-radius: 6px; font-family: monospace; font-size: 12px; max-height: 250px; overflow-y: auto; white-space: pre-wrap; margin: 0; color: var(--tka-text-main);"><?php
+													if (!empty($root_preview_rules)) {
+														echo esc_html("# BEGIN TKA_WP_Utils\n" . implode("\n", $root_preview_rules) . "\n# END TKA_WP_Utils");
+													} else {
+														esc_html_e('# No root rules active.', 'tka-wp-utils');
+													}
+												?></pre>
+											</div>
+
+											<div>
+												<strong style="font-size: 13px; color: var(--tka-text-main); display: block; margin-bottom: 5px;">Uploads Directory .htaccess Block:</strong>
+												<pre style="background: var(--tka-bg-main); border: 1px solid var(--tka-border); padding: 15px; border-radius: 6px; font-family: monospace; font-size: 12px; max-height: 150px; overflow-y: auto; white-space: pre-wrap; margin: 0; color: var(--tka-text-main);"><?php
+													if (!empty($uploads_preview_rules)) {
+														echo esc_html("# BEGIN TKA_WP_Utils_Uploads\n" . implode("\n", $uploads_preview_rules) . "\n# END TKA_WP_Utils_Uploads");
+													} else {
+														esc_html_e('# No uploads rules active.', 'tka-wp-utils');
+													}
+												?></pre>
+											</div>
+										</div>
+									</section>
 
 									<!-- BUTTON WRAPPER -->
 									<div class="tka-submit-section">

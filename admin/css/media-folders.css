@@ -95,7 +95,7 @@
 .wp-core-ui .media-frame .attachments-browser.tka-has-folders .uploader-inline,
 .wp-core-ui .media-frame .attachments-browser.tka-has-folders .attachments,
 .wp-core-ui .media-frame .attachments-browser.tka-has-folders .attachments-wrapper {
-	left: 266px !important;
+
 	right: 0 !important;
 	width: auto !important;
 	transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -104,9 +104,7 @@
 .wp-core-ui .media-frame .attachments-browser.tka-has-folders.tka-folders-collapsed .media-toolbar,
 .wp-core-ui .media-frame .attachments-browser.tka-has-folders.tka-folders-collapsed .uploader-inline,
 .wp-core-ui .media-frame .attachments-browser.tka-has-folders.tka-folders-collapsed .attachments,
-.wp-core-ui .media-frame .attachments-browser.tka-has-folders.tka-folders-collapsed .attachments-wrapper {
-	left: 68px !important;
-}
+.wp-core-ui .media-frame .attachments-browser.tka-has-folders.tka-folders-collapsed .attachments-wrapper {}
 
 /* Sidebar Header & Brand */
 .tka-folders-header {

@@ -322,6 +322,9 @@ class ImageOptimizer
 		// Save the exact storage savings in attachment post meta
 		update_post_meta($attachment_id, '_tka_image_savings', $bytes_saved);
 
+		// Purge page caches so the optimized image URL is reflected
+		\TKA\WPUtils\Core\Plugin::purgePageCaches();
+
 		wp_send_json_success([
 			'filename'    => basename($optimized['file']),
 			'bytes_saved' => $bytes_saved,
