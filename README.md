@@ -79,6 +79,27 @@ A comprehensive suite of utility tools designed for developers and agencies to s
 *   **Bypasses**: Bypasses logged-in administrators (users with `manage_options`), the login/registration pages, REST requests, and XML-RPC.
 *   **Customization**: Configurable page titles, description messages, custom logo, and full-screen background image uploads.
 
+### 🔄 10. Cross-Document Page Transitions
+*   **Native View Transitions API**: Leverage modern cross-document view transitions for smooth page loads with zero layout shifts.
+*   **Pre-defined Animations**: Slide, swipe, and wipe animations with CSS keyframe custom timings and standard easing functions.
+*   **Dynamic Rules Engine**: Select transition rules dynamically using a From/To page type mapping (e.g. Front Page to Blog Page) or custom URI patterns.
+*   **Custom CSS Stylesheet Editor**: Live stylesheet block rendered directly in the `<head>` of the page for customizing target transition animations (e.g., configuring `view-transition-name` on elements).
+
+### 📁 11. Virtual Media Folders
+*   **Hierarchical Organization**: Organize files in the Media Library using a nested virtual folders system without altering physical filesystem paths.
+*   **Drag-and-Drop Sidebar Interface**: Drag attachments into folders and drag folders to reorganize or nest them inside the media library grid browser and selection modals.
+*   **AJAX-Driven Operations**: Fully non-blocking AJAX actions for folder creation, renaming, deletion, and attachment reassignment.
+
+### 🚀 12. WPML Performance Optimization
+*   **Theme ID Adjustments Override**: Disable default "Adjust IDs for multilingual functionality" runtime translations programmatically. This reduces database SELECT operations on page loads.
+*   **Canonical Redirect Suppression**: Suppresses URL canonical redirection during background REST API queries and AJAX transactions.
+*   **Query Suppression**: Automatic query parameters injection (`suppress_filters => true`) on background operations to bypass language filters, speeding up retrieval operations (like Retroactive Image Optimizer and Media Folder counts).
+
+### ⚡ 13. Advanced Resource Optimizations
+*   **Heartbeat API Control**: Optimize server performance by rate-limiting or completely disabling the WordPress Heartbeat API background AJAX operations (Disable Everywhere, Disable on Dashboard, or Allow only on Post Edit Screen). Customize request interval frequencies (15s to 120s).
+*   **Post Revisions & Autosave Control**: Reduce database growth and bloat by programmatically setting a cap on post revisions (Unlimited, Disabled, or 1-10 Revisions). Adjust the autosave interval frequency (60s to 300s) early in the plugin lifecycle to override WordPress defaults.
+*   **Gutenberg Stylesheet Dequeuer**: Dequeue the heavy core block editor stylesheets (`wp-block-library.css` and `wp-block-library-theme.css`) globally on the frontend when Gutenberg is disabled or block elements are not used.
+
 ---
 
 ## Directory Structure
@@ -89,19 +110,25 @@ tka-wp-utils/
 │   ├── css/
 │   │   ├── acf-copy-paste.css    # Layout highlights & custom checkboxes
 │   │   ├── acf-layout-modal.css  # Visual layout selector modal styles
-│   │   └── admin-style.css       # Slate/Indigo Dashboard styles
+│   │   ├── admin-style.css       # Slate/Indigo Dashboard styles
+│   │   ├── media-folders.css     # Virtual media folders layout styles
+│   │   ├── view-transition-animation-slide.css  # Slide transition keyframes
+│   │   ├── view-transition-animation-swipe.css  # Swipe transition keyframes
+│   │   └── view-transition-animation-wipe.css   # Wipe transition keyframes
 │   └── js/
 │       ├── acf-copy-paste.js     # ACF layout copy-paste & Select2 engine
 │       ├── acf-layout-modal.js   # Visual layout selector modal & comment parser script
 │       ├── admin-columns.js      # Column Customizer and sorting scripts
 │       ├── admin-order.js        # Drag-and-drop content ordering scripts
-│       └── admin-script.js       # Admin Sandbox and Menu Organizer handling
+│       ├── admin-script.js       # Admin Sandbox and Menu Organizer handling
+│       ├── media-folders.js      # Media folders sidebar drag-and-drop controller
+│       └── page-transitions.js   # Client-side router and transition rules evaluator
 ├── includes/
 │   ├── Admin/
 │   │   └── Settings.php          # Settings coordinators, registration & markup
 │   ├── Core/
 │   │   └── Plugin.php            # Main Singleton COORDINATOR
-│   ├── Features/                 # 13 core feature classes
+│   ├── Features/                 # 17 core feature classes
 │   │   ├── AcfManager.php        # ACF controls & asset loader
 │   │   ├── AdminColumns.php
 │   │   ├── AdminInterface.php
@@ -111,12 +138,18 @@ tka-wp-utils/
 │   │   ├── ContentOrder.php
 │   │   ├── GravityFormsManager.php # Gravity Forms enhancements
 │   │   ├── GutenbergManager.php
+│   │   ├── HeartbeatRevisionManager.php     # Heartbeat API & Post Revisions optimizer class
 │   │   ├── ImageOptimizer.php
+│   │   ├── MediaFolders.php                     # Virtual media folders manager class
+│   │   ├── PageTransitionAnimation.php          # Value object representing a transition animation
+│   │   ├── PageTransitionAnimationRegistry.php  # Registry of predefined/custom animations
+│   │   ├── PageTransitions.php                  # Page transitions manager class
 │   │   ├── SecurityManager.php
 │   │   ├── SvgValidator.php
 │   │   ├── MaintenanceMode.php
 │   │   ├── VariousCleaner.php
-│   │   └── WooCommerceManager.php
+│   │   ├── WooCommerceManager.php
+│   │   └── WpmlOptimizer.php                    # WPML performance optimization feature class
 │   └── pluggables.php            # Pluggable function overrides (WooCommerce templates)
 ├── LICENSE                       # MIT License
 ├── README.md                     # GitHub Developer Guide

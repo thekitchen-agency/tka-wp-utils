@@ -3,7 +3,7 @@ Contributors: thekitchen-agency
 Tags: classic editor, svg upload, admin columns, menu organizer, hardening, image optimization, woocommerce, woocommerce optimization
 Requires at least: 6.0
 Tested up to: 6.5
-Stable tag: 1.5.1
+Stable tag: 1.7.1
 Requires PHP: 8.3
 License: MIT
 License URI: https://opensource.org/licenses/MIT
@@ -31,6 +31,10 @@ TKA WP Utils is an all-in-one utility plugin designed to help developers and age
 *   **Interactive Media Library Status Table**: A premium, real-time reactive table displaying JPEG, PNG, and WebP assets with color-coded format badges (slate JPEG, indigo PNG, success green WebP), status indicators, and direct database-backed size savings metadata display with smooth success highlight animations.
 *   **WooCommerce Speed & Bloat Settings**: Speed up WooCommerce stores by dequeuing WooCommerce scripts/styles on non-shop pages, disabling or selectively loading AJAX cart fragments, suppressing Gutenberg blocks stylesheets, removing the heavy password strength meter script, and cleaning up marketing menu/dashboard widgets.
 *   **Gravity Forms Integrations**: Clean up markup by converting `<input type="submit">` tags into modern `<button type="submit">` tags, block default Gravity Forms CSS stylesheets, and prevent double form submissions by displaying custom loading text (e.g. "Sending...") during form posts.
+*   **Cross-Document Page Transitions**: Smooth visual transitions between page loads using the native View Transitions API. Includes pre-defined animations (slide, swipe, wipe), a dynamic custom rules manager to map transitions between specific page types/URLs, and a custom CSS editor for tailor-made transition styles.
+*   **Virtual Media Folders**: Organize your WordPress Media Library with virtual hierarchical folders and a drag-and-drop file organization sidebar. Fully integrated with standard media grid and selection modals.
+*   **WPML Performance Optimization**: Improve server response time and reduce database overhead on multilingual sites. Adds options to bypass "Adjust IDs for multilingual functionality" runtime lookups and suppress canonical redirects during REST/AJAX background operations.
+*   **Advanced Resource Optimizations**: Adjust or disable the WordPress Heartbeat API, programmatically limit post revisions, extend autosave intervals, and dequeue core Gutenberg block styles globally on the frontend to optimize page weight and server resources.
 
 == Installation ==
 
@@ -53,6 +57,35 @@ Our plugin uses a database-first approach: it converts physical files to WebP an
 Since images are permanently converted to WebP in the database, deactivating the plugin leaves WebP files active in your media library. If you want to keep original JPEGs/PNGs for safe backup, make sure the "Keep Original Images" setting is toggled on before running bulk optimization.
 
 == Changelog ==
+
+= 1.7.1 =
+*   Fixed page transition script TypeErrors on push/replace navigations and page reloads.
+*   Fixed CSS scoping selectors for view transitions by removing incorrect space selectors, enabling custom slide/swipe/wipe animations.
+*   Fixed page transitions on static pages by adding singular 'page' class matching and ensuring global transition element names are always registered.
+*   Scoped slide and swipe animations to the root view transition group to keep the header static while page content slides.
+
+= 1.7.0 =
+*   Added advanced performance optimization options in Various Settings and Gutenberg Control tabs.
+*   Implemented Heartbeat API Control (Default, Disable Everywhere, Disable on Dashboard, Allow only on Post Edit Screen).
+*   Implemented custom Heartbeat Frequency interval settings (15s to 120s).
+*   Implemented Post Revisions Limit filter (Unlimited, Disable Revisions, 1-10 Revisions).
+*   Implemented Custom Autosave Interval (60s to 300s), defined early to override WordPress core defaults.
+*   Implemented Dequeue Core Gutenberg Block Styles globally on the frontend.
+*   Updated admin dashboard pages to display brand header icons using WordPress Dashicons.
+
+= 1.6.2 =
+*   Added WPML Performance Optimization settings tab (available if WPML is active).
+*   Implemented option to programmatically bypass WPML runtime theme ID adjustments.
+*   Implemented option to suppress WPML canonical URL redirects during background AJAX transactions and REST API requests.
+*   Optimized existing queries (Bulk Retroactive Image Optimizer and Media Folders) by adding suppress_filters to ignore language filter overhead.
+
+= 1.6.1 =
+*   Added Cross-Document Page Transitions module utilizing the native Web View Transitions API.
+*   Implemented pre-defined transition animations (slide, swipe, wipe) with custom timing functions and standard CSS.
+*   Added dynamic Page Transitions admin dashboard settings tab with toggle switch, override theme support, custom selector scoping, and custom CSS stylesheet editor.
+*   Added a Custom Transition Rules Table allowing builders to map From/To transitions by Page Type or Custom URL path.
+*   Integrated sessionStorage-based client-side routing state context passing.
+*   Added Virtual Media Folders feature allowing hierarchical media library organization with a drag-and-drop category builder.
 
 = 1.5.1 =
 *   Fixed Advanced Custom Fields (ACF) layouts copy/paste functionality by implementing a synchronous queue tied to ACF's append hook.

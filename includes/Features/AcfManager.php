@@ -60,6 +60,12 @@ class AcfManager
 				add_filter('acf/format_value/type=flexible_content', [$this, 'filterFormattedFlexibleContentValue'], 10, 3);
 			}
 		}
+
+		// Fallback for custom Gravity Forms field type "forms" if enabled and sayhellogmbh plugin is deactivated/missing
+		if (!empty($this->options['acf_gravity_forms_fallback']) && !class_exists('ACFGravityformsField\Field')) {
+			add_filter('acf/load_field/type=forms', [$this, 'loadGravityFormsField']);
+			add_filter('acf/format_value', [$this, 'formatGravityFormsValue'], 10, 3);
+		}
 	}
 
 	/**
@@ -435,5 +441,70 @@ class AcfManager
 		}
 
 		return $filtered_value;
+	}
+
+	/**
+	 * Dynamically convert "forms" field type to "select" and populate with Gravity Forms choices.
+	 *
+	 * @param array $field The ACF field settings.
+	 * @return array The modified field settings.
+	 */
+	public function loadGravityFormsField(array $field): array
+	{
+		$field['type'] = 'select';
+		$field['original_type'] = 'forms';
+		$field['ui'] = 1; // Enable Select2 search UI
+		$field['choices'] = [];
+
+		if (class_exists('GFAPI')) {
+			$forms = \GFAPI::get_forms(true, false, 'title');
+			if (!empty($forms)) {
+				foreach ($forms as $form) {
+					$field['choices'][$form['id']] = $form['title'];
+				}
+			}
+		}
+
+		return $field;
+	}
+
+	/**
+	 * Format gravity forms values based on return format configuration.
+	 *
+	 * @param mixed $value The field value in DB.
+	 * @param mixed $post_id The post ID.
+	 * @param array $field The field array settings.
+	 * @return mixed Formatted value.
+	 */
+	public function formatGravityFormsValue($value, $post_id, array $field)
+	{
+		if (isset($field['original_type']) && $field['original_type'] === 'forms') {
+			if (empty($value)) {
+				return $value;
+			}
+
+			$return_format = $field['return_format'] ?? 'id';
+			if ($return_format === 'id') {
+				return is_array($value) ? array_map('intval', $value) : (int) $value;
+			}
+
+			if (class_exists('GFAPI')) {
+				if (is_array($value)) {
+					$formatted = [];
+					foreach ($value as $val) {
+						$form = \GFAPI::get_form($val);
+						if ($form && !is_wp_error($form)) {
+							$formatted[] = $form;
+						}
+					}
+					return $formatted;
+				} else {
+					$form = \GFAPI::get_form($value);
+					return ($form && !is_wp_error($form)) ? $form : false;
+				}
+			}
+		}
+
+		return $value;
 	}
 }

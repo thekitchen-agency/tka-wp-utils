@@ -160,10 +160,177 @@ document.addEventListener( 'DOMContentLoaded', function () {
 		} );
 	}
 
+	// 2e. Page Transitions Toggle
+	const transitionsToggle    = document.getElementById( 'tka-page-transitions-enabled-toggle' );
+	const transitionsDetailsRow = document.querySelector( '.nested-page-transitions-settings' );
 
+	if ( transitionsToggle && transitionsDetailsRow ) {
+		transitionsToggle.addEventListener( 'change', function () {
+			if ( this.checked ) {
+				transitionsDetailsRow.style.display = 'block';
+				transitionsDetailsRow.style.opacity = 0;
+				setTimeout( () => {
+					transitionsDetailsRow.style.transition = 'opacity 0.2s ease-in-out';
+					transitionsDetailsRow.style.opacity = 1;
+				}, 10 );
+			} else {
+				transitionsDetailsRow.style.transition = 'opacity 0.15s ease-in-out';
+				transitionsDetailsRow.style.opacity = 0;
+				setTimeout( () => {
+					transitionsDetailsRow.style.display = 'none';
+				}, 150 );
+			}
+		} );
+	}
 
+	// 2g. WPML Optimization Toggle
+	const wpmlToggle = document.getElementById( 'tka-wpml-optimization-enabled-toggle' );
+	const wpmlDetailsRow = document.querySelector( '.nested-wpml-optimization-settings' );
 
+	if ( wpmlToggle && wpmlDetailsRow ) {
+		wpmlToggle.addEventListener( 'change', function () {
+			if ( this.checked ) {
+				wpmlDetailsRow.style.display = 'block';
+				wpmlDetailsRow.style.opacity = 0;
+				setTimeout( () => {
+					wpmlDetailsRow.style.transition = 'opacity 0.2s ease-in-out';
+					wpmlDetailsRow.style.opacity = 1;
+				}, 10 );
+			} else {
+				wpmlDetailsRow.style.transition = 'opacity 0.15s ease-in-out';
+				wpmlDetailsRow.style.opacity = 0;
+				setTimeout( () => {
+					wpmlDetailsRow.style.display = 'none';
+				}, 150 );
+			}
+		} );
+	}
 
+	// 2f. Page Transitions rules editor
+	const addRuleBtn = document.getElementById('tka-add-rule-btn');
+	const rulesList = document.getElementById('tka-transitions-rules-list');
+
+	if (addRuleBtn && rulesList) {
+		addRuleBtn.addEventListener('click', function (e) {
+			e.preventDefault();
+			const ruleIndex = rulesList.children.length;
+
+			const newRow = document.createElement('div');
+			newRow.className = 'tka-rule-row-item';
+			newRow.style.display = 'flex';
+			newRow.style.gap = '15px';
+			newRow.style.alignItems = 'center';
+			newRow.style.padding = '10px';
+			newRow.style.border = '1px solid var(--tka-border)';
+			newRow.style.borderRadius = '8px';
+			newRow.style.background = '#ffffff';
+			newRow.style.boxShadow = 'var(--tka-shadow)';
+
+			newRow.innerHTML = `
+				<!-- FROM PAGE -->
+				<div style="flex: 2; display: flex; flex-direction: column; gap: 5px;">
+					<select name="tka_wp_utils_options[page_transitions_rules][${ruleIndex}][from_type]" class="tka-rule-from-select" style="width: 100%; padding: 5px; border-radius: 6px;">
+						<option value="any">Any Page</option>
+						<option value="home">Homepage</option>
+						<option value="archive">Archive/Category</option>
+						<option value="single_post">Single Post</option>
+						<option value="single_page">Single Page</option>
+						<option value="custom_url">Custom URL Pattern...</option>
+					</select>
+					<input type="text" name="tka_wp_utils_options[page_transitions_rules][${ruleIndex}][from_url]" value="" placeholder="/blog/*" class="tka-rule-from-url" style="width: 100%; padding: 5px; border-radius: 6px; border: 1px solid var(--tka-border); font-family: monospace; display: none;">
+				</div>
+
+				<!-- TO PAGE -->
+				<div style="flex: 2; display: flex; flex-direction: column; gap: 5px;">
+					<select name="tka_wp_utils_options[page_transitions_rules][${ruleIndex}][to_type]" class="tka-rule-to-select" style="width: 100%; padding: 5px; border-radius: 6px;">
+						<option value="any">Any Page</option>
+						<option value="home">Homepage</option>
+						<option value="archive">Archive/Category</option>
+						<option value="single_post">Single Post</option>
+						<option value="single_page">Single Page</option>
+						<option value="custom_url">Custom URL Pattern...</option>
+					</select>
+					<input type="text" name="tka_wp_utils_options[page_transitions_rules][${ruleIndex}][to_url]" value="" placeholder="/shop/*" class="tka-rule-to-url" style="width: 100%; padding: 5px; border-radius: 6px; border: 1px solid var(--tka-border); font-family: monospace; display: none;">
+				</div>
+
+				<!-- ANIMATION -->
+				<div style="flex: 1.5;">
+					<select name="tka_wp_utils_options[page_transitions_rules][${ruleIndex}][animation]" class="tka-rule-anim-select" style="width: 100%; padding: 5px; border-radius: 6px;">
+						<option value="fade">Fade (default)</option>
+						<option value="slide-from-right">Slide (from right)</option>
+						<option value="slide-from-left">Slide (from left)</option>
+						<option value="slide-from-bottom">Slide (from bottom)</option>
+						<option value="slide-from-top">Slide (from top)</option>
+						<option value="swipe-from-right">Swipe (from right)</option>
+						<option value="swipe-from-left">Swipe (from left)</option>
+						<option value="swipe-from-bottom">Swipe (from bottom)</option>
+						<option value="swipe-from-top">Swipe (from top)</option>
+						<option value="wipe-from-right">Wipe (from right)</option>
+						<option value="wipe-from-left">Wipe (from left)</option>
+						<option value="wipe-from-bottom">Wipe (from bottom)</option>
+						<option value="wipe-from-top">Wipe (from top)</option>
+						<option value="custom">Custom CSS Class...</option>
+					</select>
+				</div>
+
+				<!-- CUSTOM CLASS -->
+				<div style="flex: 1.5;">
+					<input type="text" name="tka_wp_utils_options[page_transitions_rules][${ruleIndex}][custom_class]" value="" placeholder="tka-transition-zoom" class="tka-rule-class-input" style="width: 100%; padding: 5px; border-radius: 6px; border: 1px solid var(--tka-border); display: none;">
+				</div>
+
+				<!-- DELETE BUTTON -->
+				<button type="button" class="button tka-rule-delete-btn" style="color: var(--tka-danger); border-color: rgba(239, 68, 68, 0.2); padding: 5px 8px; border-radius: 6px;" title="Delete rule">
+					<span class="dashicons dashicons-trash" style="vertical-align: middle; margin: 0;"></span>
+				</button>
+			`;
+
+			rulesList.appendChild(newRow);
+		});
+	}
+
+	jQuery(document).on('change', '.tka-rule-from-select', function() {
+		const $select = jQuery(this);
+		const $urlInput = $select.siblings('.tka-rule-from-url');
+		if ($select.val() === 'custom_url') {
+			$urlInput.show();
+		} else {
+			$urlInput.hide().val('');
+		}
+	});
+
+	jQuery(document).on('change', '.tka-rule-to-select', function() {
+		const $select = jQuery(this);
+		const $urlInput = $select.siblings('.tka-rule-to-url');
+		if ($select.val() === 'custom_url') {
+			$urlInput.show();
+		} else {
+			$urlInput.hide().val('');
+		}
+	});
+
+	jQuery(document).on('change', '.tka-rule-anim-select', function() {
+		const $select = jQuery(this);
+		const $classInput = $select.closest('.tka-rule-row-item').find('.tka-rule-class-input');
+		if ($select.val() === 'custom') {
+			$classInput.show();
+		} else {
+			$classInput.hide().val('');
+		}
+	});
+
+	jQuery(document).on('click', '.tka-rule-delete-btn', function(e) {
+		e.preventDefault();
+		jQuery(this).closest('.tka-rule-row-item').remove();
+		jQuery('#tka-transitions-rules-list .tka-rule-row-item').each(function(index, el) {
+			const $row = jQuery(el);
+			$row.find('.tka-rule-from-select').attr('name', `tka_wp_utils_options[page_transitions_rules][${index}][from_type]`);
+			$row.find('.tka-rule-from-url').attr('name', `tka_wp_utils_options[page_transitions_rules][${index}][from_url]`);
+			$row.find('.tka-rule-to-select').attr('name', `tka_wp_utils_options[page_transitions_rules][${index}][to_type]`);
+			$row.find('.tka-rule-to-url').attr('name', `tka_wp_utils_options[page_transitions_rules][${index}][to_url]`);
+			$row.find('.tka-rule-anim-select').attr('name', `tka_wp_utils_options[page_transitions_rules][${index}][animation]`);
+			$row.find('.tka-rule-class-input').attr('name', `tka_wp_utils_options[page_transitions_rules][${index}][custom_class]`);
+		});
+	});
 
 	// 4. Admin Menu Organizer Drag & Drop Sortable
 	const organizerLists = jQuery('.tka-menu-organizer');
