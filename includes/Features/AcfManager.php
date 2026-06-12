@@ -65,6 +65,7 @@ class AcfManager
 		if (!empty($this->options['acf_gravity_forms_fallback']) && !class_exists('ACFGravityformsField\Field')) {
 			add_filter('acf/load_field/type=forms', [$this, 'loadGravityFormsField']);
 			add_filter('acf/format_value', [$this, 'formatGravityFormsValue'], 10, 3);
+			add_action('acf/include_field_types', [$this, 'registerGravityFormsFieldType']);
 		}
 	}
 
@@ -454,6 +455,7 @@ class AcfManager
 		$field['type'] = 'select';
 		$field['original_type'] = 'forms';
 		$field['ui'] = 1; // Enable Select2 search UI
+		$field['ajax'] = 0; // Fix: Prevent undefined array key 'ajax' error in acf_field_select->render_field
 		$field['choices'] = [];
 
 		if (class_exists('GFAPI')) {
@@ -506,5 +508,19 @@ class AcfManager
 		}
 
 		return $value;
+	}
+
+	/**
+	 * Register the custom field type so it appears in the ACF field type selector.
+	 */
+	public function registerGravityFormsFieldType(): void
+	{
+		if (class_exists('acf_field_select') && !class_exists('acf_field_forms_fallback', false)) {
+			// Include the fallback class definition if not already loaded
+			if (!class_exists('acf_field_forms_fallback')) {
+				require_once __DIR__ . '/GravityFormsFieldFallback.php';
+			}
+			acf_register_field_type('acf_field_forms_fallback');
+		}
 	}
 }

@@ -27,7 +27,7 @@ class ContentOrder {
 			return;
 		}
 
-		add_action( 'init', [ $this, 'addOrderSupport' ], 99 );
+		add_action( 'init', [ $this, 'addOrderSupport' ], 9999 );
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueueAssets' ] );
 		add_action( 'wp_ajax_tka_wp_utils_save_order', [ $this, 'saveOrderAjax' ] );
 		add_action( 'pre_get_posts', [ $this, 'filterPostsQueryOrder' ] );
@@ -107,6 +107,7 @@ class ContentOrder {
 			clean_post_cache( $post_id );
 		}
 
+		do_action( 'tka_wp_utils_order_saved', $post_ids );
 		wp_send_json_success( [ 'message' => __( 'Order saved successfully.', 'tka-wp-utils' ) ] );
 	}
 

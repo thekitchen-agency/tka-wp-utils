@@ -678,7 +678,7 @@ class Settings
 	public function renderSettingsPage(): void
 	{
 		$options = get_option('tka_wp_utils_options');
-		$public_post_types = get_post_types(['public' => true], 'objects');
+		$public_post_types = get_post_types(['show_ui' => true], 'objects');
 		?>
 				<div class="wrap tka-wp-utils-wrap">
 					<div class="tka-dashboard">
@@ -2739,7 +2739,7 @@ class Settings
 	public function renderAdminColumnsPage(): void
 	{
 		$columns = get_option('tka_wp_utils_columns', []);
-		$public_post_types = get_post_types(['public' => true], 'objects');
+		$public_post_types = get_post_types(['show_ui' => true], 'objects');
 		$available_keys = self::getAvailableMetaKeys();
 		?>
 				<div class="wrap tka-wp-utils-wrap">
