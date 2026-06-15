@@ -25,7 +25,9 @@ A comprehensive suite of utility tools designed for developers and agencies to s
 ### 🗂️ 3. Navigation & Dashboard Control
 *   **Granular Gutenberg Editor Control**: Globally disable the Gutenberg Block Editor, allow it everywhere, or selectively activate/deactivate it per public post type.
 *   **Classic Experience Restored**: Revert post/page creation back to the Classic rich text (TinyMCE) editor and restore the traditional widgets dashboard.
-*   **Dedicated Admin Menu Organizer Subpage**: Moved to a standalone submenu page (`tka-wp-utils-menu-organizer`) with a split-view drag-and-drop builder to easily rearrange, hide, and sort sidebar menus for owner (installer) and client administrators separately.
+*   **Dedicated Admin Menu Organizer Subpage**: Moved to a standalone submenu page (`tka-wp-utils-menu-organizer`) with a split-view drag-and-drop builder to easily rearrange, hide, and sort sidebar menus.
+*   **Multi-User Superadmin Access Control**: Grant full plugin configuration access to designated administrators, while hiding the plugin entirely from regular administrators.
+*   **Dynamic Widget Sniffer**: Reliably intercepts and hides stubborn third-party dashboard widgets (like Gravity Forms) by monitoring and recording widgets during actual dashboard visits.
 
 ### ⚙️ 4. Content Flow & Columns Manager
 *   **Drag-and-Drop Sorting**: Reorder post, page, or custom post type listings manually in admin list tables.
@@ -53,8 +55,8 @@ A comprehensive suite of utility tools designed for developers and agencies to s
 *   **Automatic WebP Conversion**: Converts newly uploaded JPEG and PNG images into modern WebP format, generating WebP sub-sizes automatically to ensure lightning-fast site loading.
 *   **Original Image Retention & Compression**: Gives developers the flexibility to delete original uploads or keep compressed JPEG/PNG originals. Intercepts files on upload and compresses them in-place using customizable quality standards.
 *   **Custom Compression Quality Slider**: Sleek range slider enqueued into the dashboard settings to let developers choose the target compression ratio (e.g. 75% or 82%).
-*   **Dedicated Bulk Optimizer Subpage**: Features an advanced sequential batch retroactive image optimizer page (`tka-wp-utils-bulk-optimizer`) that processes existing media assets safely to prevent gateway timeouts.
-*   **Interactive Media Library Status Table**: Displays a real-time responsive dashboard listing all JPEGs, PNGs, and WebPs in the Media Library. Shows format badges, optimized status pills, and direct database-backed size savings metadata (`_tka_image_savings`). Rows transition dynamically in real-time with visual CSS success flash highlight animations upon process completion.
+*   **Dedicated Bulk Optimizer Subpage**: Features an advanced sequential batch retroactive image optimizer page (`tka-wp-utils-bulk-optimizer`) that processes existing media assets safely to prevent gateway timeouts. Includes pagination, tabbed views, page size selectors, and pause/resume capabilities. Also available as a shortcut under the Media menu for regular administrators.
+*   **Interactive Media Library Status Table**: Displays a real-time responsive dashboard listing all JPEGs, PNGs, and WebPs in the Media Library. Shows format badges, optimized status pills, and direct database-backed all-time total size savings metadata (`_tka_image_savings`). Rows transition dynamically in real-time with visual CSS success flash highlight animations upon process completion.
 
 ### 🛒 7. WooCommerce Settings & Helpers
 *   **Scripts & Styles Optimization**: Dequeue heavy WooCommerce scripts and styles on pages that aren't shop pages, cart, checkout, or account pages.

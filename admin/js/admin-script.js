@@ -454,7 +454,140 @@ document.addEventListener( 'DOMContentLoaded', function () {
 
 	// 8. Bulk Retroactive Image Optimizer sequential batch executor
 	const bulkStartBtn = document.getElementById( 'tka-bulk-optimize-start-btn' );
+	const bulkPauseBtn = document.getElementById( 'tka-bulk-optimize-pause-btn' );
+	
+	// Table and pagination state
+	let currentStatus = 'all';
+	let currentPage = 1;
+	const itemsPerPage = 50;
+	let isPaused = false;
+	
+	// Fetch and render image list
+	function loadMediaLibraryTable() {
+		const tableBody = document.getElementById( 'tka-bulk-status-table-body' );
+		if ( ! tableBody ) return;
+		
+		tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 30px; color: var(--tka-text-muted);"><span class="spinner is-active" style="float: none; margin-right: 8px;"></span> Loading images...</td></tr>`;
+		
+		const formData = new FormData();
+		formData.append( 'action', 'tka_wp_utils_bulk_get_image_list' );
+		formData.append( 'page', currentPage );
+		formData.append( 'per_page', itemsPerPage );
+		formData.append( 'status', currentStatus );
+		
+		fetch( tkaWpUtilsAdmin.ajaxUrl, {
+			method: 'POST',
+			body: formData
+		} )
+		.then( r => r.json() )
+		.then( res => {
+			if ( res.success ) {
+				const data = res.data;
+				renderTableRows( data.rows );
+				updatePaginationUI( data );
+			}
+		} );
+	}
+	
+	function renderTableRows( rows ) {
+		const tableBody = document.getElementById( 'tka-bulk-status-table-body' );
+		if ( rows.length === 0 ) {
+			tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--tka-text-muted); padding: 30px 15px;">No image attachments found for this filter.</td></tr>`;
+			return;
+		}
+		
+		let html = '';
+		rows.forEach( row => {
+			const sizesHtml = row.sizes && row.sizes.length > 0 ? `<div style="margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px;">` + row.sizes.map(s => `<span style="font-size: 10px; background: rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 4px; color: var(--tka-text-muted);">${s}</span>`).join('') + `</div>` : '';
+			
+			const savingsHtml = row.is_optimized ? `<span class="tka-savings-value" style="color: var(--tka-success);">${row.savings_text}</span>` : `<span class="tka-savings-pending">Pending</span>`;
+			
+			html += `
+				<tr id="tka-image-row-${row.id}">
+					<td>
+						<img src="${row.thumbnail_url}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 6px; border: 1px solid var(--tka-border); display: block;">
+					</td>
+					<td style="font-weight: 500; color: var(--tka-text-main);">
+						<div class="tka-filename-text" title="${row.file_path}">${row.filename}</div>
+						${sizesHtml}
+					</td>
+					<td>
+						<span class="tka-badge-format ${row.format_class}" id="tka-format-badge-${row.id}">${row.format_label}</span>
+					</td>
+					<td>
+						<span class="tka-status-pill ${row.status_class}" id="tka-status-pill-${row.id}">
+							<span class="tka-status-dot"></span>
+							<span class="tka-status-text">${row.status_label}</span>
+						</span>
+					</td>
+					<td style="text-align: right;" id="tka-savings-cell-${row.id}">
+						${savingsHtml}
+					</td>
+				</tr>
+			`;
+		} );
+		tableBody.innerHTML = html;
+	}
+	
+	function updatePaginationUI( data ) {
+		const totalEl = document.getElementById( 'tka-pagination-total' );
+		if (totalEl) totalEl.textContent = data.total_items;
+		const start = data.total_items > 0 ? ( ( data.current_page - 1 ) * itemsPerPage ) + 1 : 0;
+		const end = Math.min( data.current_page * itemsPerPage, data.total_items );
+		
+		const startEl = document.getElementById( 'tka-pagination-start' );
+		if (startEl) startEl.textContent = start;
+		const endEl = document.getElementById( 'tka-pagination-end' );
+		if (endEl) endEl.textContent = end;
+		const currEl = document.getElementById( 'tka-pagination-current' );
+		if (currEl) currEl.textContent = data.current_page;
+		
+		const prevBtn = document.getElementById( 'tka-pagination-prev' );
+		const nextBtn = document.getElementById( 'tka-pagination-next' );
+		
+		if ( prevBtn ) prevBtn.disabled = data.current_page <= 1;
+		if ( nextBtn ) nextBtn.disabled = data.current_page >= data.total_pages;
+	}
+	
+	// Initial Load
+	if ( document.getElementById( 'tka-bulk-status-table-body' ) ) {
+		loadMediaLibraryTable();
+		
+		// Tab listeners
+		document.querySelectorAll( '.tka-status-tab-btn' ).forEach( btn => {
+			btn.addEventListener( 'click', function() {
+				document.querySelectorAll( '.tka-status-tab-btn' ).forEach( b => b.classList.remove( 'active' ) );
+				this.classList.add( 'active' );
+				currentStatus = this.getAttribute( 'data-status' );
+				currentPage = 1;
+				loadMediaLibraryTable();
+			});
+		});
+		
+		// Pagination listeners
+		const prevBtn = document.getElementById( 'tka-pagination-prev' );
+		const nextBtn = document.getElementById( 'tka-pagination-next' );
+		if ( prevBtn ) prevBtn.addEventListener( 'click', () => { currentPage--; loadMediaLibraryTable(); } );
+		if ( nextBtn ) nextBtn.addEventListener( 'click', () => { currentPage++; loadMediaLibraryTable(); } );
+	}
+
 	if ( bulkStartBtn ) {
+		if ( bulkPauseBtn ) {
+			bulkPauseBtn.addEventListener( 'click', function ( e ) {
+				e.preventDefault();
+				isPaused = !isPaused;
+				if ( isPaused ) {
+					bulkPauseBtn.innerHTML = '<span class="dashicons dashicons-controls-play" style="font-size: 16px; width: 16px; height: 16px; vertical-align: middle; margin-top: -3px; margin-right: 4px;"></span> Resume';
+					const statusEl = document.getElementById( 'tka-bulk-progress-status' );
+					if (statusEl) statusEl.textContent = 'Paused. Click Resume to continue...';
+				} else {
+					bulkPauseBtn.innerHTML = '<span class="dashicons dashicons-controls-pause" style="font-size: 16px; width: 16px; height: 16px; vertical-align: middle; margin-top: -3px; margin-right: 4px;"></span> Pause';
+					const statusEl = document.getElementById( 'tka-bulk-progress-status' );
+					if (statusEl) statusEl.textContent = 'Resuming...';
+				}
+			} );
+		}
+
 		bulkStartBtn.addEventListener( 'click', function ( e ) {
 			e.preventDefault();
 
@@ -464,6 +597,8 @@ document.addEventListener( 'DOMContentLoaded', function () {
 
 			bulkStartBtn.disabled = true;
 			bulkStartBtn.textContent = 'Scanning...';
+			if ( bulkPauseBtn ) bulkPauseBtn.style.display = 'inline-block';
+			isPaused = false;
 
 			const progressPanel = document.getElementById( 'tka-bulk-progress-panel' );
 			const progressBar = document.getElementById( 'tka-bulk-progress-bar' );
@@ -489,6 +624,7 @@ document.addEventListener( 'DOMContentLoaded', function () {
 					logBox.innerHTML += '<div style="color: #ef4444;">>> Error: No unoptimized JPEGs or PNGs found in the library.</div>';
 					bulkStartBtn.disabled = false;
 					bulkStartBtn.textContent = 'Start Bulk Optimization';
+					if ( bulkPauseBtn ) bulkPauseBtn.style.display = 'none';
 					return;
 				}
 
@@ -511,11 +647,18 @@ document.addEventListener( 'DOMContentLoaded', function () {
 				}
 
 				function processNext() {
+					if ( isPaused ) {
+						// Check again shortly
+						setTimeout( processNext, 1000 );
+						return;
+					}
+
 					if ( index >= total ) {
 						progressStatus.textContent = 'Bulk Optimization Complete!';
 						progressPercentage.textContent = '100%';
 						progressBar.style.width = '100%';
 						bulkStartBtn.textContent = 'Finished';
+						if ( bulkPauseBtn ) bulkPauseBtn.style.display = 'none';
 						
 						const finalLine = document.createElement( 'div' );
 						finalLine.style.color = '#10b981';
@@ -525,6 +668,8 @@ document.addEventListener( 'DOMContentLoaded', function () {
 
 						// Update main count on success
 						totalCountSpan.textContent = '0';
+						// Refresh current table page
+						loadMediaLibraryTable();
 						return;
 					}
 
@@ -552,6 +697,11 @@ document.addEventListener( 'DOMContentLoaded', function () {
 						if ( res.success ) {
 							totalSavings += res.data.bytes_saved;
 							totalSavingsSpan.textContent = formatBytes( totalSavings );
+							const allTimeSavingsSpan = document.getElementById( 'tka-bulk-all-time-savings' );
+							if ( allTimeSavingsSpan ) {
+								const initialAllTime = parseInt( allTimeSavingsSpan.getAttribute( 'data-initial' ) || 0, 10 );
+								allTimeSavingsSpan.textContent = formatBytes( initialAllTime + totalSavings );
+							}
 							logLine.textContent = '>> ' + res.data.message + ' (Saved ' + formatBytes( res.data.bytes_saved ) + ')';
 							
 							// Real-time table updates
@@ -589,7 +739,18 @@ document.addEventListener( 'DOMContentLoaded', function () {
 									savingsCell.innerHTML = `<span class="tka-savings-value" style="color: var(--tka-success);">${savingsVal}</span>`;
 								}
 
-								// 4. Add subtle micro-animation flash
+								// 4. Update sizes list if not already there
+								if ( res.data.affected_sizes && res.data.affected_sizes.length > 0 ) {
+									const filenameContainer = rowEl.querySelector('.tka-filename-text').parentElement;
+									// remove old sizes div if exists
+									const oldSizes = filenameContainer.querySelector('div[style*="margin-top: 6px"]');
+									if (oldSizes) oldSizes.remove();
+
+									const sizesHtml = `<div style="margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px;">` + res.data.affected_sizes.map(s => `<span style="font-size: 10px; background: rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 4px; color: var(--tka-text-muted);">${s}</span>`).join('') + `</div>`;
+									filenameContainer.insertAdjacentHTML('beforeend', sizesHtml);
+								}
+
+								// 5. Add subtle micro-animation flash
 								rowEl.classList.add( 'tka-row-optimized' );
 							}
 						} else {
@@ -620,6 +781,7 @@ document.addEventListener( 'DOMContentLoaded', function () {
 				progressStatus.textContent = 'Scan encountered a network error.';
 				bulkStartBtn.disabled = false;
 				bulkStartBtn.textContent = 'Start Bulk Optimization';
+				if ( bulkPauseBtn ) bulkPauseBtn.style.display = 'none';
 			} );
 		} );
 	}

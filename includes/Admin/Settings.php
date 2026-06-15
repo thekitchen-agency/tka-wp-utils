@@ -31,54 +31,67 @@ class Settings
 	 */
 	public function addMenuPage(): void
 	{
-		// Convert to Top-Level Sidebar menu page
-		add_menu_page(
-			__('TKA WP Utils Settings', 'tka-wp-utils'),
-			__('TKA WP Utils', 'tka-wp-utils'),
-			'manage_options',
-			self::MENU_SLUG,
-			[$this, 'renderSettingsPage'],
-			'dashicons-admin-generic',
-			80
-		);
+		// Restrict main plugin settings and submenus to Superadmins only
+		if (\TKA\WPUtils\Features\AdminInterface::isCurrentUserInstaller()) {
+			// Convert to Top-Level Sidebar menu page
+			add_menu_page(
+				__('TKA WP Utils Settings', 'tka-wp-utils'),
+				__('TKA WP Utils', 'tka-wp-utils'),
+				'manage_options',
+				self::MENU_SLUG,
+				[$this, 'renderSettingsPage'],
+				'dashicons-admin-generic',
+				80
+			);
 
-		// Default first submenu matching the parent slug
-		add_submenu_page(
-			self::MENU_SLUG,
-			__('TKA WP Utils Settings', 'tka-wp-utils'),
-			__('Settings Dashboard', 'tka-wp-utils'),
-			'manage_options',
-			self::MENU_SLUG,
-			[$this, 'renderSettingsPage']
-		);
+			// Default first submenu matching the parent slug
+			add_submenu_page(
+				self::MENU_SLUG,
+				__('TKA WP Utils Settings', 'tka-wp-utils'),
+				__('Settings Dashboard', 'tka-wp-utils'),
+				'manage_options',
+				self::MENU_SLUG,
+				[$this, 'renderSettingsPage']
+			);
 
-		// Standalone Admin Columns Customizer submenu
-		add_submenu_page(
-			self::MENU_SLUG,
-			__('Admin Columns Customizer', 'tka-wp-utils'),
-			__('Admin Columns', 'tka-wp-utils'),
-			'manage_options',
-			'tka-wp-utils-columns',
-			[$this, 'renderAdminColumnsPage']
-		);
+			// Standalone Admin Columns Customizer submenu
+			add_submenu_page(
+				self::MENU_SLUG,
+				__('Admin Columns Customizer', 'tka-wp-utils'),
+				__('Admin Columns', 'tka-wp-utils'),
+				'manage_options',
+				'tka-wp-utils-columns',
+				[$this, 'renderAdminColumnsPage']
+			);
 
-		// Standalone Admin Menu Organizer submenu
-		add_submenu_page(
-			self::MENU_SLUG,
-			__('Admin Menu Organizer', 'tka-wp-utils'),
-			__('Menu Organizer', 'tka-wp-utils'),
-			'manage_options',
-			'tka-wp-utils-menu-organizer',
-			[$this, 'renderMenuOrganizerPage']
-		);
+			// Standalone Admin Menu Organizer submenu
+			add_submenu_page(
+				self::MENU_SLUG,
+				__('Admin Menu Organizer', 'tka-wp-utils'),
+				__('Menu Organizer', 'tka-wp-utils'),
+				'manage_options',
+				'tka-wp-utils-menu-organizer',
+				[$this, 'renderMenuOrganizerPage']
+			);
 
-		// Standalone Bulk Retroactive Image Optimizer submenu
+			// Standalone Bulk Retroactive Image Optimizer submenu
+			add_submenu_page(
+				self::MENU_SLUG,
+				__('Bulk Retroactive Image Optimizer', 'tka-wp-utils'),
+				__('Bulk Optimizer', 'tka-wp-utils'),
+				'manage_options',
+				'tka-wp-utils-bulk-optimizer',
+				[$this, 'renderBulkOptimizerPage']
+			);
+		}
+
+		// Shortcut to Bulk Optimizer under the Media menu (Available to all admins)
 		add_submenu_page(
-			self::MENU_SLUG,
+			'upload.php',
 			__('Bulk Retroactive Image Optimizer', 'tka-wp-utils'),
 			__('Bulk Optimizer', 'tka-wp-utils'),
 			'manage_options',
-			'tka-wp-utils-bulk-optimizer',
+			'tka-wp-utils-bulk-optimizer-media',
 			[$this, 'renderBulkOptimizerPage']
 		);
 	}
@@ -446,7 +459,15 @@ class Settings
 
 			// Admin Interface (conditional)
 			if (AdminInterface::isCurrentUserInstaller()) {
+				$sanitized['superadmin_users'] = [];
+				if (isset($input['superadmin_users']) && is_array($input['superadmin_users'])) {
+					foreach ($input['superadmin_users'] as $uid) {
+						$sanitized['superadmin_users'][] = intval($uid);
+					}
+				}
+
 				$sanitized['hide_help_screen_options'] = isset($input['hide_help_screen_options']) ? 1 : 0;
+				$sanitized['disable_command_palette'] = isset($input['disable_command_palette']) ? 1 : 0;
 				$sanitized['hide_admin_notices'] = isset($input['hide_admin_notices']) ? 1 : 0;
 				$sanitized['remove_footer_text'] = isset($input['remove_footer_text']) ? 1 : 0;
 
@@ -602,6 +623,8 @@ class Settings
 			'tka-wp-utils_page_tka-wp-utils-columns',
 			'tka-wp-utils_page_tka-wp-utils-menu-organizer',
 			'tka-wp-utils_page_tka-wp-utils-bulk-optimizer',
+			'media_page_tka-wp-utils-bulk-optimizer-media',
+			'admin_page_tka-wp-utils-bulk-optimizer-media',
 			'settings_page_' . self::MENU_SLUG,
 			'tka-wp-utils_page_' . self::MENU_SLUG,
 			'admin_page_' . self::MENU_SLUG,
@@ -1332,6 +1355,38 @@ class Settings
 													<?php esc_html_e('Selectively hide sidebar menu items, help screen options, and dashboard admin notices from other administrators. These do not affect your account.', 'tka-wp-utils'); ?>
 												</p>
 
+												<div class="tka-settings-card" style="margin-bottom: 20px;">
+													<div class="tka-setting-row stack">
+														<div class="tka-setting-label">
+															<strong><?php esc_html_e('Assign Superadmins', 'tka-wp-utils'); ?></strong>
+															<p><?php esc_html_e('Select other administrators who should have full Superadmin privileges over this plugin (including accessing these settings).', 'tka-wp-utils'); ?></p>
+														</div>
+														<div class="tka-setting-control">
+															<?php
+															$installer_id = \TKA\WPUtils\Features\AdminInterface::getInstallerId();
+															$all_admins = get_users(['role' => 'administrator']);
+															$current_superadmins = $options['superadmin_users'] ?? [];
+															
+															if (empty($all_admins) || (count($all_admins) === 1 && $all_admins[0]->ID === $installer_id)) {
+																echo '<p style="color: #64748b; font-style: italic;">' . esc_html__('No other administrators found on this site.', 'tka-wp-utils') . '</p>';
+															} else {
+																echo '<div style="display: flex; flex-direction: column; gap: 8px;">';
+																foreach ($all_admins as $admin) {
+																	if ($admin->ID === $installer_id) {
+																		// Original installer is always superadmin
+																		echo '<label style="color: #64748b; cursor: not-allowed;"><input type="checkbox" checked disabled> ' . esc_html($admin->user_login) . ' (Original Installer)</label>';
+																	} else {
+																		$checked = in_array($admin->ID, $current_superadmins, true) ? 'checked' : '';
+																		echo '<label><input type="checkbox" name="tka_wp_utils_options[superadmin_users][]" value="' . esc_attr($admin->ID) . '" ' . $checked . '> ' . esc_html($admin->user_login) . ' (' . esc_html($admin->user_email) . ')</label>';
+																	}
+																}
+																echo '</div>';
+															}
+															?>
+														</div>
+													</div>
+												</div>
+
 												<div class="tka-settings-card">
 													<div class="tka-setting-row">
 														<div class="tka-setting-label">
@@ -1343,6 +1398,21 @@ class Settings
 															<label class="tka-switch">
 																<input type="checkbox" name="tka_wp_utils_options[hide_help_screen_options]"
 																	value="1" <?php checked(1, $options['hide_help_screen_options'] ?? 0); ?>>
+																<span class="tka-slider"></span>
+															</label>
+														</div>
+													</div>
+
+													<div class="tka-setting-row">
+														<div class="tka-setting-label">
+															<strong><?php esc_html_e('Disable Command Palette', 'tka-wp-utils'); ?></strong>
+															<p><?php esc_html_e('Disables the WordPress Command Palette (Cmd/Ctrl+K shortcut) for other administrators.', 'tka-wp-utils'); ?>
+															</p>
+														</div>
+														<div class="tka-setting-control">
+															<label class="tka-switch">
+																<input type="checkbox" name="tka_wp_utils_options[disable_command_palette]" value="1"
+																	<?php checked(1, $options['disable_command_palette'] ?? 0); ?>>
 																<span class="tka-slider"></span>
 															</label>
 														</div>
@@ -1419,13 +1489,15 @@ class Settings
 														</div>
 														<div class="tka-checkbox-grid">
 															<?php
+															// Merge widgets detected actively and widgets we have seen previously on the real dashboard
 															global $wp_meta_boxes;
 															if (!function_exists('wp_dashboard_setup')) {
 																require_once ABSPATH . 'wp-admin/includes/dashboard.php';
 															}
 															do_action('wp_dashboard_setup');
 
-															$available_widgets = [];
+															$available_widgets = get_option('tka_known_dashboard_widgets', []);
+															
 															if (!empty($wp_meta_boxes['dashboard'])) {
 																foreach ($wp_meta_boxes['dashboard'] as $container_key => $containers) {
 																	foreach ($containers as $priority_key => $priorities) {
@@ -1437,15 +1509,15 @@ class Settings
 															}
 
 															// Fallback list of core widgets
-															if (empty($available_widgets)) {
-																$available_widgets = [
-																	'dashboard_right_now' => __('At a Glance', 'tka-wp-utils'),
-																	'dashboard_activity' => __('Activity', 'tka-wp-utils'),
-																	'dashboard_quick_press' => __('Quick Draft', 'tka-wp-utils'),
-																	'dashboard_primary' => __('WordPress Events and News', 'tka-wp-utils'),
-																	'dashboard_site_health' => __('Site Health Status', 'tka-wp-utils'),
-																];
-															}
+															$core_widgets = [
+																'dashboard_right_now' => __('At a Glance', 'tka-wp-utils'),
+																'dashboard_activity' => __('Activity', 'tka-wp-utils'),
+																'dashboard_quick_press' => __('Quick Draft', 'tka-wp-utils'),
+																'dashboard_primary' => __('WordPress Events and News', 'tka-wp-utils'),
+																'dashboard_site_health' => __('Site Health Status', 'tka-wp-utils'),
+															];
+															
+															$available_widgets = array_merge($core_widgets, $available_widgets);
 
 															foreach ($available_widgets as $widget_id => $widget_label): ?>
 																	<label class="tka-checkbox-item">
@@ -2979,6 +3051,20 @@ class Settings
 										</p>
 
 										<?php
+										$default_menus = [
+											'index.php' => __('Dashboard', 'tka-wp-utils'),
+											'edit.php' => __('Posts', 'tka-wp-utils'),
+											'upload.php' => __('Media', 'tka-wp-utils'),
+											'edit.php?post_type=page' => __('Pages', 'tka-wp-utils'),
+											'edit-comments.php' => __('Comments', 'tka-wp-utils'),
+											'themes.php' => __('Appearance', 'tka-wp-utils'),
+											'plugins.php' => __('Plugins', 'tka-wp-utils'),
+											'users.php' => __('Users', 'tka-wp-utils'),
+											'tools.php' => __('Tools', 'tka-wp-utils'),
+											'options-general.php' => __('Settings', 'tka-wp-utils'),
+											'nav-menus.php' => __('Menus', 'tka-wp-utils'),
+										];
+
 										global $menu;
 										$raw_menus = [];
 										if (!empty($menu)) {
@@ -2994,21 +3080,8 @@ class Settings
 											}
 										}
 
-										// Fallback core menus if uninitialized
-										if (empty($raw_menus)) {
-											$raw_menus = [
-												'index.php' => __('Dashboard', 'tka-wp-utils'),
-												'edit.php' => __('Posts', 'tka-wp-utils'),
-												'upload.php' => __('Media', 'tka-wp-utils'),
-												'edit.php?post_type=page' => __('Pages', 'tka-wp-utils'),
-												'edit-comments.php' => __('Comments', 'tka-wp-utils'),
-												'themes.php' => __('Appearance', 'tka-wp-utils'),
-												'plugins.php' => __('Plugins', 'tka-wp-utils'),
-												'users.php' => __('Users', 'tka-wp-utils'),
-												'tools.php' => __('Tools', 'tka-wp-utils'),
-												'options-general.php' => __('Settings', 'tka-wp-utils'),
-											];
-										}
+										// Merge defaults so that hidden items (removed from $menu) are still kept in the UI
+										$raw_menus = array_merge($default_menus, $raw_menus);
 										?>
 
 										<!-- Sub-Tabs Navigation for Organizers -->
@@ -3182,6 +3255,9 @@ class Settings
 										'suppress_filters' => true,
 									]);
 									$total_eligible_images = $images_query->post_count;
+									
+									global $wpdb;
+									$all_time_savings = (int) $wpdb->get_var("SELECT SUM(meta_value) FROM {$wpdb->postmeta} WHERE meta_key = '_tka_image_savings'");
 									?>
 
 									<div style="background: var(--tka-bg-main); padding: 18px 24px; border-radius: 8px; border: 1px solid var(--tka-border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 15px;">
@@ -3193,7 +3269,12 @@ class Settings
 												<span id="tka-bulk-total-count"><?php echo intval($total_eligible_images); ?></span> <?php esc_html_e('images', 'tka-wp-utils'); ?>
 											</strong>
 										</div>
-										<div>
+										<div style="display: flex; gap: 10px;">
+											<button type="button" id="tka-bulk-optimize-pause-btn" class="button button-secondary"
+												style="border-color: var(--tka-danger); color: var(--tka-danger); background: rgba(239, 68, 68, 0.02); font-weight: 600; padding: 6px 18px; border-radius: 8px; height: auto; transition: all 0.15s ease-in-out; display: none;">
+												<span class="dashicons dashicons-controls-pause" style="font-size: 16px; width: 16px; height: 16px; vertical-align: middle; margin-top: -3px; margin-right: 4px;"></span>
+												<?php esc_html_e('Pause', 'tka-wp-utils'); ?>
+											</button>
 											<button type="button" id="tka-bulk-optimize-start-btn" class="button button-secondary"
 												style="border-color: var(--tka-primary); color: var(--tka-primary); background: rgba(79, 70, 229, 0.02); font-weight: 600; padding: 6px 18px; border-radius: 8px; height: auto; transition: all 0.15s ease-in-out;"
 												<?php disabled($total_eligible_images, 0); ?>>
@@ -3212,13 +3293,21 @@ class Settings
 										<div style="width: 100%; background: #e2e8f0; height: 10px; border-radius: 5px; overflow: hidden; margin-bottom: 15px;">
 											<div id="tka-bulk-progress-bar" style="width: 0%; background: var(--tka-primary); height: 100%; transition: width 0.3s ease-in-out; border-radius: 5px;"></div>
 										</div>
-										<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 15px;">
+										<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 15px;">
 											<div style="background: rgba(16, 185, 129, 0.03); border: 1px solid rgba(16, 185, 129, 0.1); border-radius: 6px; padding: 12px 16px;">
 												<span style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--tka-text-muted); display: block; letter-spacing: 0.5px;">
-													<?php esc_html_e('Total Storage Saved', 'tka-wp-utils'); ?>
+													<?php esc_html_e('Storage Saved (This Run)', 'tka-wp-utils'); ?>
 												</span>
 												<strong id="tka-bulk-total-savings" style="font-size: 18px; color: var(--tka-success); margin-top: 2px; display: block;">
 													0 KB
+												</strong>
+											</div>
+											<div style="background: rgba(16, 185, 129, 0.03); border: 1px solid rgba(16, 185, 129, 0.1); border-radius: 6px; padding: 12px 16px;">
+												<span style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--tka-text-muted); display: block; letter-spacing: 0.5px;">
+													<?php esc_html_e('Storage Saved (All Time)', 'tka-wp-utils'); ?>
+												</span>
+												<strong id="tka-bulk-all-time-savings" style="font-size: 18px; color: var(--tka-success); margin-top: 2px; display: block;" data-initial="<?php echo esc_attr($all_time_savings); ?>">
+													<?php echo esc_html(size_format($all_time_savings)); ?>
 												</strong>
 											</div>
 											<div style="background: rgba(79, 70, 229, 0.03); border: 1px solid rgba(79, 70, 229, 0.1); border-radius: 6px; padding: 12px 16px;">
@@ -3240,22 +3329,21 @@ class Settings
 
 								<!-- Media Library Status Table -->
 								<div class="tka-settings-card" style="margin-top: 30px; padding: 24px;">
-									<h3 style="margin-top: 0; margin-bottom: 8px; font-size: 18px; color: var(--tka-text-main); font-weight: 700;">
-										<?php esc_html_e('Media Library Status', 'tka-wp-utils'); ?>
-									</h3>
-									<p class="section-desc" style="margin-bottom: 20px;">
-										<?php esc_html_e('Monitor all JPEG, PNG, and WebP attachments, their current format state, and their calculated disk storage footprint savings.', 'tka-wp-utils'); ?>
-									</p>
-
-									<?php
-									$all_images_query = new \WP_Query([
-										'post_type' => 'attachment',
-										'post_mime_type' => ['image/jpeg', 'image/png', 'image/webp'],
-										'post_status' => 'inherit',
-										'posts_per_page' => -1,
-										'suppress_filters' => true,
-									]);
-									?>
+									<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+										<div>
+											<h3 style="margin-top: 0; margin-bottom: 8px; font-size: 18px; color: var(--tka-text-main); font-weight: 700;">
+												<?php esc_html_e('Media Library Status', 'tka-wp-utils'); ?>
+											</h3>
+											<p class="section-desc" style="margin-bottom: 0;">
+												<?php esc_html_e('Monitor all JPEG, PNG, and WebP attachments, their current format state, and their calculated disk storage footprint savings.', 'tka-wp-utils'); ?>
+											</p>
+										</div>
+										<div class="tka-status-tabs" style="display: flex; gap: 8px;">
+											<button type="button" class="button tka-status-tab-btn active" data-status="all" style="border-radius: 20px;"><?php esc_html_e('All', 'tka-wp-utils'); ?></button>
+											<button type="button" class="button tka-status-tab-btn" data-status="pending" style="border-radius: 20px;"><?php esc_html_e('Pending', 'tka-wp-utils'); ?></button>
+											<button type="button" class="button tka-status-tab-btn" data-status="optimized" style="border-radius: 20px;"><?php esc_html_e('Optimized', 'tka-wp-utils'); ?></button>
+										</div>
+									</div>
 
 									<div style="overflow-x: auto;">
 										<table class="tka-table" style="margin-top: 0;">
@@ -3269,76 +3357,24 @@ class Settings
 												</tr>
 											</thead>
 											<tbody id="tka-bulk-status-table-body">
-												<?php if ($all_images_query->have_posts()): ?>
-														<?php while ($all_images_query->have_posts()):
-															$all_images_query->the_post();
-															$att_id = get_the_ID();
-															$file_path = get_attached_file($att_id);
-															$filename = $file_path ? basename($file_path) : get_the_title();
-															$mime = get_post_mime_type($att_id);
-															$savings = get_post_meta($att_id, '_tka_image_savings', true);
-
-															// Format matching class and label
-															$format_class = 'tka-badge-format-jpeg';
-															$format_label = 'JPEG';
-															if ($mime === 'image/png') {
-																$format_class = 'tka-badge-format-png';
-																$format_label = 'PNG';
-															} elseif ($mime === 'image/webp') {
-																$format_class = 'tka-badge-format-webp';
-																$format_label = 'WebP';
-															}
-
-															// Optimization status and savings text
-															$is_optimized = ($mime === 'image/webp' || $savings !== '');
-															if ($is_optimized) {
-																$status_class = 'status-optimized';
-																$status_label = __('Optimized', 'tka-wp-utils');
-																$savings_text = ($savings !== '' && intval($savings) > 0) ? size_format(intval($savings)) : __('0 KB', 'tka-wp-utils');
-																$savings_html = '<span class="tka-savings-value" style="color: var(--tka-success);">' . esc_html($savings_text) . '</span>';
-															} else {
-																$status_class = 'status-pending';
-																$status_label = __('Pending', 'tka-wp-utils');
-																$savings_html = '<span class="tka-savings-pending">' . esc_html__('Pending', 'tka-wp-utils') . '</span>';
-															}
-															?>
-																<tr id="tka-image-row-<?php echo intval($att_id); ?>">
-																	<td>
-																		<?php echo wp_get_attachment_image($att_id, [40, 40], true, [
-																			'style' => 'width: 40px; height: 40px; object-fit: cover; border-radius: 6px; border: 1px solid var(--tka-border); display: block;'
-																		]); ?>
-																	</td>
-																	<td style="font-weight: 500; color: var(--tka-text-main);">
-																		<div class="tka-filename-text" title="<?php echo esc_attr($file_path); ?>">
-																			<?php echo esc_html($filename); ?>
-																		</div>
-																	</td>
-																	<td>
-																		<span class="tka-badge-format <?php echo esc_attr($format_class); ?>" id="tka-format-badge-<?php echo intval($att_id); ?>">
-																			<?php echo esc_html($format_label); ?>
-																		</span>
-																	</td>
-																	<td>
-																		<span class="tka-status-pill <?php echo esc_attr($status_class); ?>" id="tka-status-pill-<?php echo intval($att_id); ?>">
-																			<span class="tka-status-dot"></span>
-																			<span class="tka-status-text"><?php echo esc_html($status_label); ?></span>
-																		</span>
-																	</td>
-																	<td style="text-align: right;" id="tka-savings-cell-<?php echo intval($att_id); ?>">
-																		<?php echo $savings_html; ?>
-																	</td>
-																</tr>
-														<?php endwhile;
-														wp_reset_postdata(); ?>
-												<?php else: ?>
-														<tr>
-															<td colspan="5" style="text-align: center; color: var(--tka-text-muted); padding: 30px 15px;">
-																<?php esc_html_e('No image attachments found in the Media Library.', 'tka-wp-utils'); ?>
-															</td>
-														</tr>
-												<?php endif; ?>
+												<tr>
+													<td colspan="5" style="text-align: center; padding: 30px; color: var(--tka-text-muted);">
+														<span class="spinner is-active" style="float: none; margin-right: 8px;"></span> <?php esc_html_e('Loading images...', 'tka-wp-utils'); ?>
+													</td>
+												</tr>
 											</tbody>
 										</table>
+									</div>
+									
+									<div class="tka-pagination-controls" style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; border-top: 1px solid var(--tka-border); padding-top: 15px;">
+										<div style="font-size: 13px; color: var(--tka-text-muted);">
+											<?php esc_html_e('Showing', 'tka-wp-utils'); ?> <span id="tka-pagination-start">0</span> - <span id="tka-pagination-end">0</span> <?php esc_html_e('of', 'tka-wp-utils'); ?> <span id="tka-pagination-total">0</span>
+										</div>
+										<div style="display: flex; gap: 8px;">
+											<button type="button" id="tka-pagination-prev" class="button" disabled>&laquo; <?php esc_html_e('Previous', 'tka-wp-utils'); ?></button>
+											<span id="tka-pagination-current" style="display: inline-flex; align-items: center; padding: 0 10px; font-weight: 600;">1</span>
+											<button type="button" id="tka-pagination-next" class="button" disabled><?php esc_html_e('Next', 'tka-wp-utils'); ?> &raquo;</button>
+										</div>
 									</div>
 								</div>
 							</main>

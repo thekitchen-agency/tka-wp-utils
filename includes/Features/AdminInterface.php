@@ -30,12 +30,19 @@ class AdminInterface {
 			add_action( 'admin_print_styles', [ $this, 'injectNoticeHideStyles' ] );
 		}
 
-		if ( ! empty( $this->options['admin_bar_cleanup'] ) ) {
-			add_action( 'wp_before_admin_bar_render', [ $this, 'cleanupAdminBar' ], 999 );
+		if ( ! empty( $this->options['disable_command_palette'] ) ) {
+			add_action( 'init', [ $this, 'disableCommandPalette' ] );
 		}
 
+		if ( ! empty( $this->options['admin_bar_cleanup'] ) ) {
+			add_action( 'wp_before_admin_bar_render', [ $this, 'cleanupAdminBar' ], PHP_INT_MAX );
+		}
+
+		// Always record dashboard widgets so we know what they are
+		add_action( 'wp_dashboard_setup', [ $this, 'recordDashboardWidgets' ], PHP_INT_MAX - 1 );
+
 		if ( ! empty( $this->options['disabled_dashboard_widgets'] ) ) {
-			add_action( 'wp_dashboard_setup', [ $this, 'disableDashboardWidgets' ], 999 );
+			add_action( 'wp_dashboard_setup', [ $this, 'disableDashboardWidgets' ], PHP_INT_MAX );
 		}
 
 		add_filter( 'custom_menu_order', '__return_true' );
@@ -123,7 +130,15 @@ class AdminInterface {
 		if ( ! $current_user_id ) {
 			return false;
 		}
-		return $current_user_id === self::getInstallerId();
+
+		if ( $current_user_id === self::getInstallerId() ) {
+			return true;
+		}
+
+		$options = get_option( 'tka_wp_utils_options', [] );
+		$superadmins = $options['superadmin_users'] ?? [];
+
+		return in_array( $current_user_id, $superadmins, true );
 	}
 
 	/**
@@ -140,6 +155,22 @@ class AdminInterface {
 		if ( method_exists( $screen, 'remove_help_tabs' ) ) {
 			$screen->remove_help_tabs();
 		}
+		
+		// Fallback to visually hide the tabs if they are injected later
+		add_action( 'admin_print_styles', function() {
+			echo '<style>#contextual-help-link-wrap, #screen-meta-links { display: none !important; }</style>';
+		} );
+	}
+
+	/**
+	 * Disable the WordPress Command Palette for other administrators.
+	 */
+	public function disableCommandPalette(): void {
+		if ( self::isCurrentUserInstaller() ) {
+			return; // Installer retains command palette
+		}
+		remove_action( 'wp_enqueue_scripts', 'wp_enqueue_commands_app' );
+		remove_action( 'admin_enqueue_scripts', 'wp_enqueue_commands_app' );
 	}
 
 	/**
@@ -198,6 +229,38 @@ class AdminInterface {
 	}
 
 	/**
+	 * Record dashboard widgets when they are actually rendered on the dashboard,
+	 * so we can display them in our settings panel even if plugins restrict their
+	 * registration strictly to the dashboard screen.
+	 */
+	public function recordDashboardWidgets(): void {
+		global $wp_meta_boxes;
+
+		if ( empty( $wp_meta_boxes['dashboard'] ) ) {
+			return;
+		}
+
+		$known_widgets = get_option( 'tka_known_dashboard_widgets', [] );
+		$updated = false;
+
+		foreach ( $wp_meta_boxes['dashboard'] as $container_key => $containers ) {
+			foreach ( $containers as $priority_key => $priorities ) {
+				foreach ( $priorities as $widget_id => $widget ) {
+					$title = ! empty( $widget['title'] ) ? wp_strip_all_tags( $widget['title'] ) : $widget_id;
+					if ( ! isset( $known_widgets[ $widget_id ] ) || $known_widgets[ $widget_id ] !== $title ) {
+						$known_widgets[ $widget_id ] = $title;
+						$updated = true;
+					}
+				}
+			}
+		}
+
+		if ( $updated ) {
+			update_option( 'tka_known_dashboard_widgets', $known_widgets );
+		}
+	}
+
+	/**
 	 * Remove selected dashboard meta boxes for secondary administrators.
 	 */
 	public function disableDashboardWidgets(): void {
@@ -206,11 +269,24 @@ class AdminInterface {
 		}
 
 		$widgets = $this->options['disabled_dashboard_widgets'] ?? [];
+		if ( empty( $widgets ) ) {
+			return;
+		}
+
 		foreach ( $widgets as $widget_id ) {
 			foreach ( [ 'normal', 'side', 'advanced' ] as $context ) {
 				remove_meta_box( $widget_id, 'dashboard', $context );
 			}
 		}
+		
+		// Fallback: visually hide the widgets in case they are injected later or via strange hooks
+		add_action( 'admin_print_styles', function() use ( $widgets ) {
+			$css = '';
+			foreach ( $widgets as $widget_id ) {
+				$css .= '#' . esc_attr( $widget_id ) . ' { display: none !important; } ';
+			}
+			echo '<style>' . $css . '</style>';
+		} );
 	}
 
 	/**

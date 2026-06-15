@@ -58,6 +58,7 @@ class ImageOptimizer
 		// Hook AJAX handlers for retroactive bulk optimization
 		add_action('wp_ajax_tka_wp_utils_bulk_get_images', [$this, 'ajaxBulkGetImages']);
 		add_action('wp_ajax_tka_wp_utils_bulk_optimize_image', [$this, 'ajaxBulkOptimizeImage']);
+		add_action('wp_ajax_tka_wp_utils_bulk_get_image_list', [$this, 'ajaxBulkGetImageList']);
 	}
 
 	/**
@@ -237,6 +238,124 @@ class ImageOptimizer
 	}
 
 	/**
+	 * AJAX endpoint to retrieve paginated image list with optimization status and sizes.
+	 */
+	public function ajaxBulkGetImageList(): void
+	{
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error(['message' => __('Insufficient permissions.', 'tka-wp-utils')]);
+		}
+
+		$page = isset($_POST['page']) ? max(1, intval($_POST['page'])) : 1;
+		$per_page = isset($_POST['per_page']) ? max(1, intval($_POST['per_page'])) : 50;
+		$status = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : 'all';
+
+		$args = [
+			'post_type'      => 'attachment',
+			'post_status'    => 'inherit',
+			'posts_per_page' => $per_page,
+			'paged'          => $page,
+		];
+
+		// Base mime types
+		$mimes = ['image/jpeg', 'image/png', 'image/webp'];
+
+		if ($status === 'pending') {
+			$args['post_mime_type'] = ['image/jpeg', 'image/png'];
+			$args['meta_query'] = [
+				'relation' => 'OR',
+				[
+					'key'     => '_tka_image_savings',
+					'compare' => 'NOT EXISTS',
+				],
+				[
+					'key'     => '_tka_image_savings',
+					'value'   => '',
+					'compare' => '=',
+				]
+			];
+		} elseif ($status === 'optimized') {
+			$args['post_mime_type'] = $mimes;
+			$args['meta_query'] = [
+				'relation' => 'OR',
+				[
+					'key'     => '_tka_image_savings',
+					'value'   => '0',
+					'compare' => '>=',
+					'type'    => 'NUMERIC'
+				]
+			];
+		} else {
+			$args['post_mime_type'] = $mimes;
+		}
+
+		$query = new \WP_Query($args);
+
+		$rows = [];
+		foreach ($query->posts as $post) {
+			$att_id = $post->ID;
+			$file_path = get_attached_file($att_id);
+			$filename = $file_path ? basename($file_path) : get_the_title($post);
+			$mime = get_post_mime_type($att_id);
+			$savings = get_post_meta($att_id, '_tka_image_savings', true);
+
+			$format_class = 'tka-badge-format-jpeg';
+			$format_label = 'JPEG';
+			if ($mime === 'image/png') {
+				$format_class = 'tka-badge-format-png';
+				$format_label = 'PNG';
+			} elseif ($mime === 'image/webp') {
+				$format_class = 'tka-badge-format-webp';
+				$format_label = 'WebP';
+			}
+
+			$is_optimized = ($mime === 'image/webp' || $savings !== '');
+			$status_class = $is_optimized ? 'status-optimized' : 'status-pending';
+			$status_label = $is_optimized ? __('Optimized', 'tka-wp-utils') : __('Pending', 'tka-wp-utils');
+			
+			$savings_text = '';
+			if ($is_optimized) {
+				$savings_text = ($savings !== '' && intval($savings) > 0) ? size_format(intval($savings)) : __('0 KB', 'tka-wp-utils');
+			}
+
+			$thumbnail_url = wp_get_attachment_image_url($att_id, [40, 40]);
+			if (!$thumbnail_url) {
+				$thumbnail_url = includes_url('images/media/default.png');
+			}
+
+			// Get sizes
+			$metadata = wp_get_attachment_metadata($att_id);
+			$sizes = [];
+			if (!empty($metadata['sizes'])) {
+				foreach ($metadata['sizes'] as $size_key => $size_info) {
+					$sizes[] = $size_key;
+				}
+			}
+
+			$rows[] = [
+				'id'            => $att_id,
+				'filename'      => $filename,
+				'file_path'     => $file_path,
+				'thumbnail_url' => $thumbnail_url,
+				'format_class'  => $format_class,
+				'format_label'  => $format_label,
+				'status_class'  => $status_class,
+				'status_label'  => $status_label,
+				'is_optimized'  => $is_optimized,
+				'savings_text'  => $savings_text,
+				'sizes'         => $sizes,
+			];
+		}
+
+		wp_send_json_success([
+			'rows'         => $rows,
+			'total_items'  => $query->found_posts,
+			'total_pages'  => $query->max_num_pages,
+			'current_page' => $page,
+		]);
+	}
+
+	/**
 	 * AJAX endpoint to process, convert, and optimize a single existing attachment.
 	 */
 	public function ajaxBulkOptimizeImage(): void
@@ -308,8 +427,10 @@ class ImageOptimizer
 
 		// Calculate new storage footprint
 		$new_size = filesize($optimized['file']);
+		$affected_sizes = [];
 		if (!empty($new_metadata['sizes'])) {
-			foreach ($new_metadata['sizes'] as $size) {
+			foreach ($new_metadata['sizes'] as $size_key => $size) {
+				$affected_sizes[] = $size_key;
 				$thumb_path = $path_dir . '/' . $size['file'];
 				if (file_exists($thumb_path)) {
 					$new_size += filesize($thumb_path);
@@ -326,10 +447,11 @@ class ImageOptimizer
 		\TKA\WPUtils\Core\Plugin::purgePageCaches();
 
 		wp_send_json_success([
-			'filename'    => basename($optimized['file']),
-			'bytes_saved' => $bytes_saved,
-			'mime_type'   => $optimized['type'],
-			'message'     => sprintf(__('Successfully optimized %s.', 'tka-wp-utils'), basename($optimized['file'])),
+			'filename'       => basename($optimized['file']),
+			'bytes_saved'    => $bytes_saved,
+			'mime_type'      => $optimized['type'],
+			'affected_sizes' => $affected_sizes,
+			'message'        => sprintf(__('Successfully optimized %s.', 'tka-wp-utils'), basename($optimized['file'])),
 		]);
 	}
 }

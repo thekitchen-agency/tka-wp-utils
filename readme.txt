@@ -3,7 +3,7 @@ Contributors: thekitchen-agency
 Tags: classic editor, svg upload, admin columns, menu organizer, hardening, image optimization, woocommerce, woocommerce optimization
 Requires at least: 6.0
 Tested up to: 6.5
-Stable tag: 1.7.2
+Stable tag: 1.8.0
 Requires PHP: 8.3
 License: MIT
 License URI: https://opensource.org/licenses/MIT
@@ -57,6 +57,15 @@ Our plugin uses a database-first approach: it converts physical files to WebP an
 Since images are permanently converted to WebP in the database, deactivating the plugin leaves WebP files active in your media library. If you want to keep original JPEGs/PNGs for safe backup, make sure the "Keep Original Images" setting is toggled on before running bulk optimization.
 
 == Changelog ==
+
+= 1.8.0 =
+*   Added Multi-User Superadmin access control, allowing designated administrators to access the plugin settings while hiding it entirely from regular administrators.
+*   Major upgrade to the Bulk Retroactive Image Optimizer: Added pagination, tabbed views (Optimized / Not Optimized), page size selector, and all-time total storage savings calculations.
+*   Implemented Pause/Resume functionality for the Bulk Optimizer sequential engine to safely stop heavy processing.
+*   Exposed the Bulk Optimizer as a dedicated submenu under the Media menu so all administrators can access it.
+*   Added a dynamic "Widget Sniffer" to reliably detect and disable stubborn dashboard widgets (like Gravity Forms) by monitoring real dashboard loads.
+*   Added option to disable the WordPress Command Palette (Cmd/Ctrl+K) for non-superadmins.
+*   Improved robustness of admin bar cleanup and help tab hiding by utilizing later hooks and CSS fallbacks.
 
 = 1.7.2 =
 *   Added .htaccess Control & Hardening settings panel to configure root and uploads .htaccess rules.
