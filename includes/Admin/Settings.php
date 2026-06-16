@@ -501,6 +501,13 @@ class Settings
 				$sanitized['acf_layout_toggle'] = isset($input['acf_layout_toggle']) ? 1 : 0;
 				$sanitized['acf_layout_rename'] = isset($input['acf_layout_rename']) ? 1 : 0;
 				$sanitized['acf_gravity_forms_fallback'] = isset($input['acf_gravity_forms_fallback']) ? 1 : 0;
+
+				$sanitized['acf_extensions'] = [];
+				if (isset($input['acf_extensions']) && is_array($input['acf_extensions'])) {
+					foreach ($input['acf_extensions'] as $ext) {
+						$sanitized['acf_extensions'][] = sanitize_file_name($ext);
+					}
+				}
 			}
 
 			// Image Optimization
@@ -1752,6 +1759,34 @@ class Settings
 															</label>
 														</div>
 													</div>
+
+													<?php
+													$acf_extensions = \TKA\WPUtils\Features\AcfManager::getAvailableExtensions();
+													if (!empty($acf_extensions)):
+													?>
+														<hr style="border: 0; border-top: 1px solid var(--tka-border); margin: 20px 0;">
+														<div class="tka-setting-row stack">
+															<div class="tka-setting-label">
+																<strong><?php esc_html_e('ACF Custom Field Extensions', 'tka-wp-utils'); ?></strong>
+																<p><?php esc_html_e('Toggle dynamically discovered custom field extensions. Drop new PHP files in /includes/AcfExtensions/ to register them.', 'tka-wp-utils'); ?>
+																</p>
+															</div>
+															<div class="tka-checkbox-grid">
+																<?php foreach ($acf_extensions as $filename => $ext): ?>
+																	<label class="tka-checkbox-item">
+																		<input type="checkbox" name="tka_wp_utils_options[acf_extensions][]"
+																			value="<?php echo esc_attr($filename); ?>" <?php checked(in_array($filename, $options['acf_extensions'] ?? [], true)); ?>>
+																		<span>
+																			<?php echo esc_html($ext['name']); ?>
+																			<?php if (!empty($ext['description'])): ?>
+																				<p style="margin: 4px 0 0; font-size: 12px; color: var(--tka-text-muted);"><?php echo esc_html($ext['description']); ?></p>
+																			<?php endif; ?>
+																		</span>
+																	</label>
+																<?php endforeach; ?>
+															</div>
+														</div>
+													<?php endif; ?>
 												</div>
 											</section>
 									<?php endif; ?>

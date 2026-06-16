@@ -67,6 +67,55 @@ class AcfManager
 			add_filter('acf/format_value', [$this, 'formatGravityFormsValue'], 10, 3);
 			add_action('acf/include_field_types', [$this, 'registerGravityFormsFieldType']);
 		}
+
+		// Load enabled ACF Extensions
+		if (!empty($this->options['acf_extensions']) && is_array($this->options['acf_extensions'])) {
+			$available_extensions = self::getAvailableExtensions();
+			foreach ($this->options['acf_extensions'] as $filename) {
+				if (isset($available_extensions[$filename])) {
+					require_once $available_extensions[$filename]['path'];
+				}
+			}
+		}
+	}
+
+	/**
+	 * Scan the AcfExtensions directory and return available extensions with their metadata.
+	 *
+	 * @return array
+	 */
+	public static function getAvailableExtensions(): array
+	{
+		$extensions_dir = TKA_WP_UTILS_PATH . 'includes/AcfExtensions';
+		if (!is_dir($extensions_dir)) {
+			return [];
+		}
+
+		$files = glob($extensions_dir . '/*.php');
+		if (empty($files)) {
+			return [];
+		}
+
+		$extensions = [];
+		$headers = [
+			'name'        => 'Extension Name',
+			'description' => 'Description',
+		];
+
+		foreach ($files as $file_path) {
+			$filename = basename($file_path);
+			$data = get_file_data($file_path, $headers);
+
+			if (!empty($data['name'])) {
+				$extensions[$filename] = [
+					'name'        => sanitize_text_field($data['name']),
+					'description' => sanitize_text_field($data['description']),
+					'path'        => $file_path,
+				];
+			}
+		}
+
+		return $extensions;
 	}
 
 	/**
