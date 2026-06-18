@@ -20,7 +20,7 @@ if (!defined('WPINC')) {
 }
 
 // Define plugin constants
-define('TKA_WP_UTILS_VERSION', '1.8.0');
+define('TKA_WP_UTILS_VERSION', '1.10.0');
 define('TKA_WP_UTILS_PATH', plugin_dir_path(__FILE__));
 define('TKA_WP_UTILS_URL', plugin_dir_url(__FILE__));
 
