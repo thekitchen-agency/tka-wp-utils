@@ -3,7 +3,7 @@ Contributors: thekitchen-agency
 Tags: classic editor, svg upload, admin columns, menu organizer, hardening, image optimization, woocommerce, woocommerce optimization
 Requires at least: 6.0
 Tested up to: 6.5
-Stable tag: 1.9.0
+Stable tag: 1.10.0
 Requires PHP: 8.3
 License: MIT
 License URI: https://opensource.org/licenses/MIT
@@ -58,6 +58,11 @@ Our plugin uses a database-first approach: it converts physical files to WebP an
 Since images are permanently converted to WebP in the database, deactivating the plugin leaves WebP files active in your media library. If you want to keep original JPEGs/PNGs for safe backup, make sure the "Keep Original Images" setting is toggled on before running bulk optimization.
 
 == Changelog ==
+
+= 1.10.0 =
+*   Added dynamic ACF Custom Field Extensions architecture. You can now drop PHP files into the `/includes/AcfExtensions/` directory and they will be automatically discovered, registered, and presented as toggleable checkboxes in the plugin's ACF settings tab.
+*   Migrated the Gravity Forms Custom Field Fallback logic out of the core into the new dynamic extensions architecture (`acf-gravity-forms-fallback.php`).
+*   Added Auto-Inject Video Poster Field toggle. Automatically injects a native ACF image field to the WordPress media editor for all video attachments, allowing you to easily assign fallback poster cover images to MP4 uploads.
 
 = 1.9.0 =
 *   Added SMTP & Mail Settings tab to securely configure outbound email credentials (Host, Port, User, Password, Encryption).

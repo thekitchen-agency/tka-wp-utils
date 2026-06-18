@@ -41,6 +41,10 @@ class AcfManager
 			add_filter('acf/settings/load_json', [$this, 'getCustomJsonLoadPaths']);
 		}
 
+		if (!empty($this->options['acf_video_poster'])) {
+			add_action('acf/init', [$this, 'registerVideoPosterFieldGroup']);
+		}
+
 		if (!$acfe_active) {
 			if (!empty($this->options['acf_copy_paste'])) {
 				add_action('admin_enqueue_scripts', [$this, 'enqueueCopyPasteAssets']);
@@ -59,13 +63,6 @@ class AcfManager
 				add_filter('acf/prepare_field/type=flexible_content', [$this, 'prepareFlexibleContentFieldForEditor'], 10, 1);
 				add_filter('acf/format_value/type=flexible_content', [$this, 'filterFormattedFlexibleContentValue'], 10, 3);
 			}
-		}
-
-		// Fallback for custom Gravity Forms field type "forms" if enabled and sayhellogmbh plugin is deactivated/missing
-		if (!empty($this->options['acf_gravity_forms_fallback']) && !class_exists('ACFGravityformsField\Field')) {
-			add_filter('acf/load_field/type=forms', [$this, 'loadGravityFormsField']);
-			add_filter('acf/format_value', [$this, 'formatGravityFormsValue'], 10, 3);
-			add_action('acf/include_field_types', [$this, 'registerGravityFormsFieldType']);
 		}
 
 		// Load enabled ACF Extensions
@@ -494,82 +491,48 @@ class AcfManager
 	}
 
 	/**
-	 * Dynamically convert "forms" field type to "select" and populate with Gravity Forms choices.
-	 *
-	 * @param array $field The ACF field settings.
-	 * @return array The modified field settings.
+	 * Register a Video Poster field group for video attachments.
 	 */
-	public function loadGravityFormsField(array $field): array
+	public function registerVideoPosterFieldGroup(): void
 	{
-		$field['type'] = 'select';
-		$field['original_type'] = 'forms';
-		$field['ui'] = 1; // Enable Select2 search UI
-		$field['ajax'] = 0; // Fix: Prevent undefined array key 'ajax' error in acf_field_select->render_field
-		$field['choices'] = [];
-
-		if (class_exists('GFAPI')) {
-			$forms = \GFAPI::get_forms(true, false, 'title');
-			if (!empty($forms)) {
-				foreach ($forms as $form) {
-					$field['choices'][$form['id']] = $form['title'];
-				}
-			}
-		}
-
-		return $field;
-	}
-
-	/**
-	 * Format gravity forms values based on return format configuration.
-	 *
-	 * @param mixed $value The field value in DB.
-	 * @param mixed $post_id The post ID.
-	 * @param array $field The field array settings.
-	 * @return mixed Formatted value.
-	 */
-	public function formatGravityFormsValue($value, $post_id, array $field)
-	{
-		if (isset($field['original_type']) && $field['original_type'] === 'forms') {
-			if (empty($value)) {
-				return $value;
-			}
-
-			$return_format = $field['return_format'] ?? 'id';
-			if ($return_format === 'id') {
-				return is_array($value) ? array_map('intval', $value) : (int) $value;
-			}
-
-			if (class_exists('GFAPI')) {
-				if (is_array($value)) {
-					$formatted = [];
-					foreach ($value as $val) {
-						$form = \GFAPI::get_form($val);
-						if ($form && !is_wp_error($form)) {
-							$formatted[] = $form;
-						}
-					}
-					return $formatted;
-				} else {
-					$form = \GFAPI::get_form($value);
-					return ($form && !is_wp_error($form)) ? $form : false;
-				}
-			}
-		}
-
-		return $value;
-	}
-
-	/**
-	 * Register the custom field type so it appears in the ACF field type selector.
-	 */
-	public function registerGravityFormsFieldType(): void
-	{
-		if (class_exists('acf_field_select') && !class_exists('acf_field_forms_fallback', false)) {
-			// Include the fallback class definition if not already loaded
-			if (!class_exists('acf_field_forms_fallback')) {
-				require_once __DIR__ . '/GravityFormsFieldFallback.php';
-			}
-			acf_register_field_type('acf_field_forms_fallback');
+		if (function_exists('acf_add_local_field_group')) {
+			acf_add_local_field_group(array(
+				'key' => 'group_tka_video_poster',
+				'title' => __('Video Poster', 'tka-wp-utils'),
+				'fields' => array(
+					array(
+						'key' => 'field_tka_video_poster_image',
+						'label' => __('Poster Image', 'tka-wp-utils'),
+						'name' => 'video_poster_image',
+						'type' => 'image',
+						'instructions' => __('Upload a fallback poster image for this video.', 'tka-wp-utils'),
+						'required' => 0,
+						'conditional_logic' => 0,
+						'return_format' => 'id',
+						'preview_size' => 'medium',
+						'library' => 'all',
+						'mime_types' => 'jpg,jpeg,png,webp',
+					),
+				),
+				'location' => array(
+					array(
+						array(
+							'param' => 'attachment',
+							'operator' => '==',
+							'value' => 'video',
+						),
+					),
+				),
+				'menu_order' => 0,
+				'position' => 'normal',
+				'style' => 'default',
+				'label_placement' => 'top',
+				'instruction_placement' => 'label',
+				'hide_on_screen' => '',
+				'active' => true,
+				'description' => '',
+				'show_in_rest' => 1,
+			));
 		}
 	}
 }

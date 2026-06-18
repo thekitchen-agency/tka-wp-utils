@@ -50,6 +50,8 @@ A comprehensive suite of utility tools designed for developers and agencies to s
 *   **Visually Styled Highlights**: Features HSL tailored border glow highlighting (`.tka-layout-selected`) and visual check states during multiselect bulk operations.
 *   **Sidebar Visibility & Shortcode Hardening**: Restricts sidebar Custom Fields editor access to the developer/installer only, and strictly disables front-end shortcode execution for robust security hardening.
 *   **Local JSON Shared Storage**: Integrates with ACF to automatically direct ACF local JSON configurations into the theme-independent `/wp-content/acf-json/` directory.
+*   **Dynamic Custom Field Extensions Engine**: Drop any PHP file into the `/includes/AcfExtensions/` directory with a valid header comment, and the plugin will automatically discover and present it as a toggleable checkbox in the ACF settings tab. Includes a built-in "Gravity Forms Field Fallback" extension out-of-the-box.
+*   **Auto-Inject Video Poster Field**: Optionally registers a "Video Poster Image" (`video_poster_image`) ACF field directly onto all video attachments in the native Media Library, making it incredibly simple to assign fallback cover images to MP4 uploads.
 
 ### 🖼️ 6. Image Optimization & WebP Engine
 *   **Automatic WebP Conversion**: Converts newly uploaded JPEG and PNG images into modern WebP format, generating WebP sub-sizes automatically to ensure lightning-fast site loading.

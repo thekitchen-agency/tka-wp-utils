@@ -140,6 +140,7 @@ class Settings
 					'login_custom_css' => '',
 					'remove_footer_text' => 0,
 					'hide_acf_menu' => 0,
+					'acf_video_poster' => 0,
 					'disable_acf_shortcode' => 0,
 					'acf_custom_json_path' => 0,
 					'acf_copy_paste' => 0,
@@ -147,7 +148,6 @@ class Settings
 					'acf_layout_modal' => 0,
 					'acf_layout_toggle' => 0,
 					'acf_layout_rename' => 0,
-					'acf_gravity_forms_fallback' => 0,
 					'image_optimization_enabled' => 0,
 					'webp_conversion_enabled' => 0,
 					'webp_keep_original' => 1,
@@ -303,6 +303,7 @@ class Settings
 			'login_custom_css' => '',
 			'remove_footer_text' => 0,
 			'hide_acf_menu' => 0,
+			'acf_video_poster' => 0,
 			'disable_acf_shortcode' => 0,
 			'acf_custom_json_path' => 0,
 			'acf_copy_paste' => 0,
@@ -310,7 +311,6 @@ class Settings
 			'acf_layout_modal' => 0,
 			'acf_layout_toggle' => 0,
 			'acf_layout_rename' => 0,
-			'acf_gravity_forms_fallback' => 0,
 			'image_optimization_enabled' => 0,
 			'webp_conversion_enabled' => 0,
 			'webp_keep_original' => 1,
@@ -507,6 +507,7 @@ class Settings
 			// ACF Integration (conditional)
 			if (class_exists('ACF')) {
 				$sanitized['hide_acf_menu'] = isset($input['hide_acf_menu']) ? 1 : 0;
+				$sanitized['acf_video_poster'] = isset($input['acf_video_poster']) ? 1 : 0;
 				$sanitized['disable_acf_shortcode'] = isset($input['disable_acf_shortcode']) ? 1 : 0;
 				$sanitized['acf_custom_json_path'] = isset($input['acf_custom_json_path']) ? 1 : 0;
 				$sanitized['acf_copy_paste'] = isset($input['acf_copy_paste']) ? 1 : 0;
@@ -514,7 +515,6 @@ class Settings
 				$sanitized['acf_layout_modal'] = isset($input['acf_layout_modal']) ? 1 : 0;
 				$sanitized['acf_layout_toggle'] = isset($input['acf_layout_toggle']) ? 1 : 0;
 				$sanitized['acf_layout_rename'] = isset($input['acf_layout_rename']) ? 1 : 0;
-				$sanitized['acf_gravity_forms_fallback'] = isset($input['acf_gravity_forms_fallback']) ? 1 : 0;
 
 				$sanitized['acf_extensions'] = [];
 				if (isset($input['acf_extensions']) && is_array($input['acf_extensions'])) {
@@ -1689,6 +1689,22 @@ class Settings
  
 													<div class="tka-setting-row">
 														<div class="tka-setting-label">
+															<strong><?php esc_html_e('Auto-Inject Video Poster Field', 'tka-wp-utils'); ?></strong>
+															<p><?php esc_html_e('Automatically registers a "Video Poster Image" ACF field to all video attachments in the Media Library, allowing you to easily assign fallback cover images to MP4 uploads.', 'tka-wp-utils'); ?>
+																<br><span style="color: var(--tka-primary); font-weight: 600;"><?php esc_html_e('Field Name:', 'tka-wp-utils'); ?> <code>video_poster_image</code></span>
+															</p>
+														</div>
+														<div class="tka-setting-control">
+															<label class="tka-switch">
+																<input type="checkbox" name="tka_wp_utils_options[acf_video_poster]"
+																	value="1" <?php checked(1, $options['acf_video_poster'] ?? 0); ?>>
+																<span class="tka-slider"></span>
+															</label>
+														</div>
+													</div>
+ 
+													<div class="tka-setting-row">
+														<div class="tka-setting-label">
 															<strong><?php esc_html_e('Theme-Independent Local JSON', 'tka-wp-utils'); ?></strong>
 															<p><?php esc_html_e('Saves and loads ACF field groups in a shared, theme-independent directory (`/wp-content/acf-json/`) instead of the active theme folder. Prevents accidental field group loss during theme updates or switches.', 'tka-wp-utils'); ?>
 															</p>
@@ -1774,20 +1790,6 @@ class Settings
 														</div>
 													</div>
 
-													<div class="tka-setting-row">
-														<div class="tka-setting-label">
-															<strong><?php esc_html_e('Enable Gravity Forms Custom Field Fallback', 'tka-wp-utils'); ?></strong>
-															<p><?php esc_html_e('Enables a native fallback for the custom "forms" (Gravity Forms) field type. If the third-party add-on plugin is deactivated or missing, this feature automatically converts "forms" fields into standard Select dropdowns populated with active forms, maintaining functionality in post edit pages and frontend blocks.', 'tka-wp-utils'); ?>
-															</p>
-														</div>
-														<div class="tka-setting-control">
-															<label class="tka-switch">
-																<input type="checkbox" name="tka_wp_utils_options[acf_gravity_forms_fallback]" value="1"
-																	<?php checked(1, $options['acf_gravity_forms_fallback'] ?? 0); ?>>
-																<span class="tka-slider"></span>
-															</label>
-														</div>
-													</div>
 
 													<?php
 													$acf_extensions = \TKA\WPUtils\Features\AcfManager::getAvailableExtensions();
