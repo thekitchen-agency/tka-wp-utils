@@ -59,6 +59,18 @@ Since images are permanently converted to WebP in the database, deactivating the
 
 == Changelog ==
 
+= 1.11.0 =
+*   Feature: Introduced comprehensive Database Optimization Suite. Clean up revisions, auto-drafts, trashed posts, spam comments, orphaned metadata, and expired transients with one click.
+*   Feature: Added Database Engine Optimization capabilities. Perform native MySQL `OPTIMIZE TABLE` commands and toggle a custom high-performance `idx_tka_meta_key_value` PostMeta index to significantly speed up backend queries.
+*   Feature: Added Native Database Search & Replace tool powered by WP-CLI. Includes built-in "Dry Run" support to safely test replacements, and an automated database backup system that dumps an `.sql` snapshot of your database securely before executing any live replacements.
+*   Feature: Added "Replace Media" uploader natively integrated into the Media Library modal, allowing administrators to seamlessly overwrite existing images and PDFs while strictly preserving the attachment ID and URL to prevent SEO link breakage.
+*   Enhancement: Built "Smart WebP Exception" for Replace Media. If you attempt to replace an optimized `.webp` file, the system now accepts `.jpg` or `.png` uploads, silently converting them to WebP on-the-fly and replacing the original asset without requiring manual pre-conversion.
+*   Enhancement: Developed robust media cache-busting engine. Automatically touches `post_modified` timestamps upon file replacement and hooks into `wp_prepare_attachment_for_js` (Grid View) and `wp_get_attachment_image_src` (List View/Frontend) to append dynamic `?t=` parameters, ensuring browsers instantly reflect the new file without requiring hard refreshes.
+*   Enhancement: Instructed Backbone.js to actively `fetch()` and re-render the underlying attachment models instantly upon successful Media Replace AJAX responses, fixing dynamic DOM caching issues inside the Media Grid.
+*   Enhancement: Redesigned the Database Search & Replace UI for better UX. Form inputs (Old URL / New URL) are now stacked horizontally for structural alignment, and the output is parsed from raw tab-separated strings into a clean, readable native WordPress HTML table.
+*   Fix: Resolved an issue in the Database Search & Replace engine where the WP-CLI output failed to render. Stripped broken JSON flags and implemented `--report-changed-only` to filter out noise, ensuring accurate metrics for actual replacements made.
+*   Tweak: Merged "Gutenberg Control" and "Editor & Widgets" tabs into a unified, streamlined "Editor & Blocks" tab to reduce sidebar settings bloat.
+
 = 1.10.0 =
 *   Added dynamic ACF Custom Field Extensions architecture. You can now drop PHP files into the `/includes/AcfExtensions/` directory and they will be automatically discovered, registered, and presented as toggleable checkboxes in the plugin's ACF settings tab.
 *   Migrated the Gravity Forms Custom Field Fallback logic out of the core into the new dynamic extensions architecture (`acf-gravity-forms-fallback.php`).

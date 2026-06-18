@@ -785,6 +785,308 @@ document.addEventListener( 'DOMContentLoaded', function () {
 			} );
 		} );
 	}
-} );
 
+	// 9. Toggle All Scripts Button
+	const toggleAllScriptsBtn = document.getElementById( 'tka-toggle-all-scripts' );
+	if ( toggleAllScriptsBtn ) {
+		toggleAllScriptsBtn.addEventListener( 'click', function ( e ) {
+			e.preventDefault();
+			const checkboxes = document.querySelectorAll( 'input[name="tka_wp_utils_options[deferred_scripts][]"]' );
+			if ( checkboxes.length === 0 ) return;
+			
+			// Check if all are currently checked
+			let allChecked = true;
+			checkboxes.forEach( cb => {
+				if ( ! cb.checked ) allChecked = false;
+			});
+			
+			// Toggle them all based on the current state
+			checkboxes.forEach( cb => {
+				cb.checked = ! allChecked;
+			});
+		} );
+	}
+
+	// 10. Database Maintenance
+	const dbPanel = document.getElementById( 'panel-database' );
+	if ( dbPanel ) {
+		const nonce = document.getElementById( 'tka_wp_utils_db_nonce' ) ? document.getElementById( 'tka_wp_utils_db_nonce' ).value : '';
+		const msgBox = document.getElementById( 'tka-db-messages' );
+		
+		function showDbMessage( msg, isError = false ) {
+			msgBox.innerHTML = '<div class="notice notice-' + (isError ? 'error' : 'success') + ' inline" style="margin: 0; padding: 10px; border-radius: 4px;"><p style="margin: 0;">' + msg + '</p></div>';
+			setTimeout(() => { msgBox.innerHTML = ''; }, 5000);
+		}
+
+		function updateDbCounts( counts ) {
+			for ( const key in counts ) {
+				const countEl = document.getElementById( 'tka-db-count-' + key );
+				if ( countEl ) {
+					if ( key === 'postmeta_index' ) {
+						if ( counts[key] === 1 ) {
+							countEl.innerHTML = '<span style="color:var(--tka-success);"><span class="dashicons dashicons-yes-alt" style="vertical-align:middle;"></span> Active</span>';
+							const btn = document.querySelector('.tka-db-clean-btn[data-action="postmeta_index"]');
+							if (btn) btn.textContent = 'Remove Index';
+						} else {
+							countEl.innerHTML = '<span style="color:var(--tka-text-muted);">Inactive</span>';
+							const btn = document.querySelector('.tka-db-clean-btn[data-action="postmeta_index"]');
+							if (btn) btn.textContent = 'Add Index';
+						}
+					} else {
+						if ( counts[key] === 0 ) {
+							countEl.innerHTML = '<span style="color:var(--tka-success);"><span class="dashicons dashicons-yes-alt" style="vertical-align:middle;"></span> Clean</span>';
+						} else {
+							countEl.textContent = counts[key] + ' items';
+						}
+					}
+				}
+			}
+		}
+
+		// Initial load counts
+		function fetchDbCounts() {
+			const data = new FormData();
+			data.append( 'action', 'tka_wp_utils_db_get_counts' );
+			data.append( 'nonce', nonce );
+			
+			fetch( tkaWpUtilsAdmin.ajaxUrl, { method: 'POST', body: data } )
+			.then( r => r.text() )
+			.then( text => {
+				try {
+					const res = JSON.parse(text);
+					if ( res.success ) {
+						updateDbCounts( res.data );
+					} else {
+						showDbMessage( res.data.message || 'Error fetching counts', true );
+					}
+				} catch(e) {
+					showDbMessage( 'JSON Error: ' + text.substring(0, 100), true );
+					console.error( 'JSON Parse error:', e, text );
+				}
+			} )
+			.catch( err => {
+				showDbMessage( 'Fetch Error: ' + err.message, true );
+			} );
+		}
+		
+		// If on database tab, load counts
+		if ( window.location.hash === '#database' || sessionStorage.getItem('tka_active_tab') === 'database' ) {
+			fetchDbCounts();
+		}
+		
+		// Load counts when tab is clicked
+		const dbTabBtn = document.querySelector('.tka-nav-item[data-tab="database"]');
+		if (dbTabBtn) {
+			dbTabBtn.addEventListener('click', function() {
+				fetchDbCounts();
+			});
+		}
+
+		// Individual Clean Action
+		document.querySelectorAll( '.tka-db-clean-btn' ).forEach( btn => {
+			btn.addEventListener( 'click', function(e) {
+				e.preventDefault();
+				const actionType = this.getAttribute( 'data-action' );
+				this.disabled = true;
+				const origText = this.textContent;
+				this.innerHTML = '<span class="spinner is-active" style="float:none; margin:0;"></span>';
+				
+				const data = new FormData();
+				data.append( 'action', 'tka_wp_utils_db_clean' );
+				data.append( 'action_type', actionType );
+				data.append( 'nonce', nonce );
+				
+				fetch( tkaWpUtilsAdmin.ajaxUrl, { method: 'POST', body: data } )
+				.then( r => r.text() )
+				.then( text => {
+					this.disabled = false;
+					this.textContent = origText;
+					try {
+						const res = JSON.parse(text);
+						if ( res.success ) {
+							showDbMessage( res.data.message );
+							updateDbCounts( res.data.counts );
+						} else {
+							showDbMessage( res.data.message || 'An error occurred.', true );
+						}
+					} catch(e) {
+						showDbMessage( 'JSON Parse Error: ' + text.substring(0, 100), true );
+					}
+				} )
+				.catch( err => {
+					this.disabled = false;
+					this.textContent = origText;
+					showDbMessage( 'Network error: ' + err.message, true );
+				});
+			});
+		});
+
+		// Run All
+		const runAllBtn = document.getElementById( 'tka-db-clean-all' );
+		if ( runAllBtn ) {
+			runAllBtn.addEventListener( 'click', function(e) {
+				e.preventDefault();
+				if ( ! confirm( 'Are you sure you want to run all database optimizations? This action cannot be undone.' ) ) return;
+				
+				this.disabled = true;
+				this.innerHTML = '<span class="spinner is-active" style="float:none; margin:0; margin-right:5px;"></span> Running...';
+				
+				const actions = ['revisions', 'auto_drafts', 'trashed_posts', 'spam_comments', 'orphan_postmeta', 'orphan_commentmeta', 'expired_transients', 'optimize_tables'];
+				let current = 0;
+				
+				function runNext() {
+					if ( current >= actions.length ) {
+						runAllBtn.disabled = false;
+						runAllBtn.textContent = 'Run All Optimizations';
+						showDbMessage( 'All database optimizations completed successfully!' );
+						return;
+					}
+					
+					const data = new FormData();
+					data.append( 'action', 'tka_wp_utils_db_clean' );
+					data.append( 'action_type', actions[current] );
+					data.append( 'nonce', nonce );
+					
+					fetch( tkaWpUtilsAdmin.ajaxUrl, { method: 'POST', body: data } )
+					.then( r => r.json() )
+					.then( res => {
+						if ( res.success ) {
+							updateDbCounts( res.data.counts );
+						}
+						current++;
+						runNext();
+					} )
+					.catch( () => {
+						current++;
+						runNext();
+					});
+				}
+				runNext();
+			});
+		}
+		
+		// 11. Search and Replace Toggle
+		const srEnabledToggle = document.getElementById( 'tka-sr-enabled-toggle' );
+		const nestedSearchReplace = document.querySelector( '.nested-search-replace' );
+		if ( srEnabledToggle && nestedSearchReplace ) {
+			srEnabledToggle.addEventListener( 'change', function () {
+				nestedSearchReplace.style.display = this.checked ? 'block' : 'none';
+			} );
+		}
+		
+		// 11. Search and Replace
+		const srBtn = document.getElementById( 'tka-sr-btn' );
+		if ( srBtn ) {
+			srBtn.addEventListener( 'click', function(e) {
+				e.preventDefault();
+				const searchStr = document.getElementById('tka-sr-search').value;
+				const replaceStr = document.getElementById('tka-sr-replace').value;
+				const isDryRun = document.getElementById('tka-sr-dry-run').checked;
+
+				if ( ! searchStr ) {
+					showDbMessage( 'Please enter a search string.', true );
+					return;
+				}
+
+				if ( ! isDryRun && ! confirm('WARNING: You are about to modify the database permanently. A backup will be created, but are you sure you want to proceed?') ) {
+					return;
+				}
+
+				this.disabled = true;
+				this.innerHTML = '<span class="spinner is-active" style="float:none; margin:0; margin-right:5px;"></span> Running ' + (isDryRun ? 'Dry Run' : 'Search & Replace') + '...';
+				
+				const resultsArea = document.getElementById('tka-sr-results');
+				const outputArea = document.getElementById('tka-sr-output');
+				const backupMsgArea = document.getElementById('tka-sr-backup-msg');
+				
+				resultsArea.style.display = 'none';
+				outputArea.innerHTML = '';
+				backupMsgArea.innerHTML = '';
+
+				const data = new FormData();
+				data.append( 'action', 'tka_wp_utils_search_replace' );
+				data.append( 'nonce', nonce );
+				data.append( 'search_string', searchStr );
+				data.append( 'replace_string', replaceStr );
+				data.append( 'dry_run', isDryRun ? '1' : '0' );
+
+				fetch( tkaWpUtilsAdmin.ajaxUrl, { method: 'POST', body: data } )
+				.then( r => r.text() )
+				.then( text => {
+					srBtn.disabled = false;
+					srBtn.textContent = 'Run Search & Replace';
+					resultsArea.style.display = 'block';
+
+					try {
+						const res = JSON.parse(text);
+						if ( res.success ) {
+							showDbMessage( 'Search & Replace completed successfully.' );
+							
+							if ( res.data.backup_msg ) {
+								backupMsgArea.innerHTML = res.data.backup_msg;
+							}
+							
+							if ( res.data.raw_output ) {
+								let lines = res.data.raw_output.trim().split('\n');
+								let outHtml = '';
+								let successMsg = '';
+
+								if ( lines.length > 0 && lines[lines.length - 1].startsWith('Success:') ) {
+									successMsg = lines.pop();
+								}
+
+								if ( lines.length > 0 && lines[0].startsWith('Table\t') ) {
+									outHtml += '<table class="wp-list-table widefat fixed striped" style="margin-bottom: 15px; border: 1px solid var(--tka-border); border-radius: 4px; overflow: hidden; border-spacing: 0;">';
+									
+									let headers = lines[0].split('\t');
+									outHtml += '<thead style="background: var(--tka-bg-secondary);"><tr>';
+									headers.forEach(h => {
+										outHtml += '<th style="padding: 10px; text-align: left; font-weight: 600; border-bottom: 1px solid var(--tka-border);">' + h.trim() + '</th>';
+									});
+									outHtml += '</tr></thead><tbody>';
+									
+									for (let i = 1; i < lines.length; i++) {
+										let cols = lines[i].split('\t');
+										if (cols.length > 1) {
+											outHtml += '<tr>';
+											cols.forEach(c => {
+												outHtml += '<td style="padding: 10px; border-bottom: 1px solid var(--tka-border-light);">' + c.trim() + '</td>';
+											});
+											outHtml += '</tr>';
+										}
+									}
+									outHtml += '</tbody></table>';
+								} else {
+									// Fallback for non-table outputs
+									outHtml += '<pre style="background: #fff; padding: 10px; border: 1px solid #ddd; max-height: 400px; overflow-y: auto;">' + res.data.raw_output + '</pre>';
+								}
+
+								if ( successMsg ) {
+									outHtml += '<div style="padding: 12px 15px; background: rgba(70, 180, 80, 0.1); border-left: 4px solid var(--tka-success); color: var(--tka-text); font-weight: 600; border-radius: 0 4px 4px 0;">' + successMsg + '</div>';
+								}
+
+								outputArea.innerHTML = outHtml;
+							} else {
+								outputArea.innerHTML = '<div style="padding: 12px 15px; background: var(--tka-bg-secondary); border-left: 4px solid var(--tka-text-muted); color: var(--tka-text-muted); font-weight: 600;">No replacements made or no output returned.</div>';
+							}
+						} else {
+							showDbMessage( res.data.message || 'An error occurred.', true );
+							if ( res.data.debug ) {
+								outputArea.innerHTML = '<pre style="background: #f8d7da; color: #721c24; padding: 10px; border: 1px solid #f5c6cb;">' + res.data.debug + '</pre>';
+							}
+						}
+					} catch(e) {
+						showDbMessage( 'JSON Parse Error. See output below.', true );
+						outputArea.innerHTML = '<pre style="background: #fff; padding: 10px; border: 1px solid #ddd; max-height: 200px; overflow-y: auto;">' + text + '</pre>';
+					}
+				} )
+				.catch( err => {
+					srBtn.disabled = false;
+					srBtn.textContent = 'Run Search & Replace';
+					showDbMessage( 'Network error: ' + err.message, true );
+				});
+			});
+		}
+	}
+} );
 
