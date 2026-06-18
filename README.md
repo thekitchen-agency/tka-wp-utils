@@ -89,8 +89,10 @@ A comprehensive suite of utility tools designed for developers and agencies to s
 *   **Dynamic Rules Engine**: Select transition rules dynamically using a From/To page type mapping (e.g. Front Page to Blog Page) or custom URI patterns.
 *   **Custom CSS Stylesheet Editor**: Live stylesheet block rendered directly in the `<head>` of the page for customizing target transition animations (e.g., configuring `view-transition-name` on elements).
 
-### 📁 11. Virtual Media Folders
-*   **Hierarchical Organization**: Organize files in the Media Library using a nested virtual folders system without altering physical filesystem paths.
+### 📁 11. Media Library Enhancements
+*   **Replace Media File**: Seamlessly overwrite images and PDFs with a new upload directly from the Media Library while keeping the exact same URL and attachment ID. Includes automatic browser cache-busting.
+*   **Smart WebP Exception**: When replacing a `.webp` image, the plugin allows `.jpg` or `.png` uploads, silently converting them to WebP in the background and replacing the original file automatically.
+*   **Virtual Media Folders**: Organize files in the Media Library using a nested virtual folders system without altering physical filesystem paths.
 *   **Drag-and-Drop Sidebar Interface**: Drag attachments into folders and drag folders to reorganize or nest them inside the media library grid browser and selection modals.
 *   **AJAX-Driven Operations**: Fully non-blocking AJAX actions for folder creation, renaming, deletion, and attachment reassignment.
 
@@ -112,6 +114,12 @@ A comprehensive suite of utility tools designed for developers and agencies to s
 ### 📧 15. SMTP & Email Delivery
 *   **Custom SMTP Configuration**: Configure reliable outbound email delivery by supplying custom SMTP credentials (Host, Port, Username, Password, Encryption).
 *   **Mailpit Developer Mode**: Automatically intercepts and routes all outgoing emails to a local Mailpit instance (port 1025) whenever the WordPress environment is running in development mode, preventing accidental client emails during local testing.
+
+### 🗄️ 16. Database Maintenance
+*   **Native Search & Replace**: A powerful Search and Replace GUI right in your dashboard.
+*   **WP-CLI Powered Engine**: Safely leverages WP-CLI `search-replace` in the background for reliable database operations without memory limit crashes.
+*   **Dry Run Support**: Test your replacements before committing them to the database.
+*   **Clean HTML Logging**: Outputs precise `--report-changed-only` tables natively parsed from WP-CLI raw outputs to show you exactly which tables were modified.
 
 ---
 

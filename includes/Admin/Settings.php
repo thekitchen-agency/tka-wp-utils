@@ -126,6 +126,7 @@ class Settings
 					'order_post_types' => [],
 					'duplicate_enabled' => 0,
 					'duplicate_post_types' => [],
+					'replace_media_enabled' => 0,
 					'hidden_admin_menus' => [],
 					'admin_bar_cleanup' => [],
 					'disabled_dashboard_widgets' => [],
@@ -193,6 +194,8 @@ class Settings
 					'wpml_disable_adjust_ids' => 0,
 					'wpml_disable_canonical_redirects_ajax' => 0,
 					'gutenberg_dequeue_block_styles' => 0,
+					'deferred_scripts' => [],
+					'deferred_scripts_custom' => '',
 					'heartbeat_control' => 'default',
 					'heartbeat_frequency' => 60,
 					'revisions_limit' => -1,
@@ -288,6 +291,7 @@ class Settings
 			'order_post_types' => [],
 			'duplicate_enabled' => 0,
 			'duplicate_post_types' => [],
+			'replace_media_enabled' => 0,
 			'media_folders_enabled' => 0,
 			'hidden_admin_menus' => [],
 			'admin_bar_cleanup' => [],
@@ -353,6 +357,8 @@ class Settings
 			'wpml_disable_adjust_ids' => 0,
 			'wpml_disable_canonical_redirects_ajax' => 0,
 			'gutenberg_dequeue_block_styles' => 0,
+			'deferred_scripts' => [],
+			'deferred_scripts_custom' => '',
 			'heartbeat_control' => 'default',
 			'heartbeat_frequency' => 60,
 			'revisions_limit' => -1,
@@ -452,13 +458,8 @@ class Settings
 			}
 
 			$sanitized['duplicate_enabled'] = isset($input['duplicate_enabled']) ? 1 : 0;
-			$sanitized['duplicate_post_types'] = [];
-			if (isset($input['duplicate_post_types']) && is_array($input['duplicate_post_types'])) {
-				foreach ($input['duplicate_post_types'] as $post_type) {
-					$sanitized['duplicate_post_types'][] = sanitize_text_field($post_type);
-				}
-			}
-
+			$sanitized['duplicate_post_types'] = isset($input['duplicate_post_types']) && is_array($input['duplicate_post_types']) ? array_map('sanitize_text_field', $input['duplicate_post_types']) : [];
+			$sanitized['replace_media_enabled'] = isset($input['replace_media_enabled']) ? 1 : 0;
 			$sanitized['media_folders_enabled'] = isset($input['media_folders_enabled']) ? 1 : 0;
 
 			$sanitized['obfuscate_author_urls'] = isset($input['obfuscate_author_urls']) ? 1 : 0;
@@ -621,6 +622,14 @@ class Settings
 			$sanitized['wpml_disable_canonical_redirects_ajax'] = isset($input['wpml_disable_canonical_redirects_ajax']) ? 1 : 0;
 			$sanitized['gutenberg_dequeue_block_styles'] = isset($input['gutenberg_dequeue_block_styles']) ? 1 : 0;
 
+			$sanitized['deferred_scripts'] = [];
+			if (isset($input['deferred_scripts']) && is_array($input['deferred_scripts'])) {
+				foreach ($input['deferred_scripts'] as $script) {
+					$sanitized['deferred_scripts'][] = sanitize_text_field($script);
+				}
+			}
+			$sanitized['deferred_scripts_custom'] = isset($input['deferred_scripts_custom']) ? sanitize_textarea_field($input['deferred_scripts_custom']) : '';
+
 			// Heartbeat
 			$allowed_heartbeat = ['default', 'disable_everywhere', 'disable_dashboard', 'allow_only_post_edit'];
 			$sanitized['heartbeat_control'] = (isset($input['heartbeat_control']) && in_array($input['heartbeat_control'], $allowed_heartbeat, true)) ? $input['heartbeat_control'] : 'default';
@@ -755,23 +764,23 @@ class Settings
 								<nav class="tka-dashboard-nav">
 									<a href="#general" class="tka-nav-item active" data-tab="general">
 										<span class="dashicons dashicons-admin-settings"></span>
-										<?php esc_html_e('Editor & Widgets', 'tka-wp-utils'); ?>
-									</a>
-									<a href="#gutenberg" class="tka-nav-item" data-tab="gutenberg">
-										<span class="dashicons dashicons-edit"></span>
-										<?php esc_html_e('Gutenberg Control', 'tka-wp-utils'); ?>
+										<?php esc_html_e('Editor & Blocks', 'tka-wp-utils'); ?>
 									</a>
 									<a href="#uploads" class="tka-nav-item" data-tab="uploads">
 										<span class="dashicons dashicons-shield"></span>
 										<?php esc_html_e('Security', 'tka-wp-utils'); ?>
 									</a>
-									<a href="#various" class="tka-nav-item" data-tab="various">
-										<span class="dashicons dashicons-admin-generic"></span>
-										<?php esc_html_e('Various Settings', 'tka-wp-utils'); ?>
+									<a href="#frontend-optimization" class="tka-nav-item" data-tab="frontend-optimization">
+										<span class="dashicons dashicons-performance"></span>
+										<?php esc_html_e('Frontend Optimization', 'tka-wp-utils'); ?>
 									</a>
 									<a href="#content" class="tka-nav-item" data-tab="content">
 										<span class="dashicons dashicons-category"></span>
 										<?php esc_html_e('Content Management', 'tka-wp-utils'); ?>
+									</a>
+									<a href="#database" class="tka-nav-item" data-tab="database">
+										<span class="dashicons dashicons-database"></span>
+										<?php esc_html_e('Database', 'tka-wp-utils'); ?>
 									</a>
 									<?php if (AdminInterface::isCurrentUserInstaller()): ?>
 											<a href="#admin-interface" class="tka-nav-item" data-tab="admin-interface">
@@ -857,11 +866,11 @@ class Settings
 									?>
 									<input type="hidden" name="tka_wp_utils_options[form_context]" value="general_settings">
 
-									<!-- GENERAL PANEL -->
+									<!-- EDITOR & BLOCKS PANEL -->
 									<section id="panel-general" class="tka-tab-panel active">
-										<h2><?php esc_html_e('Classic Experience Settings', 'tka-wp-utils'); ?></h2>
+										<h2><?php esc_html_e('Editor & Block Control', 'tka-wp-utils'); ?></h2>
 										<p class="section-desc">
-											<?php esc_html_e('Restore the tried-and-true classic WordPress editors and widget workflows.', 'tka-wp-utils'); ?>
+											<?php esc_html_e('Customize your content editing experience by controlling the Classic Editor, Classic Widgets, and Gutenberg blocks.', 'tka-wp-utils'); ?>
 										</p>
 
 										<div class="tka-settings-card">
@@ -894,17 +903,9 @@ class Settings
 													</label>
 												</div>
 											</div>
-										</div>
-									</section>
 
-									<!-- GUTENBERG PANEL -->
-									<section id="panel-gutenberg" class="tka-tab-panel">
-										<h2><?php esc_html_e('Gutenberg Editor Control', 'tka-wp-utils'); ?></h2>
-										<p class="section-desc">
-											<?php esc_html_e('Decide exactly where and when the Gutenberg Block Editor is active.', 'tka-wp-utils'); ?>
-										</p>
+											<hr style="border: 0; border-top: 1px solid var(--tka-border); margin: 20px 0;">
 
-										<div class="tka-settings-card">
 											<div class="tka-setting-row stack">
 												<div class="tka-setting-label">
 													<strong><?php esc_html_e('Disable Gutenberg Block Editor', 'tka-wp-utils'); ?></strong>
@@ -1060,9 +1061,9 @@ class Settings
 										</div>
 									</section>
 
-									<!-- VARIOUS PANEL -->
-									<section id="panel-various" class="tka-tab-panel">
-										<h2><?php esc_html_e('Various Settings & Optimizations', 'tka-wp-utils'); ?></h2>
+									<!-- FRONTEND OPTIMIZATION PANEL -->
+									<section id="panel-frontend-optimization" class="tka-tab-panel">
+										<h2><?php esc_html_e('Frontend Optimization', 'tka-wp-utils'); ?></h2>
 										<p class="section-desc">
 											<?php esc_html_e('Clean up unnecessary assets, restrict API endpoints, and optimize the WordPress backend/frontend environment.', 'tka-wp-utils'); ?>
 										</p>
@@ -1279,6 +1280,58 @@ class Settings
 												</div>
 											</div>
 										</div>
+
+										<!-- SCRIPTS OPTIMIZER CARD -->
+										<h3 style="margin-top: 30px; margin-bottom: 15px; font-size: 1.2em; font-weight: 600; border-bottom: 1px solid var(--tka-border); padding-bottom: 8px;"><?php esc_html_e('Script Optimizer', 'tka-wp-utils'); ?></h3>
+										<p class="section-desc" style="margin-bottom: 20px;">
+											<?php esc_html_e('Defer the loading of useless or non-critical frontend WordPress scripts to improve page speed and Core Web Vitals.', 'tka-wp-utils'); ?>
+										</p>
+
+										<div class="tka-settings-card">
+											<div class="tka-setting-row stack">
+												<div class="tka-setting-label">
+													<strong><?php esc_html_e('Core WordPress Scripts', 'tka-wp-utils'); ?></strong>
+													<p><?php esc_html_e('Select which commonly enqueued WordPress scripts you want to defer on the frontend.', 'tka-wp-utils'); ?></p>
+												</div>
+												<div class="tka-setting-control">
+													<div style="margin-bottom: 10px;">
+														<button type="button" class="button button-secondary tka-btn-small" id="tka-toggle-all-scripts"><?php esc_html_e('Toggle All', 'tka-wp-utils'); ?></button>
+													</div>
+													<?php
+													$common_scripts = [
+														'wp-i18n' => __('wp-i18n (Internationalization)', 'tka-wp-utils'),
+														'wp-a11y' => __('wp-a11y (Accessibility)', 'tka-wp-utils'),
+														'wp-hooks' => __('wp-hooks (Hooks API)', 'tka-wp-utils'),
+														'wp-polyfill' => __('wp-polyfill (Browser Polyfills)', 'tka-wp-utils'),
+														'wp-api-fetch' => __('wp-api-fetch (REST API Fetch)', 'tka-wp-utils'),
+														'lodash' => __('lodash (Utility Library)', 'tka-wp-utils'),
+														'comment-reply' => __('comment-reply (Threaded Comments)', 'tka-wp-utils'),
+														'wp-embed' => __('wp-embed (oEmbed Support)', 'tka-wp-utils'),
+														'regenerator-runtime' => __('regenerator-runtime (Babel Async)', 'tka-wp-utils'),
+														'wp-dom-ready' => __('wp-dom-ready (DOM Ready Utility)', 'tka-wp-utils'),
+													];
+													$deferred_scripts = $options['deferred_scripts'] ?? [];
+													foreach ($common_scripts as $handle => $label) :
+														$is_checked = in_array($handle, $deferred_scripts, true);
+													?>
+														<label class="tka-checkbox-label" style="display:block; margin-bottom:8px;">
+															<input type="checkbox" name="tka_wp_utils_options[deferred_scripts][]" value="<?php echo esc_attr($handle); ?>" <?php checked($is_checked); ?>>
+															<?php echo esc_html($label); ?>
+														</label>
+													<?php endforeach; ?>
+												</div>
+											</div>
+
+											<div class="tka-setting-row stack">
+												<div class="tka-setting-label">
+													<strong><?php esc_html_e('Custom Scripts to Defer', 'tka-wp-utils'); ?></strong>
+													<p><?php esc_html_e('Enter the handles of any other scripts you want to defer (one per line). These can be third-party plugin scripts or custom theme scripts.', 'tka-wp-utils'); ?></p>
+												</div>
+												<div class="tka-setting-control">
+													<textarea name="tka_wp_utils_options[deferred_scripts_custom]" rows="5" class="large-text code" placeholder="contact-form-7&#10;woocommerce-general&#10;some-custom-script"><?php echo esc_textarea($options['deferred_scripts_custom'] ?? ''); ?></textarea>
+												</div>
+											</div>
+										</div>
 									</section>
 
 									<!-- CONTENT MANAGEMENT PANEL -->
@@ -1378,6 +1431,147 @@ class Settings
 															name="tka_wp_utils_options[media_folders_enabled]" value="1" <?php checked(1, $options['media_folders_enabled'] ?? 0); ?>>
 														<span class="tka-slider"></span>
 													</label>
+												</div>
+											</div>
+
+											<hr style="border: 0; border-top: 1px solid var(--tka-border); margin: 20px 0;">
+
+											<!-- Replace Media toggle -->
+											<div class="tka-setting-row">
+												<div class="tka-setting-label">
+													<strong><?php esc_html_e('Enable Replace Media', 'tka-wp-utils'); ?></strong>
+													<p><?php esc_html_e('Adds a "Replace File" button to the Media Library, allowing you to seamlessly overwrite images and PDFs with a new upload while keeping the exact same URL and attachment ID.', 'tka-wp-utils'); ?>
+													</p>
+												</div>
+												<div class="tka-setting-control">
+													<label class="tka-switch">
+														<input type="checkbox" name="tka_wp_utils_options[replace_media_enabled]" value="1" <?php checked(1, $options['replace_media_enabled'] ?? 0); ?>>
+														<span class="tka-slider"></span>
+													</label>
+												</div>
+											</div>
+										</div>
+									</section>
+
+									<!-- DATABASE PANEL -->
+									<section id="panel-database" class="tka-tab-panel">
+										<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+											<h2 style="margin: 0;"><?php esc_html_e('Database Maintenance', 'tka-wp-utils'); ?></h2>
+											<button type="button" class="button button-primary" id="tka-db-clean-all"><?php esc_html_e('Run All Optimizations', 'tka-wp-utils'); ?></button>
+										</div>
+										<p class="section-desc">
+											<?php esc_html_e('Safely clean up your WordPress database, remove orphaned data, and optimize tables to improve performance. Click an action to run it immediately.', 'tka-wp-utils'); ?>
+										</p>
+										
+										<div id="tka-db-messages" style="margin-bottom: 15px;"></div>
+										<input type="hidden" id="tka_wp_utils_db_nonce" value="<?php echo esc_attr(wp_create_nonce('tka_wp_utils_db_nonce')); ?>">
+
+										<div class="tka-settings-card">
+											<?php
+											$db_actions = [
+												'revisions' => [ 'label' => __('Post Revisions', 'tka-wp-utils'), 'desc' => __('Old revisions of posts and pages.', 'tka-wp-utils') ],
+												'auto_drafts' => [ 'label' => __('Auto-Drafts', 'tka-wp-utils'), 'desc' => __('Orphaned auto-drafts saved while editing.', 'tka-wp-utils') ],
+												'trashed_posts' => [ 'label' => __('Trashed Posts', 'tka-wp-utils'), 'desc' => __('Posts and pages currently in the trash.', 'tka-wp-utils') ],
+												'spam_comments' => [ 'label' => __('Spam & Trashed Comments', 'tka-wp-utils'), 'desc' => __('Comments marked as spam or in the trash.', 'tka-wp-utils') ],
+												'orphan_postmeta' => [ 'label' => __('Orphaned Post Meta', 'tka-wp-utils'), 'desc' => __('Meta data for posts that no longer exist.', 'tka-wp-utils') ],
+												'orphan_commentmeta' => [ 'label' => __('Orphaned Comment Meta', 'tka-wp-utils'), 'desc' => __('Meta data for comments that no longer exist.', 'tka-wp-utils') ],
+												'expired_transients' => [ 'label' => __('Expired Transients', 'tka-wp-utils'), 'desc' => __('Temporary cached options that have expired.', 'tka-wp-utils') ],
+												'optimize_tables' => [ 'label' => __('Optimize Tables', 'tka-wp-utils'), 'desc' => __('Reclaim unused space and defragment data files.', 'tka-wp-utils') ],
+												'postmeta_index' => [ 'label' => __('PostMeta Optimization Index', 'tka-wp-utils'), 'desc' => __('Toggle a custom composite index to speed up complex meta_query searches. Recommended for WooCommerce or heavy filtering plugins.', 'tka-wp-utils') ],
+											];
+											
+											foreach ($db_actions as $key => $action) :
+											?>
+											<div class="tka-setting-row" style="align-items: center;">
+												<div class="tka-setting-label">
+													<strong><?php echo esc_html($action['label']); ?></strong>
+													<p><?php echo esc_html($action['desc']); ?></p>
+												</div>
+												<div class="tka-setting-control" style="text-align: right; min-width: 200px;">
+													<?php if ($key !== 'optimize_tables') : ?>
+														<span class="tka-db-count" id="tka-db-count-<?php echo esc_attr($key); ?>" style="display:inline-block; margin-right: 15px; font-weight: bold; color: var(--tka-text-muted);">
+															<span class="spinner is-active" style="float:none; margin:0;"></span>
+														</span>
+													<?php endif; ?>
+													<button type="button" class="button button-secondary tka-db-clean-btn" data-action="<?php echo esc_attr($key); ?>">
+														<?php 
+															if ($key === 'optimize_tables') {
+																esc_html_e('Optimize', 'tka-wp-utils');
+															} elseif ($key === 'postmeta_index') {
+																esc_html_e('Toggle Index', 'tka-wp-utils');
+															} else {
+																esc_html_e('Clean', 'tka-wp-utils');
+															}
+														?>
+													</button>
+												</div>
+											</div>
+											<?php endforeach; ?>
+										</div>
+
+										<h3 style="margin-top: 30px; margin-bottom: 15px; font-size: 1.2em; font-weight: 600; border-bottom: 1px solid var(--tka-border); padding-bottom: 8px;"><?php esc_html_e('Search & Replace (WP-CLI)', 'tka-wp-utils'); ?></h3>
+										<p class="section-desc" style="margin-bottom: 20px;">
+											<?php esc_html_e('Safely search and replace strings across your entire database. Serialized data (like arrays or objects) is natively preserved. A database backup is automatically created unless performing a dry run.', 'tka-wp-utils'); ?>
+										</p>
+
+										<div class="tka-settings-card">
+											<div class="tka-setting-row">
+												<div class="tka-setting-label">
+													<strong><?php esc_html_e('Show Search & Replace Utility', 'tka-wp-utils'); ?></strong>
+													<p><?php esc_html_e('Reveal the inputs to perform a search and replace operation on the database.', 'tka-wp-utils'); ?></p>
+												</div>
+												<div class="tka-setting-control">
+													<label class="tka-switch">
+														<input type="checkbox" id="tka-sr-enabled-toggle" value="1">
+														<span class="tka-slider"></span>
+													</label>
+												</div>
+											</div>
+
+											<div class="nested-search-replace" style="display: none;">
+												<hr style="border: 0; border-top: 1px solid var(--tka-border); margin: 0 0 20px 0;">
+												
+												<div class="tka-setting-row" style="display: flex; gap: 20px; border-bottom: 1px solid var(--tka-border); padding-bottom: 20px; margin-bottom: 20px;">
+													<div style="flex: 1;">
+														<div class="tka-setting-label" style="margin-bottom: 8px;">
+															<strong><?php esc_html_e('Search String', 'tka-wp-utils'); ?></strong>
+														</div>
+														<input type="text" id="tka-sr-search" class="regular-text" placeholder="http://old-url.local" style="width: 100%; max-width: none;">
+													</div>
+													<div style="flex: 1;">
+														<div class="tka-setting-label" style="margin-bottom: 8px;">
+															<strong><?php esc_html_e('Replace String', 'tka-wp-utils'); ?></strong>
+														</div>
+														<input type="text" id="tka-sr-replace" class="regular-text" placeholder="https://new-url.com" style="width: 100%; max-width: none;">
+													</div>
+												</div>
+
+												<div class="tka-setting-row">
+													<div class="tka-setting-label">
+														<strong><?php esc_html_e('Dry Run', 'tka-wp-utils'); ?></strong>
+														<p><?php esc_html_e('Simulate the replacement without actually modifying the database. Highly recommended for testing first.', 'tka-wp-utils'); ?></p>
+													</div>
+													<div class="tka-setting-control">
+														<label class="tka-switch">
+															<input type="checkbox" id="tka-sr-dry-run" value="1" checked>
+															<span class="tka-slider"></span>
+														</label>
+													</div>
+												</div>
+
+												<div class="tka-setting-row">
+													<div class="tka-setting-control" style="width: 100%;">
+														<button type="button" class="button button-primary" id="tka-sr-btn" style="width: 100%; text-align: center;">
+															<?php esc_html_e('Run Search & Replace', 'tka-wp-utils'); ?>
+														</button>
+													</div>
+												</div>
+
+												<!-- Results Area -->
+												<div id="tka-sr-results" style="display: none; margin-top: 15px; padding: 15px; background: var(--tka-bg-main); border: 1px solid var(--tka-border); border-radius: 6px;">
+													<h4 style="margin-top: 0; margin-bottom: 10px;"><?php esc_html_e('Output', 'tka-wp-utils'); ?></h4>
+													<div id="tka-sr-backup-msg" style="margin-bottom: 10px; font-weight: 600; color: var(--tka-primary);"></div>
+													<div id="tka-sr-output" style="max-height: 300px; overflow-y: auto; font-family: monospace; font-size: 12px;"></div>
 												</div>
 											</div>
 										</div>

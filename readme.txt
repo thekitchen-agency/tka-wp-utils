@@ -59,6 +59,13 @@ Since images are permanently converted to WebP in the database, deactivating the
 
 == Changelog ==
 
+= 1.11.0 =
+*   Added "Replace Media" feature: Seamlessly overwrite images and PDFs with a new upload directly from the Media Library while keeping the exact same URL and attachment ID.
+*   Added Smart WebP Exception: When replacing a `.webp` image, you can now upload a `.jpg` or `.png`, and the plugin will seamlessly convert it to WebP in the background and replace the original file.
+*   Added automatic cache-busting logic for media replacements, preventing aggressive browser caching in the Media Library list and grid views without altering public URLs.
+*   Merged "Gutenberg Control" and "Editor & Widgets" tabs into a unified "Editor & Blocks" settings tab for a cleaner UI.
+*   Rebuilt Database Search & Replace UI: It now outputs a clean, native HTML table directly in the dashboard and utilizes the WP-CLI `--report-changed-only` flag for precise, readable logging.
+
 = 1.10.0 =
 *   Added dynamic ACF Custom Field Extensions architecture. You can now drop PHP files into the `/includes/AcfExtensions/` directory and they will be automatically discovered, registered, and presented as toggleable checkboxes in the plugin's ACF settings tab.
 *   Migrated the Gravity Forms Custom Field Fallback logic out of the core into the new dynamic extensions architecture (`acf-gravity-forms-fallback.php`).

@@ -8,6 +8,7 @@ use TKA\WPUtils\Features\ClassicWidgets;
 use TKA\WPUtils\Features\GutenbergManager;
 use TKA\WPUtils\Features\SvgValidator;
 use TKA\WPUtils\Features\VariousCleaner;
+use TKA\WPUtils\Features\ReplaceMedia;
 use TKA\WPUtils\Features\ContentOrder;
 use TKA\WPUtils\Features\ContentDuplicate;
 use TKA\WPUtils\Features\AdminInterface;
@@ -24,6 +25,8 @@ use TKA\WPUtils\Features\WpmlOptimizer;
 use TKA\WPUtils\Features\HeartbeatRevisionManager;
 use TKA\WPUtils\Features\HtaccessManager;
 use TKA\WPUtils\Features\SmtpManager;
+use TKA\WPUtils\Features\ScriptDeferManager;
+use TKA\WPUtils\Features\DatabaseMaintenance;
 
 /**
  * Main Plugin Coordinator class.
@@ -123,6 +126,20 @@ class Plugin
 		// Various cleaner utilities
 		$various_cleaner = new VariousCleaner($options);
 		$various_cleaner->hook();
+
+		// Script Defer Manager
+		$script_defer_manager = new ScriptDeferManager($options);
+		$script_defer_manager->hook();
+
+		// Database Maintenance
+		$db_maintenance = new DatabaseMaintenance();
+		$db_maintenance->hook();
+
+		// Replace Media
+		if (!empty($options['replace_media_enabled'])) {
+			$replace_media = new ReplaceMedia();
+			$replace_media->hook();
+		}
 
 		// Heartbeat and Revisions manager
 		$heartbeat_revision_manager = new HeartbeatRevisionManager($options);
