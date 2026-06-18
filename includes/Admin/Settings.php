@@ -202,6 +202,13 @@ class Settings
 					'htaccess_performance' => 0,
 					'htaccess_cors' => 0,
 					'htaccess_prevent_author_scan' => 0,
+					'smtp_enabled' => 0,
+					'smtp_mailpit_dev' => 1,
+					'smtp_host' => '',
+					'smtp_port' => '',
+					'smtp_username' => '',
+					'smtp_password' => '',
+					'smtp_encryption' => 'none',
 				],
 			]
 		);
@@ -355,6 +362,13 @@ class Settings
 			'htaccess_performance' => 0,
 			'htaccess_cors' => 0,
 			'htaccess_prevent_author_scan' => 0,
+			'smtp_enabled' => 0,
+			'smtp_mailpit_dev' => 1,
+			'smtp_host' => '',
+			'smtp_port' => '',
+			'smtp_username' => '',
+			'smtp_password' => '',
+			'smtp_encryption' => 'none',
 		];
 
 		$sanitized = array_merge($defaults, $existing);
@@ -615,6 +629,17 @@ class Settings
 			// Revisions & Autosave
 			$sanitized['revisions_limit'] = isset($input['revisions_limit']) ? intval($input['revisions_limit']) : -1;
 			$sanitized['autosave_interval'] = isset($input['autosave_interval']) ? max(60, min(300, intval($input['autosave_interval']))) : 60;
+
+			// SMTP Settings
+			$sanitized['smtp_enabled'] = isset($input['smtp_enabled']) ? 1 : 0;
+			$sanitized['smtp_mailpit_dev'] = isset($input['smtp_mailpit_dev']) ? 1 : 0;
+			$sanitized['smtp_host'] = isset($input['smtp_host']) ? sanitize_text_field($input['smtp_host']) : '';
+			$sanitized['smtp_port'] = isset($input['smtp_port']) ? absint($input['smtp_port']) : '';
+			$sanitized['smtp_username'] = isset($input['smtp_username']) ? sanitize_text_field($input['smtp_username']) : '';
+			$sanitized['smtp_password'] = isset($input['smtp_password']) ? sanitize_text_field($input['smtp_password']) : '';
+			
+			$allowed_encryption = ['none', 'ssl', 'tls'];
+			$sanitized['smtp_encryption'] = (isset($input['smtp_encryption']) && in_array($input['smtp_encryption'], $allowed_encryption, true)) ? $input['smtp_encryption'] : 'none';
 		}
 
 		return $sanitized;
@@ -797,6 +822,10 @@ class Settings
 									<a href="#htaccess" class="tka-nav-item" data-tab="htaccess">
 										<span class="dashicons dashicons-editor-code"></span>
 										<?php esc_html_e('.htaccess Control', 'tka-wp-utils'); ?>
+									</a>
+									<a href="#smtp" class="tka-nav-item" data-tab="smtp">
+										<span class="dashicons dashicons-email"></span>
+										<?php esc_html_e('SMTP & Email', 'tka-wp-utils'); ?>
 									</a>
 							
 								</nav>
@@ -2824,6 +2853,104 @@ class Settings
 													}
 												?></pre>
 											</div>
+										</div>
+									</section>
+
+									<!-- SMTP PANEL -->
+									<section id="panel-smtp" class="tka-tab-panel">
+										<h2><?php esc_html_e('SMTP & Email Configuration', 'tka-wp-utils'); ?></h2>
+										<p class="section-desc">
+											<?php esc_html_e('Configure WordPress to route outgoing emails through an external SMTP server, and enable local Mailpit catching during development.', 'tka-wp-utils'); ?>
+										</p>
+
+										<div class="tka-settings-card">
+											<div class="tka-setting-row">
+												<div class="tka-setting-label">
+													<strong><?php esc_html_e('Enable Custom SMTP', 'tka-wp-utils'); ?></strong>
+													<p><?php esc_html_e('Intercepts WordPress emails and forces them to use the SMTP settings defined below.', 'tka-wp-utils'); ?>
+													</p>
+												</div>
+												<div class="tka-setting-control">
+													<label class="tka-switch">
+														<input type="checkbox" name="tka_wp_utils_options[smtp_enabled]" value="1"
+															<?php checked(1, $options['smtp_enabled'] ?? 0); ?>>
+														<span class="tka-slider"></span>
+													</label>
+												</div>
+											</div>
+
+											<div class="tka-setting-row">
+												<div class="tka-setting-label">
+													<strong><?php esc_html_e('Local Mailpit for Development', 'tka-wp-utils'); ?></strong>
+													<p><?php esc_html_e('If the environment type is set to "development" (e.g. WP_ENV="development"), automatically overrides the settings below and routes emails to a local Mailpit instance on port 1025.', 'tka-wp-utils'); ?>
+													</p>
+												</div>
+												<div class="tka-setting-control">
+													<label class="tka-switch">
+														<input type="checkbox" name="tka_wp_utils_options[smtp_mailpit_dev]" value="1"
+															<?php checked(1, $options['smtp_mailpit_dev'] ?? 1); ?>>
+														<span class="tka-slider"></span>
+													</label>
+												</div>
+											</div>
+
+											<div class="tka-setting-row">
+												<div class="tka-setting-label">
+													<strong><?php esc_html_e('SMTP Host', 'tka-wp-utils'); ?></strong>
+												</div>
+												<div class="tka-setting-control">
+													<input type="text" name="tka_wp_utils_options[smtp_host]"
+														value="<?php echo esc_attr($options['smtp_host'] ?? ''); ?>"
+														placeholder="smtp.example.com" class="regular-text">
+												</div>
+											</div>
+
+											<div class="tka-setting-row">
+												<div class="tka-setting-label">
+													<strong><?php esc_html_e('SMTP Port', 'tka-wp-utils'); ?></strong>
+												</div>
+												<div class="tka-setting-control">
+													<input type="number" name="tka_wp_utils_options[smtp_port]"
+														value="<?php echo esc_attr($options['smtp_port'] ?? ''); ?>"
+														placeholder="587" class="small-text">
+												</div>
+											</div>
+
+											<div class="tka-setting-row">
+												<div class="tka-setting-label">
+													<strong><?php esc_html_e('Encryption', 'tka-wp-utils'); ?></strong>
+												</div>
+												<div class="tka-setting-control">
+													<select name="tka_wp_utils_options[smtp_encryption]">
+														<option value="none" <?php selected('none', $options['smtp_encryption'] ?? 'none'); ?>>None</option>
+														<option value="ssl" <?php selected('ssl', $options['smtp_encryption'] ?? 'none'); ?>>SSL</option>
+														<option value="tls" <?php selected('tls', $options['smtp_encryption'] ?? 'none'); ?>>TLS</option>
+													</select>
+												</div>
+											</div>
+
+											<div class="tka-setting-row">
+												<div class="tka-setting-label">
+													<strong><?php esc_html_e('SMTP Username', 'tka-wp-utils'); ?></strong>
+												</div>
+												<div class="tka-setting-control">
+													<input type="text" name="tka_wp_utils_options[smtp_username]"
+														value="<?php echo esc_attr($options['smtp_username'] ?? ''); ?>"
+														class="regular-text" autocomplete="off">
+												</div>
+											</div>
+
+											<div class="tka-setting-row">
+												<div class="tka-setting-label">
+													<strong><?php esc_html_e('SMTP Password', 'tka-wp-utils'); ?></strong>
+												</div>
+												<div class="tka-setting-control">
+													<input type="password" name="tka_wp_utils_options[smtp_password]"
+														value="<?php echo esc_attr($options['smtp_password'] ?? ''); ?>"
+														class="regular-text" autocomplete="new-password">
+												</div>
+											</div>
+
 										</div>
 									</section>
 

@@ -3,7 +3,7 @@ Contributors: thekitchen-agency
 Tags: classic editor, svg upload, admin columns, menu organizer, hardening, image optimization, woocommerce, woocommerce optimization
 Requires at least: 6.0
 Tested up to: 6.5
-Stable tag: 1.8.0
+Stable tag: 1.9.0
 Requires PHP: 8.3
 License: MIT
 License URI: https://opensource.org/licenses/MIT
@@ -35,6 +35,7 @@ TKA WP Utils is an all-in-one utility plugin designed to help developers and age
 *   **Virtual Media Folders**: Organize your WordPress Media Library with virtual hierarchical folders and a drag-and-drop file organization sidebar. Fully integrated with standard media grid and selection modals.
 *   **WPML Performance Optimization**: Improve server response time and reduce database overhead on multilingual sites. Adds options to bypass "Adjust IDs for multilingual functionality" runtime lookups and suppress canonical redirects during REST/AJAX background operations.
 *   **Advanced Resource Optimizations**: Adjust or disable the WordPress Heartbeat API, programmatically limit post revisions, extend autosave intervals, and dequeue core Gutenberg block styles globally on the frontend to optimize page weight and server resources.
+*   **SMTP & Mail Settings**: Configure custom SMTP credentials for reliable email delivery. Includes an automatic developer mode override that seamlessly routes outbound emails to a local Mailpit instance during local development.
 
 == Installation ==
 
@@ -57,6 +58,11 @@ Our plugin uses a database-first approach: it converts physical files to WebP an
 Since images are permanently converted to WebP in the database, deactivating the plugin leaves WebP files active in your media library. If you want to keep original JPEGs/PNGs for safe backup, make sure the "Keep Original Images" setting is toggled on before running bulk optimization.
 
 == Changelog ==
+
+= 1.9.0 =
+*   Added SMTP & Mail Settings tab to securely configure outbound email credentials (Host, Port, User, Password, Encryption).
+*   Integrated Mailpit Development Override, automatically routing all outbound emails to a local Mailpit instance (port 1025) when `WP_ENV` is set to `development`.
+*   Implemented `SmtpManager` to seamlessly hook into `phpmailer_init` for advanced SMTP routing.
 
 = 1.8.0 =
 *   Added Multi-User Superadmin access control, allowing designated administrators to access the plugin settings while hiding it entirely from regular administrators.

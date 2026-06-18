@@ -107,6 +107,10 @@ A comprehensive suite of utility tools designed for developers and agencies to s
 *   **Subdirectory Protection**: Automatically places/removes a secondary `.htaccess` file inside `wp-content/uploads/` to deny execution of `.php` and similar executable scripts.
 *   **Cache-Clearing Integration**: Purges popular caching plugins (WP Super Cache, W3 Total Cache, WP Rocket, SiteGround Optimizer) when saving configuration settings or running bulk image optimizations.
 
+### 📧 15. SMTP & Email Delivery
+*   **Custom SMTP Configuration**: Configure reliable outbound email delivery by supplying custom SMTP credentials (Host, Port, Username, Password, Encryption).
+*   **Mailpit Developer Mode**: Automatically intercepts and routes all outgoing emails to a local Mailpit instance (port 1025) whenever the WordPress environment is running in development mode, preventing accidental client emails during local testing.
+
 ---
 
 ## Directory Structure
@@ -153,6 +157,7 @@ tka-wp-utils/
 │   │   ├── PageTransitionAnimationRegistry.php  # Registry of predefined/custom animations
 │   │   ├── PageTransitions.php                  # Page transitions manager class
 │   │   ├── SecurityManager.php
+│   │   ├── SmtpManager.php                      # Custom SMTP & Mailpit override class
 │   │   ├── SvgValidator.php
 │   │   ├── MaintenanceMode.php
 │   │   ├── VariousCleaner.php

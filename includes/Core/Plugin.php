@@ -23,6 +23,7 @@ use TKA\WPUtils\Features\PageTransitions;
 use TKA\WPUtils\Features\WpmlOptimizer;
 use TKA\WPUtils\Features\HeartbeatRevisionManager;
 use TKA\WPUtils\Features\HtaccessManager;
+use TKA\WPUtils\Features\SmtpManager;
 
 /**
  * Main Plugin Coordinator class.
@@ -173,6 +174,10 @@ class Plugin
 		$image_optimizer = new ImageOptimizer($options);
 		$image_optimizer->hook();
 
+		// SMTP & Mail Settings
+		$smtp_manager = new SmtpManager($options);
+		$smtp_manager->hook();
+
 		// Custom Admin Columns manager
 		$columns_options = get_option('tka_wp_utils_columns', []);
 		if (!empty($columns_options)) {
@@ -182,7 +187,6 @@ class Plugin
 
 		// Load third-party integrations after all plugins are loaded
 		add_action('plugins_loaded', function () use ($options) {
-			error_log('plugins_loaded ran. WooCommerce active: ' . (class_exists('WooCommerce') ? 'YES' : 'NO'));
 			// ACF Integration (only runs if ACF is active)
 			if (class_exists('ACF')) {
 				$acf_manager = new AcfManager($options);
