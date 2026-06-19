@@ -3,7 +3,7 @@
  * Plugin Name:       TKA WP Utils
  * Plugin URI:        https://github.com/thekitchen-agency/tka-wp-utils
  * Description:       A collection of utility tools to customize and secure your WordPress experience, including Classic Editor, Classic Widgets, Disable Gutenberg (granular), and Safe SVG upload validation.
- * Version:           1.11.0
+ * Version:           1.12.0
  * Author:            TKA
  * Author URI:        https://wp-play.ddev.site
  * License:           MIT
@@ -11,7 +11,6 @@
  * Text Domain:       tka-wp-utils
  * Domain Path:       /languages
  * Requires PHP:      8.3
- * Requires at least: 6.0
  */
 
 // If this file is called directly, abort.
@@ -20,7 +19,7 @@ if (!defined('WPINC')) {
 }
 
 // Define plugin constants
-define('TKA_WP_UTILS_VERSION', '1.11.0');
+define('TKA_WP_UTILS_VERSION', '1.12.0');
 define('TKA_WP_UTILS_PATH', plugin_dir_path(__FILE__));
 define('TKA_WP_UTILS_URL', plugin_dir_url(__FILE__));
 

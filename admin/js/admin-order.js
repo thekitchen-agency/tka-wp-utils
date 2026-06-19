@@ -13,26 +13,32 @@ jQuery( document ).ready( function ( $ ) {
 		items: 'tr',
 		placeholder: 'ui-sortable-placeholder',
 		update: function ( event, ui ) {
-			var postIds = [];
+			var ids = [];
+			var isTerm = false;
 
 			$tbody.children( 'tr' ).each( function () {
 				var rowId = $( this ).attr( 'id' );
 				if ( rowId && rowId.indexOf( 'post-' ) === 0 ) {
-					postIds.push( rowId.replace( 'post-', '' ) );
+					ids.push( rowId.replace( 'post-', '' ) );
+				} else if ( rowId && rowId.indexOf( 'tag-' ) === 0 ) {
+					ids.push( rowId.replace( 'tag-', '' ) );
+					isTerm = true;
 				}
 			} );
 
-			if ( postIds.length === 0 ) {
+			if ( ids.length === 0 ) {
 				return;
 			}
 
 			// Add a subtle opacity while saving
 			$tbody.css( 'opacity', '0.6' );
 
+			var actionName = isTerm ? 'tka_wp_utils_save_term_order' : 'tka_wp_utils_save_order';
+
 			$.post( tkaWpUtilsOrder.ajaxUrl, {
-				action: 'tka_wp_utils_save_order',
+				action: actionName,
 				nonce: tkaWpUtilsOrder.nonce,
-				post_ids: postIds
+				ids: ids
 			}, function ( response ) {
 				$tbody.css( 'opacity', '1' );
 
@@ -45,7 +51,7 @@ jQuery( document ).ready( function ( $ ) {
 						ui.item.css( 'background-color', '' );
 					}, 200 );
 				} else {
-					alert( 'Error: Could not save posts order.' );
+					alert( 'Error: Could not save order.' );
 				}
 			} );
 		}

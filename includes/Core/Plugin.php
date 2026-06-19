@@ -9,7 +9,9 @@ use TKA\WPUtils\Features\GutenbergManager;
 use TKA\WPUtils\Features\SvgValidator;
 use TKA\WPUtils\Features\VariousCleaner;
 use TKA\WPUtils\Features\ReplaceMedia;
+use TKA\WPUtils\Features\RedirectManager;
 use TKA\WPUtils\Features\ContentOrder;
+use TKA\WPUtils\Features\TaxonomyOrder;
 use TKA\WPUtils\Features\ContentDuplicate;
 use TKA\WPUtils\Features\AdminInterface;
 use TKA\WPUtils\Features\SecurityManager;
@@ -141,6 +143,10 @@ class Plugin
 			$replace_media->hook();
 		}
 
+		// URL Redirects
+		$redirect_manager = new RedirectManager();
+		$redirect_manager->hook();
+
 		// Heartbeat and Revisions manager
 		$heartbeat_revision_manager = new HeartbeatRevisionManager($options);
 		$heartbeat_revision_manager->hook();
@@ -149,6 +155,12 @@ class Plugin
 		if (!empty($options['order_enabled']) && !empty($options['order_post_types'])) {
 			$content_order = new ContentOrder($options['order_post_types']);
 			$content_order->hook();
+		}
+
+		// Taxonomy ordering
+		if (!empty($options['order_enabled']) && !empty($options['order_taxonomies'])) {
+			$taxonomy_order = new TaxonomyOrder($options['order_taxonomies']);
+			$taxonomy_order->hook();
 		}
 
 		// Content duplication

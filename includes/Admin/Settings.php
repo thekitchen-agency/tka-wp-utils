@@ -94,6 +94,17 @@ class Settings
 			'tka-wp-utils-bulk-optimizer-media',
 			[$this, 'renderBulkOptimizerPage']
 		);
+
+		// Redirects manager as a Top-Level Menu (Available to all admins)
+		add_menu_page(
+			__('URL Redirects', 'tka-wp-utils'),
+			__('Redirects', 'tka-wp-utils'),
+			'manage_options',
+			'tka-wp-utils-redirects',
+			[$this, 'renderRedirectsPage'],
+			'dashicons-randomize',
+			81 // Position right below TKA WP Utils
+		);
 	}
 
 	/**
@@ -124,6 +135,7 @@ class Settings
 					'hide_admin_notices' => 0,
 					'order_enabled' => 0,
 					'order_post_types' => [],
+					'order_taxonomies' => [],
 					'duplicate_enabled' => 0,
 					'duplicate_post_types' => [],
 					'replace_media_enabled' => 0,
@@ -213,6 +225,15 @@ class Settings
 					'smtp_password' => '',
 					'smtp_encryption' => 'none',
 				],
+			]
+		);
+
+		register_setting(
+			'tka_wp_utils_redirects_group',
+			'tka_wp_utils_redirects',
+			[
+				'sanitize_callback' => [$this, 'sanitizeRedirects'],
+				'default' => []
 			]
 		);
 
@@ -449,7 +470,7 @@ class Settings
 			$sanitized['disable_front_dashicons'] = isset($input['disable_front_dashicons']) ? 1 : 0;
 
 			// Sanitize Content Management toggles
-			$sanitized['order_enabled'] = isset($input['order_enabled']) ? 1 : 0;
+			$sanitized['order_enabled'] = !empty($input['order_enabled']) ? 1 : 0;
 			$sanitized['order_post_types'] = [];
 			if (isset($input['order_post_types']) && is_array($input['order_post_types'])) {
 				foreach ($input['order_post_types'] as $post_type) {
@@ -457,7 +478,14 @@ class Settings
 				}
 			}
 
-			$sanitized['duplicate_enabled'] = isset($input['duplicate_enabled']) ? 1 : 0;
+			$sanitized['order_taxonomies'] = [];
+			if (isset($input['order_taxonomies']) && is_array($input['order_taxonomies'])) {
+				foreach ($input['order_taxonomies'] as $tax) {
+					$sanitized['order_taxonomies'][] = sanitize_text_field($tax);
+				}
+			}
+
+			$sanitized['duplicate_enabled'] = !empty($input['duplicate_enabled']) ? 1 : 0;
 			$sanitized['duplicate_post_types'] = isset($input['duplicate_post_types']) && is_array($input['duplicate_post_types']) ? array_map('sanitize_text_field', $input['duplicate_post_types']) : [];
 			$sanitized['replace_media_enabled'] = isset($input['replace_media_enabled']) ? 1 : 0;
 			$sanitized['media_folders_enabled'] = isset($input['media_folders_enabled']) ? 1 : 0;
@@ -661,6 +689,7 @@ class Settings
 	{
 		$allowed_hooks = [
 			'toplevel_page_' . self::MENU_SLUG,
+			'toplevel_page_tka-wp-utils-redirects',
 			'tka-wp-utils_page_tka-wp-utils-columns',
 			'tka-wp-utils_page_tka-wp-utils-menu-organizer',
 			'tka-wp-utils_page_tka-wp-utils-bulk-optimizer',
@@ -743,6 +772,7 @@ class Settings
 	{
 		$options = get_option('tka_wp_utils_options');
 		$public_post_types = get_post_types(['show_ui' => true], 'objects');
+		$public_taxonomies = get_taxonomies(['show_ui' => true], 'objects');
 		?>
 				<div class="wrap tka-wp-utils-wrap">
 					<div class="tka-dashboard">
@@ -1376,6 +1406,26 @@ class Settings
 																	value="<?php echo esc_attr($post_type->name); ?>" <?php checked(in_array($post_type->name, $options['order_post_types'] ?? [], true)); ?>>
 																<span><?php echo esc_html($post_type->label); ?> <code
 																		class="tka-code-badge"><?php echo esc_html($post_type->name); ?></code></span>
+															</label>
+													<?php endforeach; ?>
+												</div>
+											</div>
+
+											<!-- Order taxonomies selection grid -->
+											<div class="tka-setting-row nested-order-post-types"
+												style="<?php echo (!empty($options['order_enabled'])) ? 'display: block;' : 'display: none;'; ?>">
+												<div class="tka-setting-label">
+													<strong><?php esc_html_e('Choose Taxonomies for Drag & Drop Sorting', 'tka-wp-utils'); ?></strong>
+													<p><?php esc_html_e('Select which taxonomies (Categories, Tags, etc.) can be manually ordered.', 'tka-wp-utils'); ?>
+													</p>
+												</div>
+												<div class="tka-checkbox-grid">
+													<?php foreach ($public_taxonomies as $tax): ?>
+															<label class="tka-checkbox-item">
+																<input type="checkbox" name="tka_wp_utils_options[order_taxonomies][]"
+																	value="<?php echo esc_attr($tax->name); ?>" <?php checked(in_array($tax->name, $options['order_taxonomies'] ?? [], true)); ?>>
+																<span><?php echo esc_html($tax->label); ?> <code
+																		class="tka-code-badge"><?php echo esc_html($tax->name); ?></code></span>
 															</label>
 													<?php endforeach; ?>
 												</div>
@@ -3743,5 +3793,159 @@ class Settings
 					</div>
 				</div>
 				<?php
+	}
+
+	/**
+	 * Sanitize Redirects Array.
+	 */
+	public function sanitizeRedirects($input): array
+	{
+		$sanitized = [];
+		if (is_array($input)) {
+			foreach ($input as $redirect) {
+				if (empty($redirect['old_url']) || empty($redirect['new_url'])) {
+					continue;
+				}
+				$sanitized[] = [
+					'old_url' => sanitize_text_field(wp_unslash($redirect['old_url'])),
+					'new_url' => esc_url_raw(wp_unslash($redirect['new_url'])),
+				];
+			}
+		}
+		return $sanitized;
+	}
+
+	/**
+	 * Render the URL Redirects settings page.
+	 */
+	public function renderRedirectsPage(): void
+	{
+		if (!current_user_can('manage_options')) {
+			return;
+		}
+
+		$redirects = get_option('tka_wp_utils_redirects', []);
+		?>
+		<div class="wrap tka-wp-utils-wrap">
+			<div class="tka-dashboard">
+				<!-- Header Section -->
+				<header class="tka-dashboard-header">
+					<div class="tka-header-brand">
+						<span class="dashicons dashicons-randomize" style="font-size: 32px; width: 32px; height: 32px; color: #ffffff;"></span>
+						<h1><?php esc_html_e('TKA WP Utils', 'tka-wp-utils'); ?></h1>
+						<span class="tka-version-badge"><?php esc_html_e('URL Redirects', 'tka-wp-utils'); ?></span>
+					</div>
+					<p class="tka-tagline">
+						<?php esc_html_e('Ultra-fast 301 redirects routed natively at the parse request level.', 'tka-wp-utils'); ?>
+					</p>
+				</header>
+
+				<!-- Settings Body Layout -->
+				<div class="tka-dashboard-body" style="grid-template-columns: 1fr;">
+					<main class="tka-dashboard-content">
+						<h2><?php esc_html_e('URL Redirects', 'tka-wp-utils'); ?></h2>
+
+						<form action="options.php" method="post" id="tka-redirects-form">
+							<?php settings_fields('tka_wp_utils_redirects_group'); ?>
+							
+							<div class="tka-settings-card" style="padding: 24px; margin-top: 20px;">
+								<div style="margin-bottom: 20px; padding: 15px; background: rgba(56, 189, 248, 0.1); border-left: 3px solid #38bdf8; border-radius: 4px;">
+									<p style="margin: 0; font-size: 13px; color: var(--tka-text-main);">
+										<strong><?php esc_html_e('Tip:', 'tka-wp-utils'); ?></strong> <?php esc_html_e('Use relative paths for Old URL (e.g., /old-page/). You can use an asterisk (*) as a wildcard at the end of the Old URL to redirect an entire folder (e.g., /old-category/*). New URLs can be relative or absolute.', 'tka-wp-utils'); ?>
+									</p>
+								</div>
+
+								<table class="tka-table" style="width: 100%;">
+									<thead>
+										<tr>
+											<th style="width: 45%;"><?php esc_html_e('Old URL', 'tka-wp-utils'); ?></th>
+											<th style="width: 45%;"><?php esc_html_e('New URL', 'tka-wp-utils'); ?></th>
+											<th style="width: 10%; text-align: right;"></th>
+										</tr>
+									</thead>
+									<tbody id="tka-redirects-list">
+										<?php
+										$index = 0;
+										if (!empty($redirects) && is_array($redirects)) {
+											foreach ($redirects as $redirect) {
+												?>
+												<tr class="tka-redirect-row">
+													<td>
+														<input type="text" name="tka_wp_utils_redirects[<?php echo esc_attr($index); ?>][old_url]" value="<?php echo esc_attr($redirect['old_url']); ?>" placeholder="/old-page/" style="width: 100%;">
+													</td>
+													<td>
+														<input type="text" name="tka_wp_utils_redirects[<?php echo esc_attr($index); ?>][new_url]" value="<?php echo esc_attr($redirect['new_url']); ?>" placeholder="/new-page/" style="width: 100%;">
+													</td>
+													<td style="text-align: right;">
+														<button type="button" class="button tka-remove-redirect-btn" style="color: #ef4444; border-color: #ef4444;" title="<?php esc_attr_e('Remove', 'tka-wp-utils'); ?>">
+															<span class="dashicons dashicons-trash" style="margin-top: 3px;"></span>
+														</button>
+													</td>
+												</tr>
+												<?php
+												$index++;
+											}
+										}
+										?>
+									</tbody>
+								</table>
+
+								<div style="margin-top: 15px;">
+									<button type="button" id="tka-add-redirect-btn" class="button button-secondary" data-next-index="<?php echo esc_attr($index); ?>">
+										+ <?php esc_html_e('Add Redirect', 'tka-wp-utils'); ?>
+									</button>
+								</div>
+							</div>
+
+							<div class="tka-footer" style="margin-top: 20px; display: flex; justify-content: flex-end; align-items: center;">
+								<?php submit_button(__('Save Redirects', 'tka-wp-utils'), 'primary', 'submit', false); ?>
+							</div>
+						</form>
+					</main>
+				</div>
+			</div>
+		</div>
+
+		<script>
+		document.addEventListener('DOMContentLoaded', function() {
+			const list = document.getElementById('tka-redirects-list');
+			const addBtn = document.getElementById('tka-add-redirect-btn');
+			
+			if (addBtn && list) {
+				addBtn.addEventListener('click', function(e) {
+					e.preventDefault();
+					const index = parseInt(addBtn.getAttribute('data-next-index'), 10);
+					
+					const tr = document.createElement('tr');
+					tr.className = 'tka-redirect-row';
+					tr.innerHTML = `
+						<td>
+							<input type="text" name="tka_wp_utils_redirects[${index}][old_url]" value="" placeholder="/old-page/" style="width: 100%;">
+						</td>
+						<td>
+							<input type="text" name="tka_wp_utils_redirects[${index}][new_url]" value="" placeholder="/new-page/" style="width: 100%;">
+						</td>
+						<td style="text-align: right;">
+							<button type="button" class="button tka-remove-redirect-btn" style="color: #ef4444; border-color: #ef4444;" title="Remove">
+								<span class="dashicons dashicons-trash" style="margin-top: 3px;"></span>
+							</button>
+						</td>
+					`;
+					
+					list.appendChild(tr);
+					addBtn.setAttribute('data-next-index', index + 1);
+				});
+
+				list.addEventListener('click', function(e) {
+					const btn = e.target.closest('.tka-remove-redirect-btn');
+					if (btn) {
+						e.preventDefault();
+						btn.closest('.tka-redirect-row').remove();
+					}
+				});
+			}
+		});
+		</script>
+		<?php
 	}
 }

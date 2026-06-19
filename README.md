@@ -29,8 +29,12 @@ A comprehensive suite of utility tools designed for developers and agencies to s
 *   **Multi-User Superadmin Access Control**: Grant full plugin configuration access to designated administrators, while hiding the plugin entirely from regular administrators.
 *   **Dynamic Widget Sniffer**: Reliably intercepts and hides stubborn third-party dashboard widgets (like Gravity Forms) by monitoring and recording widgets during actual dashboard visits.
 
-### ⚙️ 4. Content Flow & Columns Manager
-*   **Drag-and-Drop Sorting**: Reorder post, page, or custom post type listings manually in admin list tables.
+### 🔄 4. Content Ordering
+*   **Drag & Drop Sorting**: Enables intuitive, manual drag-and-drop sorting natively within the WordPress list tables.
+*   **Targeted Activation**: Explicitly select exactly which Custom Post Types and Taxonomies (like Categories, Tags, and ACF Taxonomies) should have drag-and-drop sorting enabled.
+*   **Granular Control**: Does not blindly override the entire website—only the checked Post Types and Taxonomies will be sortable.
+
+### ⚙️ 5. Content Flow & Columns Manager
 *   **One-Click Duplication**: Instantly duplicate any content item to a new Draft via list table row actions.
 *   **Redesigned Admin Columns Customizer**: An advanced card-based manager featuring:
     *   **Drag-and-Drop Order Reordering**: Instantly slide columns to adjust display sequences.
@@ -38,7 +42,7 @@ A comprehensive suite of utility tools designed for developers and agencies to s
     *   **Relational Linking**: Define if a column contains a *Related Post* or a *Taxonomy Term*. The customizer resolves raw IDs/objects into direct edit page links.
     *   **Toolbar Filters**: Injects matching dropdown filters at the top of the post list tables to filter entries by selected relations.
 
-### 🔌 5. ACF Integration & Copy/Paste Engine
+### 🔌 6. ACF Integration & Copy/Paste Engine
 *   **ACF Flexible Content Visual Layout Selection Modal**: Replaces the standard narrow ACF layout selector dropdown list with a gorgeous, searchable, and category-filtered grid modal showing block descriptions, custom icons, and theme screenshot previews.
 *   **Dynamic Theme-Agnostic Discovery**: Automatically scans active theme block template directories (supporting both PHP and Blade templates) and dynamically extracts custom block metadata (Title, Category, Icon, Description) from template file comment headers natively using `get_file_data()`.
 *   **Automated Fallback Generation**: Features automatic title-based and keyword-based metadata fallback generators for any new custom block layout, allowing zero-configuration setup for any third-party block theme.
@@ -123,6 +127,12 @@ A comprehensive suite of utility tools designed for developers and agencies to s
 *   **WP-CLI Powered Engine**: Safely leverages WP-CLI `search-replace` in the background for reliable database operations without memory limit crashes.
 *   **Dry Run Support**: Test your replacements before committing them to the database.
 *   **Clean HTML Logging**: Outputs precise `--report-changed-only` tables natively parsed from raw WP-CLI output to show you exactly which tables were modified, stripping out noise and empty tables.
+
+### 🔀 17. Routing & Redirects
+*   **Ultra-Lightweight URL Redirects**: A native, blazing-fast redirect manager designed to replace heavy third-party redirection plugins.
+*   **Parse Request Engine**: Redirects are hooked at the `parse_request` level, firing before WordPress loads any theme files or heavy database queries, and ensuring perfect compatibility across both Apache and Nginx servers.
+*   **Client-Friendly Repeater UI**: Accessible as a dedicated top-level menu for all Administrators, featuring a visual drag-and-drop-style repeater UI (styled identically to the TKA settings) to easily add and remove redirects.
+*   **Wildcard Support**: Add asterisks (`*`) to instantly map entire directories or parameter structures to new destinations.
 
 ---
 

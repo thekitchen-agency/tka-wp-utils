@@ -87,7 +87,7 @@ class ContentOrder {
 			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'tka-wp-utils' ) ] );
 		}
 
-		$post_ids = $_POST['post_ids'] ?? [];
+		$post_ids = $_POST['ids'] ?? ($_POST['post_ids'] ?? []);
 		if ( ! is_array( $post_ids ) || empty( $post_ids ) ) {
 			wp_send_json_error( [ 'message' => __( 'Invalid post IDs sequence.', 'tka-wp-utils' ) ] );
 		}
