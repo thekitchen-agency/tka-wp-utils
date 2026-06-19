@@ -1309,6 +1309,9 @@ class Settings
 														'wp-embed' => __('wp-embed (oEmbed Support)', 'tka-wp-utils'),
 														'regenerator-runtime' => __('regenerator-runtime (Babel Async)', 'tka-wp-utils'),
 														'wp-dom-ready' => __('wp-dom-ready (DOM Ready Utility)', 'tka-wp-utils'),
+														'jquery' => __('jquery (jQuery Core Loader)', 'tka-wp-utils'),
+														'jquery-core' => __('jquery-core (jQuery Base)', 'tka-wp-utils'),
+														'jquery-migrate' => __('jquery-migrate (jQuery Compatibility)', 'tka-wp-utils'),
 													];
 													$deferred_scripts = $options['deferred_scripts'] ?? [];
 													foreach ($common_scripts as $handle => $label) :

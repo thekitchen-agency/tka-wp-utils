@@ -15,12 +15,38 @@ class WooCommerceManager {
 	private array $options;
 
 	/**
+	 * Scripts to be printed in the footer.
+	 *
+	 * @var array
+	 */
+	private array $vanilla_scripts = [];
+
+	/**
 	 * Constructor.
 	 *
 	 * @param array $options Active options.
 	 */
 	public function __construct( array $options ) {
 		$this->options = $options;
+	}
+
+	/**
+	 * Helper to enqueue raw Vanilla JS without WooCommerce's forced jQuery wrapper.
+	 */
+	private function enqueueVanillaJs( string $id, string $script ): void {
+		if ( empty( $this->vanilla_scripts ) ) {
+			add_action( 'wp_footer', function() {
+				if ( empty( $this->vanilla_scripts ) ) return;
+				echo "<script type='text/javascript'>\n";
+				echo "document.addEventListener('DOMContentLoaded', function() {\n";
+				foreach ( $this->vanilla_scripts as $s ) {
+					echo $s . "\n";
+				}
+				echo "});\n";
+				echo "</script>\n";
+			}, 999 );
+		}
+		$this->vanilla_scripts[ $id ] = $script;
 	}
 
 	/**
@@ -262,19 +288,40 @@ class WooCommerceManager {
 
 		echo ' &mdash; OR &mdash; <a href="' . esc_url( $buy_now_url ) . '" class="single_add_to_cart_button button buy_now_button" data-product-id="' . esc_attr( $product_id ) . '">' . esc_html__( 'Buy Now', 'tka-wp-utils' ) . '</a>';
 
-		wc_enqueue_js( "
+		$this->enqueueVanillaJs( 'buy_now', "
 			function updateBuyNowURL() {
-				var qty = jQuery('form.cart').find('input.qty').val() || 1;
-				var productId = jQuery('a.buy_now_button').data('product-id');
-				var variationId = jQuery('form.cart').find('input[name=\"variation_id\"]').val();
+				var form = document.querySelector('form.cart');
+				if (!form) return;
+				var qtyInput = form.querySelector('input.qty');
+				var qty = qtyInput ? (qtyInput.value || 1) : 1;
+				
+				var buyNowBtn = document.querySelector('a.buy_now_button');
+				if (!buyNowBtn) return;
+				var productId = buyNowBtn.getAttribute('data-product-id');
+				
+				var variationInput = form.querySelector('input[name=\"variation_id\"]');
+				var variationId = variationInput ? variationInput.value : '';
 				if (variationId && variationId !== '0') {
 					productId = variationId;
 				}
+				
 				var newUrl = '/checkout-link/?products=' + productId + ':' + qty;
-				jQuery('.buy_now_button').attr('href', newUrl);
+				buyNowBtn.setAttribute('href', newUrl);
 			}
-			jQuery(document).on('change input', 'form.cart input.qty', updateBuyNowURL);
-			jQuery('form.cart').on('show_variation hide_variation', updateBuyNowURL);
+			
+			document.addEventListener('change', function(e) {
+				if (e.target && e.target.classList.contains('qty')) updateBuyNowURL();
+			});
+			document.addEventListener('input', function(e) {
+				if (e.target && e.target.classList.contains('qty')) updateBuyNowURL();
+			});
+			
+			// Fallback: WooCommerce triggers variations solely through jQuery.
+			// We hook in just in case jQuery/WC is present to catch the exact moment a variation is selected.
+			if (typeof jQuery !== 'undefined') {
+				jQuery(document).on('show_variation hide_variation', updateBuyNowURL);
+			}
+			
 			updateBuyNowURL();
 		" );
 	}
@@ -297,12 +344,26 @@ class WooCommerceManager {
 
 	/**
 	 * Enqueue JS script to hide the AJAX-injected "View Cart" button on Shop pages.
+	 * Uses a native MutationObserver instead of relying on jQuery events.
 	 */
 	public function hideAjaxViewCartButton(): void {
-		wc_enqueue_js( "
-			jQuery( document.body ).on('wc_cart_button_updated', function(){
-				jQuery('.added_to_cart.wc-forward').remove();
+		$this->enqueueVanillaJs( 'hide_view_cart', "
+			const observer = new MutationObserver(function(mutations) {
+				mutations.forEach(function(mutation) {
+					mutation.addedNodes.forEach(function(node) {
+						if (node.nodeType === 1) {
+							if (node.classList.contains('added_to_cart') && node.classList.contains('wc-forward')) {
+								node.remove();
+							} else if (node.querySelectorAll) {
+								node.querySelectorAll('.added_to_cart.wc-forward').forEach(function(el) {
+									el.remove();
+								});
+							}
+						}
+					});
+				});
 			});
+			observer.observe(document.body, { childList: true, subtree: true });
 		" );
 	}
 
@@ -328,30 +389,45 @@ class WooCommerceManager {
 
 	/**
 	 * Enqueue JavaScript to support Plus & Minus interactive increment/decrement.
+	 * 100% Vanilla JS.
 	 */
 	public function addCartQuantityPlusMinus(): void {
-		wc_enqueue_js( "
-			jQuery('form.cart').on('click', 'button.plus, button.minus', function() {
-				var qty = jQuery(this).closest('form.cart').find('.qty');
-				var val = parseFloat(qty.val()) || 0;
-				var max = parseFloat(qty.attr('max'));
-				var min = parseFloat(qty.attr('min')) || 1;
-				var step = parseFloat(qty.attr('step')) || 1;
+		$this->enqueueVanillaJs( 'qty_plus_minus', "
+			document.addEventListener('click', function(e) {
+				if (e.target && (e.target.classList.contains('plus') || e.target.classList.contains('minus'))) {
+					var form = e.target.closest('form.cart');
+					if (!form) return;
+					var qty = form.querySelector('.qty');
+					if (!qty) return;
+					
+					var val = parseFloat(qty.value) || 0;
+					var max = parseFloat(qty.getAttribute('max'));
+					var min = parseFloat(qty.getAttribute('min')) || 1;
+					var step = parseFloat(qty.getAttribute('step')) || 1;
 
-				if (jQuery(this).is('.plus')) {
-					if (max && (max <= val)) {
-						qty.val(max);
+					if (e.target.classList.contains('plus')) {
+						if (max && (max <= val)) {
+							qty.value = max;
+						} else {
+							qty.value = val + step;
+						}
 					} else {
-						qty.val(val + step);
+						if (min && (min >= val)) {
+							qty.value = min;
+						} else if (val > min) {
+							qty.value = val - step;
+						}
 					}
-				} else {
-					if (min && (min >= val)) {
-						qty.val(min);
-					} else if (val > min) {
-						qty.val(val - step);
+					
+					// Trigger native change event so other scripts can pick it up
+					qty.dispatchEvent(new Event('change', { bubbles: true }));
+					
+					// WooCommerce core depends on jQuery for its own internal cart updates.
+					// We dispatch it via jQuery only if WC has loaded it.
+					if (typeof jQuery !== 'undefined') {
+						jQuery(qty).trigger('change');
 					}
 				}
-				qty.trigger('change');
 			});
 		" );
 	}
