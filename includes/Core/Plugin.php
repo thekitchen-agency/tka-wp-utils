@@ -97,6 +97,18 @@ class Plugin
 		// Hook the Settings Page admin screens
 		$this->settings->init();
 
+		// Initialize Licensing
+		\TKA\WPUtils\Licensing\Licensing::init();
+
+		// URL Redirects (Always enabled regardless of license status)
+		$redirect_manager = new RedirectManager();
+		$redirect_manager->hook();
+
+		// If license is not active, do not load other features
+		if (!\TKA\WPUtils\Licensing\Licensing::isActive()) {
+			return;
+		}
+
 		// Fetch currently saved options
 		$options = get_option('tka_wp_utils_options', []);
 
@@ -142,10 +154,6 @@ class Plugin
 			$replace_media = new ReplaceMedia();
 			$replace_media->hook();
 		}
-
-		// URL Redirects
-		$redirect_manager = new RedirectManager();
-		$redirect_manager->hook();
 
 		// Heartbeat and Revisions manager
 		$heartbeat_revision_manager = new HeartbeatRevisionManager($options);

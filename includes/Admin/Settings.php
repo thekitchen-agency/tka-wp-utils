@@ -83,6 +83,16 @@ class Settings
 				'tka-wp-utils-bulk-optimizer',
 				[$this, 'renderBulkOptimizerPage']
 			);
+
+			// License Manager submenu
+			add_submenu_page(
+				self::MENU_SLUG,
+				__('TKA License Management', 'tka-wp-utils'),
+				__('License', 'tka-wp-utils'),
+				'manage_options',
+				'tka-wp-utils-license',
+				[$this, 'renderLicensePage']
+			);
 		}
 
 		// Shortcut to Bulk Optimizer under the Media menu (Available to all admins)
@@ -693,6 +703,7 @@ class Settings
 			'tka-wp-utils_page_tka-wp-utils-columns',
 			'tka-wp-utils_page_tka-wp-utils-menu-organizer',
 			'tka-wp-utils_page_tka-wp-utils-bulk-optimizer',
+			'tka-wp-utils_page_tka-wp-utils-license',
 			'media_page_tka-wp-utils-bulk-optimizer-media',
 			'admin_page_tka-wp-utils-bulk-optimizer-media',
 			'settings_page_' . self::MENU_SLUG,
@@ -890,6 +901,16 @@ class Settings
 
 							<!-- Settings Form Panels -->
 							<main class="tka-dashboard-content">
+								<?php if (!\TKA\WPUtils\Licensing\Licensing::isActive()): ?>
+									<div class="tka-settings-card" style="padding: 40px; text-align: center;">
+										<span class="dashicons dashicons-lock" style="font-size: 64px; width: 64px; height: 64px; color: #ef4444; margin-bottom: 20px;"></span>
+										<h2 style="font-size: 24px; margin-bottom: 15px;"><?php esc_html_e('License Required', 'tka-wp-utils'); ?></h2>
+										<p style="font-size: 16px; color: var(--tka-text-muted); margin-bottom: 25px;">
+											<?php esc_html_e('Your license is not active or has expired. Please activate a valid license to access and configure these settings.', 'tka-wp-utils'); ?>
+										</p>
+										<a href="<?php echo esc_url(admin_url('admin.php?page=tka-wp-utils-license')); ?>" class="tka-btn tka-btn-primary" style="font-size: 16px; padding: 10px 24px;"><?php esc_html_e('Manage License', 'tka-wp-utils'); ?></a>
+									</div>
+								<?php else: ?>
 								<form method="post" action="options.php">
 									<?php
 									settings_fields('tka_wp_utils_group');
@@ -3208,6 +3229,7 @@ class Settings
 										<?php submit_button(__('Save Settings', 'tka-wp-utils'), 'primary tka-save-btn', 'submit', false); ?>
 									</div>
 								</form>
+								<?php endif; ?>
 
 							</main>
 						</div>
@@ -3217,10 +3239,46 @@ class Settings
 	}
 
 	/**
+	 * Helper method to display a locked page when license is inactive.
+	 */
+	private function renderLicenseLockedPage(string $title, string $dashicon = 'dashicons-lock'): void
+	{
+		?>
+		<div class="wrap tka-wp-utils-wrap">
+			<div class="tka-dashboard">
+				<header class="tka-dashboard-header">
+					<div class="tka-header-brand">
+						<span class="dashicons <?php echo esc_attr($dashicon); ?>" style="font-size: 32px; width: 32px; height: 32px; color: #ffffff;"></span>
+						<h1><?php esc_html_e('TKA WP Utils', 'tka-wp-utils'); ?></h1>
+						<span class="tka-version-badge"><?php echo esc_html($title); ?></span>
+					</div>
+				</header>
+				<div class="tka-dashboard-body" style="grid-template-columns: 1fr;">
+					<main class="tka-dashboard-content">
+						<div class="tka-settings-card" style="padding: 40px; text-align: center;">
+							<span class="dashicons dashicons-lock" style="font-size: 64px; width: 64px; height: 64px; color: #ef4444; margin-bottom: 20px;"></span>
+							<h2 style="font-size: 24px; margin-bottom: 15px;"><?php esc_html_e('License Required', 'tka-wp-utils'); ?></h2>
+							<p style="font-size: 16px; color: var(--tka-text-muted); margin-bottom: 25px;">
+								<?php esc_html_e('Your license is not active or has expired. Please activate a valid license to access this feature.', 'tka-wp-utils'); ?>
+							</p>
+							<a href="<?php echo esc_url(admin_url('admin.php?page=tka-wp-utils-license')); ?>" class="tka-btn tka-btn-primary" style="font-size: 16px; padding: 10px 24px;"><?php esc_html_e('Manage License', 'tka-wp-utils'); ?></a>
+						</div>
+					</main>
+				</div>
+			</div>
+		</div>
+		<?php
+	}
+
+	/**
 	 * Render the Admin Columns Customizer subpage HTML.
 	 */
 	public function renderAdminColumnsPage(): void
 	{
+		if (!\TKA\WPUtils\Licensing\Licensing::isActive()) {
+			$this->renderLicenseLockedPage(__('Admin Columns', 'tka-wp-utils'), 'dashicons-align-left');
+			return;
+		}
 		$columns = get_option('tka_wp_utils_columns', []);
 		$public_post_types = get_post_types(['show_ui' => true], 'objects');
 		$available_keys = self::getAvailableMetaKeys();
@@ -3424,6 +3482,11 @@ class Settings
 	 */
 	public function renderMenuOrganizerPage(): void
 	{
+		if (!\TKA\WPUtils\Licensing\Licensing::isActive()) {
+			$this->renderLicenseLockedPage(__('Menu Organizer', 'tka-wp-utils'), 'dashicons-menu-alt3');
+			return;
+		}
+
 		$options = get_option('tka_wp_utils_options');
 		?>
 				<div class="wrap tka-wp-utils-wrap">
@@ -3631,6 +3694,14 @@ class Settings
 	 */
 	public function renderBulkOptimizerPage(): void
 	{
+		if (!current_user_can('manage_options')) {
+			return;
+		}
+
+		if (!\TKA\WPUtils\Licensing\Licensing::isActive()) {
+			$this->renderLicenseLockedPage(__('Bulk Optimizer', 'tka-wp-utils'), 'dashicons-images-alt2');
+			return;
+		}
 		?>
 				<div class="wrap tka-wp-utils-wrap">
 					<div class="tka-dashboard">
@@ -3946,6 +4017,166 @@ class Settings
 			}
 		});
 		</script>
+		<?php
+	}
+
+	/**
+	 * Render the License settings page.
+	 */
+	public function renderLicensePage(): void
+	{
+		if (!current_user_can('manage_options')) {
+			return;
+		}
+
+		$status = get_option('tka_wp_utils_license_status', []);
+		$message = '';
+		$message_type = 'updated';
+		$server_url = 'https://plugins.thekitchen.agency';
+
+		// If no POST action, we do a real-time heartbeat check on this page load to make sure UI is up-to-date
+		if ($_SERVER['REQUEST_METHOD'] !== 'POST' && !empty($status['license_key'])) {
+			$manager = new \TKA\WPUtils\Licensing\LicenseManager($server_url, $status['license_key'], 'tka-wp-utils');
+			$result = $manager->verify();
+
+			if (isset($result['success']) && $result['success'] && isset($result['status']) && $result['status'] === 'active') {
+				$status['status'] = 'active';
+				$status['last_check'] = time();
+				$status['grace_active'] = false;
+				update_option('tka_wp_utils_license_status', $status);
+				set_transient('tka_wp_utils_license_check_transient', 'active', 24 * HOUR_IN_SECONDS);
+			} else {
+				if (isset($result['status']) && $result['status'] !== 'network_error') {
+					$status['status'] = 'suspended';
+					$status['error_message'] = $result['error'] ?? 'Unregistered domain seat.';
+					update_option('tka_wp_utils_license_status', $status);
+					set_transient('tka_wp_utils_license_check_transient', 'suspended', 24 * HOUR_IN_SECONDS);
+				}
+			}
+		}
+
+		if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tka_license_nonce']) && wp_verify_nonce($_POST['tka_license_nonce'], 'tka_license_action')) {
+			$action = $_POST['tka_license_action_type'] ?? '';
+			$license_key = sanitize_text_field($_POST['tka_license_key'] ?? '');
+
+			$server_url = 'https://plugins.thekitchen.agency';
+
+			if ($action === 'activate' && !empty($license_key)) {
+				$manager = new \TKA\WPUtils\Licensing\LicenseManager($server_url, $license_key, 'tka-wp-utils');
+				$result = $manager->activate();
+
+				if (isset($result['success']) && $result['success']) {
+					$status = [
+						'license_key' => $license_key,
+						'status' => 'active',
+						'last_check' => time(),
+						'grace_active' => false
+					];
+					update_option('tka_wp_utils_license_status', $status);
+					set_transient('tka_wp_utils_license_check_transient', 'active', 24 * HOUR_IN_SECONDS);
+					$message = __('License activated successfully.', 'tka-wp-utils');
+					$message_type = 'updated';
+				} else {
+					$message = $result['error'] ?? __('Failed to activate license.', 'tka-wp-utils');
+					$message_type = 'error';
+				}
+			} elseif ($action === 'deactivate') {
+				if (!empty($status['license_key'])) {
+					$manager = new \TKA\WPUtils\Licensing\LicenseManager($server_url, $status['license_key'], 'tka-wp-utils');
+					$manager->deactivate();
+				}
+				
+				$status = [];
+				update_option('tka_wp_utils_license_status', $status);
+				delete_transient('tka_wp_utils_license_check_transient');
+				
+				$message = __('License deactivated locally.', 'tka-wp-utils');
+				$message_type = 'updated';
+			}
+		}
+
+		$is_active = \TKA\WPUtils\Licensing\Licensing::isActive();
+		$current_key = $status['license_key'] ?? '';
+		$error_message = $status['error_message'] ?? '';
+		?>
+		<div class="wrap tka-wp-utils-wrap">
+			<div class="tka-dashboard">
+				<!-- Header Section -->
+				<header class="tka-dashboard-header">
+					<div class="tka-header-brand">
+						<span class="dashicons dashicons-lock" style="font-size: 32px; width: 32px; height: 32px; color: #ffffff;"></span>
+						<h1><?php esc_html_e('TKA WP Utils', 'tka-wp-utils'); ?></h1>
+						<span class="tka-version-badge"><?php esc_html_e('License Management', 'tka-wp-utils'); ?></span>
+					</div>
+					<p class="tka-tagline">
+						<?php esc_html_e('Activate your license to enable all features and updates.', 'tka-wp-utils'); ?>
+					</p>
+				</header>
+
+				<!-- Settings Body Layout -->
+				<div class="tka-dashboard-body" style="grid-template-columns: 1fr;">
+					<main class="tka-dashboard-content">
+						<h2><?php esc_html_e('License Status', 'tka-wp-utils'); ?></h2>
+
+						<?php if (!empty($message)): ?>
+							<div class="notice notice-<?php echo esc_attr($message_type); ?> is-dismissible" style="margin-left: 0; margin-bottom: 20px;">
+								<p><?php echo esc_html($message); ?></p>
+							</div>
+						<?php endif; ?>
+
+						<div class="tka-settings-card" style="padding: 24px; margin-top: 20px;">
+							
+							<?php if ($is_active): ?>
+								<div style="margin-bottom: 20px; padding: 15px; background: rgba(34, 197, 94, 0.1); border-left: 3px solid #22c55e; border-radius: 4px;">
+									<p style="margin: 0; font-size: 14px; color: var(--tka-text-main);">
+										<span class="dashicons dashicons-yes-alt" style="color: #22c55e; vertical-align: middle;"></span>
+										<strong><?php esc_html_e('Active:', 'tka-wp-utils'); ?></strong> <?php esc_html_e('Your license is currently active and verified.', 'tka-wp-utils'); ?>
+									</p>
+								</div>
+							<?php elseif (!empty($status['status']) && $status['status'] === 'suspended'): ?>
+								<div style="margin-bottom: 20px; padding: 15px; background: rgba(239, 68, 68, 0.1); border-left: 3px solid #ef4444; border-radius: 4px;">
+									<p style="margin: 0; font-size: 14px; color: var(--tka-text-main);">
+										<span class="dashicons dashicons-warning" style="color: #ef4444; vertical-align: middle;"></span>
+										<strong><?php esc_html_e('Suspended / Invalid:', 'tka-wp-utils'); ?></strong> <?php echo esc_html($error_message ? $error_message : __('Your license is invalid or expired.', 'tka-wp-utils')); ?>
+									</p>
+								</div>
+							<?php else: ?>
+								<div style="margin-bottom: 20px; padding: 15px; background: rgba(245, 158, 11, 0.1); border-left: 3px solid #f59e0b; border-radius: 4px;">
+									<p style="margin: 0; font-size: 14px; color: var(--tka-text-main);">
+										<span class="dashicons dashicons-info" style="color: #f59e0b; vertical-align: middle;"></span>
+										<strong><?php esc_html_e('Not Activated:', 'tka-wp-utils'); ?></strong> <?php esc_html_e('Please enter your license key to unlock the plugin features.', 'tka-wp-utils'); ?>
+									</p>
+								</div>
+							<?php endif; ?>
+
+							<form action="" method="post">
+								<?php wp_nonce_field('tka_license_action', 'tka_license_nonce'); ?>
+								
+								<table class="form-table" style="margin-bottom: 20px;">
+									<tr>
+										<th scope="row"><label for="tka_license_key"><?php esc_html_e('License Key', 'tka-wp-utils'); ?></label></th>
+										<td>
+											<input type="text" id="tka_license_key" name="tka_license_key" value="<?php echo esc_attr($current_key); ?>" class="regular-text tka-input" style="width: 100%; max-width: 400px;" <?php echo $is_active ? 'readonly' : ''; ?> />
+											<p class="description" style="color: var(--tka-text-muted); margin-top: 5px;"><?php esc_html_e('Enter your license key provided by TKA Systems.', 'tka-wp-utils'); ?></p>
+										</td>
+									</tr>
+								</table>
+								
+								<p class="submit" style="margin: 0; padding: 0;">
+									<?php if ($is_active): ?>
+										<input type="hidden" name="tka_license_action_type" value="deactivate">
+										<button type="submit" class="tka-btn tka-btn-danger"><?php esc_html_e('Deactivate License', 'tka-wp-utils'); ?></button>
+									<?php else: ?>
+										<input type="hidden" name="tka_license_action_type" value="activate">
+										<button type="submit" class="tka-btn tka-btn-primary"><?php esc_html_e('Activate License', 'tka-wp-utils'); ?></button>
+									<?php endif; ?>
+								</p>
+							</form>
+						</div>
+					</main>
+				</div>
+			</div>
+		</div>
 		<?php
 	}
 }
