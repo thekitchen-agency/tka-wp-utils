@@ -83,7 +83,7 @@ class AcfManager
 	 */
 	public static function getAvailableExtensions(): array
 	{
-		$extensions_dir = TKA_WP_UTILS_PATH . 'includes/AcfExtensions';
+		$extensions_dir = TKA_SITE_UTILITIES_PATH . 'includes/AcfExtensions';
 		if (!is_dir($extensions_dir)) {
 			return [];
 		}
@@ -124,22 +124,22 @@ class AcfManager
 			return;
 		}
 
-		$css_path = TKA_WP_UTILS_PATH . 'admin/css/acf-layout-modal.css';
-		$js_path = TKA_WP_UTILS_PATH . 'admin/js/acf-layout-modal.js';
+		$css_path = TKA_SITE_UTILITIES_PATH . 'admin/css/acf-layout-modal.css';
+		$js_path = TKA_SITE_UTILITIES_PATH . 'admin/js/acf-layout-modal.js';
 
-		$css_version = file_exists($css_path) ? filemtime($css_path) : TKA_WP_UTILS_VERSION;
-		$js_version = file_exists($js_path) ? filemtime($js_path) : TKA_WP_UTILS_VERSION;
+		$css_version = file_exists($css_path) ? filemtime($css_path) : TKA_SITE_UTILITIES_VERSION;
+		$js_version = file_exists($js_path) ? filemtime($js_path) : TKA_SITE_UTILITIES_VERSION;
 
 		wp_enqueue_style(
 			'tka-acf-layout-modal-css',
-			TKA_WP_UTILS_URL . 'admin/css/acf-layout-modal.css',
+			TKA_SITE_UTILITIES_URL . 'admin/css/acf-layout-modal.css',
 			[],
 			$css_version
 		);
 
 		wp_enqueue_script(
 			'tka-acf-layout-modal-js',
-			TKA_WP_UTILS_URL . 'admin/js/acf-layout-modal.js',
+			TKA_SITE_UTILITIES_URL . 'admin/js/acf-layout-modal.js',
 			['jquery'],
 			$js_version,
 			true
@@ -147,47 +147,47 @@ class AcfManager
 
 		$default_metadata = [
 			'block_text' => [
-				'description' => __('Standard rich text block. Ideal for paragraphs, sub-headings, lists, and formatted textual copy.', 'tka-wp-utils'),
+				'description' => __('Standard rich text block. Ideal for paragraphs, sub-headings, lists, and formatted textual copy.', 'tka-site-utilities'),
 				'icon'        => 'dashicons-editor-paragraph',
 				'category'    => 'content',
 			],
 			'block_quote' => [
-				'description' => __('Sleek blockquote styling. Best for drawing attention to testimonials, highlighted statements, or citations.', 'tka-wp-utils'),
+				'description' => __('Sleek blockquote styling. Best for drawing attention to testimonials, highlighted statements, or citations.', 'tka-site-utilities'),
 				'icon'        => 'dashicons-editor-quote',
 				'category'    => 'content',
 			],
 			'block_gallery' => [
-				'description' => __('Visual grid photo gallery. Perfect for showcase images, portfolios, or side-by-side snapshots.', 'tka-wp-utils'),
+				'description' => __('Visual grid photo gallery. Perfect for showcase images, portfolios, or side-by-side snapshots.', 'tka-site-utilities'),
 				'icon'        => 'dashicons-images-alt',
 				'category'    => 'media',
 			],
 			'block_post_items' => [
-				'description' => __('Dynamic recent posts grid. Automatically stream and display recent blog posts or custom post type listings.', 'tka-wp-utils'),
+				'description' => __('Dynamic recent posts grid. Automatically stream and display recent blog posts or custom post type listings.', 'tka-site-utilities'),
 				'icon'        => 'dashicons-admin-post',
 				'category'    => 'advanced',
 			],
 			'block_teaser' => [
-				'description' => __('Engaging promotional teaser card. Feature a custom card layout with a title, image link, and CTA.', 'tka-wp-utils'),
+				'description' => __('Engaging promotional teaser card. Feature a custom card layout with a title, image link, and CTA.', 'tka-site-utilities'),
 				'icon'        => 'dashicons-megaphone',
 				'category'    => 'marketing',
 			],
 			'block_teaser_copy' => [
-				'description' => __('Advanced editorial promo block. Extended teaser variations with extra layout controls and content cards.', 'tka-wp-utils'),
+				'description' => __('Advanced editorial promo block. Extended teaser variations with extra layout controls and content cards.', 'tka-site-utilities'),
 				'icon'        => 'dashicons-art',
 				'category'    => 'marketing',
 			],
 			'block_hero' => [
-				'description' => __('Impactful hero header section. Prominent section banner with heading overlay, subtext, and background media.', 'tka-wp-utils'),
+				'description' => __('Impactful hero header section. Prominent section banner with heading overlay, subtext, and background media.', 'tka-site-utilities'),
 				'icon'        => 'dashicons-cover-image',
 				'category'    => 'media',
 			],
 			'block_slider' => [
-				'description' => __('Touch-interactive slide carousel. Showcase a sequence of slides, testimonials, or promotional images.', 'tka-wp-utils'),
+				'description' => __('Touch-interactive slide carousel. Showcase a sequence of slides, testimonials, or promotional images.', 'tka-site-utilities'),
 				'icon'        => 'dashicons-slides',
 				'category'    => 'media',
 			],
 			'block_location' => [
-				'description' => __('Interactive map and contact details. Displays Google Maps embeds alongside local office address and hours.', 'tka-wp-utils'),
+				'description' => __('Interactive map and contact details. Displays Google Maps embeds alongside local office address and hours.', 'tka-site-utilities'),
 				'icon'        => 'dashicons-location-alt',
 				'category'    => 'advanced',
 			],
@@ -202,9 +202,9 @@ class AcfManager
 			'themeUrl' => get_stylesheet_directory_uri(),
 			'metadata' => $metadata,
 			'i18n' => [
-				'selectLayout' => __('Select Block Layout', 'tka-wp-utils'),
-				'searchPlaceholder' => __('Search layouts...', 'tka-wp-utils'),
-				'noLayoutsFound' => __('No layouts matching your search.', 'tka-wp-utils'),
+				'selectLayout' => __('Select Block Layout', 'tka-site-utilities'),
+				'searchPlaceholder' => __('Search layouts...', 'tka-site-utilities'),
+				'noLayoutsFound' => __('No layouts matching your search.', 'tka-site-utilities'),
 			],
 		]);
 	}
@@ -292,29 +292,29 @@ class AcfManager
 
 		wp_enqueue_style(
 			'tka-acf-copy-paste-css',
-			TKA_WP_UTILS_URL . 'admin/css/acf-copy-paste.css',
+			TKA_SITE_UTILITIES_URL . 'admin/css/acf-copy-paste.css',
 			[],
-			TKA_WP_UTILS_VERSION
+			TKA_SITE_UTILITIES_VERSION
 		);
 
 		wp_enqueue_script(
 			'tka-acf-copy-paste-js',
-			TKA_WP_UTILS_URL . 'admin/js/acf-copy-paste.js',
+			TKA_SITE_UTILITIES_URL . 'admin/js/acf-copy-paste.js',
 			['jquery'],
-			TKA_WP_UTILS_VERSION,
+			TKA_SITE_UTILITIES_VERSION,
 			true
 		);
 
 		wp_localize_script('tka-acf-copy-paste-js', 'tkaAcfSettings', [
 			'enableMultiselect' => !empty($this->options['acf_copy_paste']) ? 1 : 0,
 			'i18n' => [
-				'copy' => __('Copy', 'tka-wp-utils'),
-				'copied' => __('Copied!', 'tka-wp-utils'),
-				'paste' => __('Paste Block', 'tka-wp-utils'),
-				'copySelected' => __('Copy Selected', 'tka-wp-utils'),
-				'nothingCopied' => __('No copied block layout found in clipboard.', 'tka-wp-utils'),
-				'confirmPaste' => __('Are you sure you want to paste the copied block(s)?', 'tka-wp-utils'),
-				'layoutsCopied' => __('Selected layout blocks successfully copied to clipboard!', 'tka-wp-utils'),
+				'copy' => __('Copy', 'tka-site-utilities'),
+				'copied' => __('Copied!', 'tka-site-utilities'),
+				'paste' => __('Paste Block', 'tka-site-utilities'),
+				'copySelected' => __('Copy Selected', 'tka-site-utilities'),
+				'nothingCopied' => __('No copied block layout found in clipboard.', 'tka-site-utilities'),
+				'confirmPaste' => __('Are you sure you want to paste the copied block(s)?', 'tka-site-utilities'),
+				'layoutsCopied' => __('Selected layout blocks successfully copied to clipboard!', 'tka-site-utilities'),
 			],
 		]);
 	}
@@ -371,22 +371,22 @@ class AcfManager
 			return;
 		}
 
-		$css_path = TKA_WP_UTILS_PATH . 'admin/css/acf-layout-toggle.css';
-		$js_path = TKA_WP_UTILS_PATH . 'admin/js/acf-layout-toggle.js';
+		$css_path = TKA_SITE_UTILITIES_PATH . 'admin/css/acf-layout-toggle.css';
+		$js_path = TKA_SITE_UTILITIES_PATH . 'admin/js/acf-layout-toggle.js';
 
-		$css_version = file_exists($css_path) ? filemtime($css_path) : TKA_WP_UTILS_VERSION;
-		$js_version = file_exists($js_path) ? filemtime($js_path) : TKA_WP_UTILS_VERSION;
+		$css_version = file_exists($css_path) ? filemtime($css_path) : TKA_SITE_UTILITIES_VERSION;
+		$js_version = file_exists($js_path) ? filemtime($js_path) : TKA_SITE_UTILITIES_VERSION;
 
 		wp_enqueue_style(
 			'tka-acf-layout-toggle-css',
-			TKA_WP_UTILS_URL . 'admin/css/acf-layout-toggle.css',
+			TKA_SITE_UTILITIES_URL . 'admin/css/acf-layout-toggle.css',
 			[],
 			$css_version
 		);
 
 		wp_enqueue_script(
 			'tka-acf-layout-toggle-js',
-			TKA_WP_UTILS_URL . 'admin/js/acf-layout-toggle.js',
+			TKA_SITE_UTILITIES_URL . 'admin/js/acf-layout-toggle.js',
 			['jquery'],
 			$js_version,
 			true
@@ -498,14 +498,14 @@ class AcfManager
 		if (function_exists('acf_add_local_field_group')) {
 			acf_add_local_field_group(array(
 				'key' => 'group_tka_video_poster',
-				'title' => __('Video Poster', 'tka-wp-utils'),
+				'title' => __('Video Poster', 'tka-site-utilities'),
 				'fields' => array(
 					array(
 						'key' => 'field_tka_video_poster_image',
-						'label' => __('Poster Image', 'tka-wp-utils'),
+						'label' => __('Poster Image', 'tka-site-utilities'),
 						'name' => 'video_poster_image',
 						'type' => 'image',
-						'instructions' => __('Upload a fallback poster image for this video.', 'tka-wp-utils'),
+						'instructions' => __('Upload a fallback poster image for this video.', 'tka-site-utilities'),
 						'required' => 0,
 						'conditional_logic' => 0,
 						'return_format' => 'id',

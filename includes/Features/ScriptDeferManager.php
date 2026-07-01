@@ -26,20 +26,31 @@ class ScriptDeferManager {
 		$deferred_scripts = $this->options['deferred_scripts'] ?? [];
 		$deferred_scripts_custom = $this->options['deferred_scripts_custom'] ?? '';
 
-		if ( empty( $deferred_scripts ) && empty( $deferred_scripts_custom ) ) {
+		$delayed_scripts_interaction = $this->options['delayed_scripts_interaction'] ?? '';
+
+		if ( empty( $deferred_scripts ) && empty( $deferred_scripts_custom ) && empty( $delayed_scripts_interaction ) ) {
 			return;
 		}
 
-		// Modern WP 6.3+ native defer strategy (fixes inline scripts issues)
-		add_action( 'wp_enqueue_scripts', [ $this, 'applyDeferStrategy' ], 9999 );
-		add_action( 'wp_print_scripts', [ $this, 'applyDeferStrategy' ], 9 );
-		add_action( 'wp_print_footer_scripts', [ $this, 'applyDeferStrategy' ], 9 );
+		if ( ! empty( $deferred_scripts ) || ! empty( $deferred_scripts_custom ) ) {
+			// Modern WP 6.3+ native defer strategy (fixes inline scripts issues)
+			add_action( 'wp_enqueue_scripts', [ $this, 'applyDeferStrategy' ], 9999 );
+			add_action( 'wp_print_scripts', [ $this, 'applyDeferStrategy' ], 9 );
+			add_action( 'wp_print_footer_scripts', [ $this, 'applyDeferStrategy' ], 9 );
 
-		// Force WP to delay inline scripts associated with deferred handles
-		add_filter( 'wp_inline_script_attributes', [ $this, 'delayInlineScripts' ], 10, 2 );
+			// Force WP to delay inline scripts associated with deferred handles
+			add_filter( 'wp_inline_script_attributes', [ $this, 'delayInlineScripts' ], 10, 2 );
 
-		// Fallback for older WP or dynamically injected tags
-		add_filter( 'script_loader_tag', [ $this, 'deferScripts' ], 10, 3 );
+			// Fallback for older WP or dynamically injected tags
+			add_filter( 'script_loader_tag', [ $this, 'deferScripts' ], 10, 3 );
+		}
+
+		
+		// Interaction-based Delay Loader
+		if ( ! empty( $delayed_scripts_interaction ) ) {
+			add_filter( 'script_loader_tag', [ $this, 'delayScriptsForInteraction' ], 11, 2 );
+			add_action( 'wp_footer', [ $this, 'injectInteractionLoader' ], PHP_INT_MAX );
+		}
 	}
 
 	/**
@@ -136,6 +147,72 @@ class ScriptDeferManager {
 		}
 
 		return $tag;
+	}
+
+	/**
+	 * Converts standard scripts into interaction-delayed scripts by swapping src to data-tka-src.
+	 */
+	public function delayScriptsForInteraction( string $tag, string $handle ): string {
+		if ( is_admin() || wp_is_json_request() ) {
+			return $tag;
+		}
+
+		$delayed_scripts = preg_split( '/[\r\n,]+/', $this->options['delayed_scripts_interaction'], -1, PREG_SPLIT_NO_EMPTY );
+		$delayed_scripts = array_map( 'trim', $delayed_scripts );
+
+		// Match exactly or by substring inside the handle
+		$is_match = false;
+		foreach ( $delayed_scripts as $delayed_handle ) {
+			if ( $handle === $delayed_handle || strpos( $handle, $delayed_handle ) !== false ) {
+				$is_match = true;
+				break;
+			}
+		}
+
+		if ( $is_match ) {
+			$tag = str_replace( ' src=', ' data-tka-src=', $tag );
+			// Optionally remove defer if it was previously added by WP or our defer logic
+			$tag = str_replace( ' defer="defer"', '', $tag );
+			$tag = str_replace( ' defer', '', $tag );
+		}
+
+		return $tag;
+	}
+
+	/**
+	 * Injects the vanilla JS snippet to load delayed scripts on interaction.
+	 */
+	public function injectInteractionLoader(): void {
+		?>
+		<script>
+		document.addEventListener('DOMContentLoaded', function() {
+			let loaded = false;
+			const loadDelayedScripts = () => {
+				if (loaded) return;
+				loaded = true;
+				const scripts = document.querySelectorAll('script[data-tka-src]');
+				scripts.forEach(script => {
+					const newScript = document.createElement('script');
+					newScript.src = script.getAttribute('data-tka-src');
+					newScript.async = false;
+					if (script.id) newScript.id = script.id;
+					
+					// Transfer any other data attributes
+					Array.from(script.attributes).forEach(attr => {
+						if (attr.name !== 'data-tka-src' && attr.name !== 'id') {
+							newScript.setAttribute(attr.name, attr.value);
+						}
+					});
+					
+					document.body.appendChild(newScript);
+				});
+			};
+			['scroll', 'mousemove', 'touchstart', 'keydown'].forEach(e => {
+				window.addEventListener(e, loadDelayedScripts, { once: true, passive: true });
+			});
+		});
+		</script>
+		<?php
 	}
 }
 

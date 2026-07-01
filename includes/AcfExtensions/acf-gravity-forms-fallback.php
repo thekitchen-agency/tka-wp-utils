@@ -4,13 +4,17 @@
  * Description: Enables a Gravity Form Dropdown Selector
  */
 
-if (!class_exists('ACFGravityformsField\Field')) {
-	add_filter('acf/load_field/type=forms', 'tka_wp_utils_gf_fallback_load_field');
-	add_filter('acf/format_value', 'tka_wp_utils_gf_fallback_format_value', 10, 3);
-	add_action('acf/include_field_types', 'tka_wp_utils_gf_fallback_register_field_type');
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
 
-function tka_wp_utils_gf_fallback_load_field(array $field): array
+if (!class_exists('ACFGravityformsField\Field')) {
+	add_filter('acf/load_field/type=forms', 'tka_site_utilities_gf_fallback_load_field');
+	add_filter('acf/format_value', 'tka_site_utilities_gf_fallback_format_value', 10, 3);
+	add_action('acf/include_field_types', 'tka_site_utilities_gf_fallback_register_field_type');
+}
+
+function tka_site_utilities_gf_fallback_load_field(array $field): array
 {
 	$field['type'] = 'select';
 	$field['original_type'] = 'forms';
@@ -30,7 +34,7 @@ function tka_wp_utils_gf_fallback_load_field(array $field): array
 	return $field;
 }
 
-function tka_wp_utils_gf_fallback_format_value($value, $post_id, array $field)
+function tka_site_utilities_gf_fallback_format_value($value, $post_id, array $field)
 {
 	if (isset($field['original_type']) && $field['original_type'] === 'forms') {
 		if (empty($value)) {
@@ -62,7 +66,7 @@ function tka_wp_utils_gf_fallback_format_value($value, $post_id, array $field)
 	return $value;
 }
 
-function tka_wp_utils_gf_fallback_register_field_type(): void
+function tka_site_utilities_gf_fallback_register_field_type(): void
 {
 	if (class_exists('acf_field_select') && !class_exists('acf_field_forms_fallback', false)) {
 		class acf_field_forms_fallback extends \acf_field_select
@@ -71,7 +75,7 @@ function tka_wp_utils_gf_fallback_register_field_type(): void
 			{
 				parent::initialize();
 				$this->name = 'forms';
-				$this->label = __('Gravity Forms', 'tka-wp-utils');
+				$this->label = __('Gravity Forms', 'tka-site-utilities');
 				$this->category = 'relational';
 				$this->defaults = array_merge($this->defaults, [
 					'multiple' => 0,
@@ -91,19 +95,19 @@ function tka_wp_utils_gf_fallback_register_field_type(): void
 			public function render_field_settings($field)
 			{
 				acf_render_field_setting($field, [
-					'label' => __('Return Value', 'acf'),
-					'instructions' => __('Specify the returned value on front end', 'acf'),
+					'label' => __('Return Value', 'tka-site-utilities'),
+					'instructions' => __('Specify the returned value on front end', 'tka-site-utilities'),
 					'type' => 'radio',
 					'name' => 'return_format',
 					'layout' => 'horizontal',
 					'choices' => [
-						'id' => __('Form ID', 'acf'),
-						'object' => __('Form Object', 'acf'),
+						'id' => __('Form ID', 'tka-site-utilities'),
+						'object' => __('Form Object', 'tka-site-utilities'),
 					]
 				]);
 
 				acf_render_field_setting($field, [
-					'label' => __('Allow Null?', 'acf'),
+					'label' => __('Allow Null?', 'tka-site-utilities'),
 					'instructions' => '',
 					'type' => 'true_false',
 					'name' => 'allow_null',
@@ -111,7 +115,7 @@ function tka_wp_utils_gf_fallback_register_field_type(): void
 				]);
 
 				acf_render_field_setting($field, [
-					'label' => __('Select Multiple?', 'acf'),
+					'label' => __('Select Multiple?', 'tka-site-utilities'),
 					'instructions' => '',
 					'type' => 'true_false',
 					'name' => 'multiple',

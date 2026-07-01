@@ -14,7 +14,7 @@ add_action( 'acf/include_field_types', function( $version ) {
 
         public function initialize() {
             $this->name     = 'intl_phone';
-            $this->label    = __( 'International Phone', 'acf' );
+            $this->label    = __( 'International Phone', 'tka-site-utilities' );
             $this->category = 'basic';
             $this->defaults = array(
                 'default_value' => '',
@@ -26,35 +26,35 @@ add_action( 'acf/include_field_types', function( $version ) {
         public function render_field_settings( $field ) {
             // Return Format
             acf_render_field_setting( $field, array(
-                'label'        => __( 'Return Format', 'acf' ),
-                'instructions' => __( 'Specify the returned value format', 'acf' ),
+                'label'        => __( 'Return Format', 'tka-site-utilities' ),
+                'instructions' => __( 'Specify the returned value format', 'tka-site-utilities' ),
                 'type'         => 'radio',
                 'name'         => 'return_format',
                 'layout'       => 'horizontal',
                 'choices'      => array(
-                    'array' => __( 'Phone Array (Number, Country Code)', 'acf' ),
-                    'string' => __( 'Formatted String (e.g. +1 555-1234)', 'acf' ),
+                    'array' => __( 'Phone Array (Number, Country Code)', 'tka-site-utilities' ),
+                    'string' => __( 'Formatted String (e.g. +1 555-1234)', 'tka-site-utilities' ),
                 ),
             ) );
 
             // Preferred Countries
             acf_render_field_setting( $field, array(
-                'label'        => __( 'Preferred Countries', 'acf' ),
-                'instructions' => __( 'Comma separated 2-letter country codes (e.g., us,gb,ch) to show at the top of the list.', 'acf' ),
+                'label'        => __( 'Preferred Countries', 'tka-site-utilities' ),
+                'instructions' => __( 'Comma separated 2-letter country codes (e.g., us,gb,ch) to show at the top of the list.', 'tka-site-utilities' ),
                 'type'         => 'text',
                 'name'         => 'preferred_countries',
             ) );
         }
 
         public function input_admin_enqueue_scripts() {
-            $plugin_url = TKA_WP_UTILS_URL . 'includes/AcfExtensions/assets/intl-tel-input/';
+            $plugin_url = TKA_SITE_UTILITIES_URL . 'includes/AcfExtensions/assets/intl-tel-input/';
             
             wp_enqueue_style( 'intl-tel-input-css', $plugin_url . 'css/intlTelInput.min.css', array(), '1' );
             wp_enqueue_script( 'intl-tel-input-js', $plugin_url . 'js/intlTelInput.min.js', array('jquery'), '1', true );
         }
 
         public function input_admin_footer() {
-            $plugin_url = TKA_WP_UTILS_URL . 'includes/AcfExtensions/assets/intl-tel-input/';
+            $plugin_url = TKA_SITE_UTILITIES_URL . 'includes/AcfExtensions/assets/intl-tel-input/';
             ?>
             <style>
                 .iti { width: 100%; display: block; }

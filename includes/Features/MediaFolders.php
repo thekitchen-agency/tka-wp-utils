@@ -37,17 +37,17 @@ class MediaFolders
 	public function registerTaxonomy(): void
 	{
 		$labels = [
-			'name' => _x('Media Folders', 'taxonomy general name', 'tka-wp-utils'),
-			'singular_name' => _x('Folder', 'taxonomy singular name', 'tka-wp-utils'),
-			'search_items' => __('Search Folders', 'tka-wp-utils'),
-			'all_items' => __('All Folders', 'tka-wp-utils'),
-			'parent_item' => __('Parent Folder', 'tka-wp-utils'),
-			'parent_item_colon' => __('Parent Folder:', 'tka-wp-utils'),
-			'edit_item' => __('Edit Folder', 'tka-wp-utils'),
-			'update_item' => __('Update Folder', 'tka-wp-utils'),
-			'add_new_item' => __('Add New Folder', 'tka-wp-utils'),
-			'new_item_name' => __('New Folder Name', 'tka-wp-utils'),
-			'menu_name' => __('Folders', 'tka-wp-utils'),
+			'name' => _x('Media Folders', 'taxonomy general name', 'tka-site-utilities'),
+			'singular_name' => _x('Folder', 'taxonomy singular name', 'tka-site-utilities'),
+			'search_items' => __('Search Folders', 'tka-site-utilities'),
+			'all_items' => __('All Folders', 'tka-site-utilities'),
+			'parent_item' => __('Parent Folder', 'tka-site-utilities'),
+			'parent_item_colon' => __('Parent Folder:', 'tka-site-utilities'),
+			'edit_item' => __('Edit Folder', 'tka-site-utilities'),
+			'update_item' => __('Update Folder', 'tka-site-utilities'),
+			'add_new_item' => __('Add New Folder', 'tka-site-utilities'),
+			'new_item_name' => __('New Folder Name', 'tka-site-utilities'),
+			'menu_name' => __('Folders', 'tka-site-utilities'),
 		];
 
 		register_taxonomy(self::TAXONOMY, 'attachment', [
@@ -66,13 +66,13 @@ class MediaFolders
 	 */
 	public function enqueueAssets(): void
 	{
-		$css_ver = file_exists(TKA_WP_UTILS_PATH . 'admin/css/media-folders.css') ? filemtime(TKA_WP_UTILS_PATH . 'admin/css/media-folders.css') : TKA_WP_UTILS_VERSION;
-		$js_ver = file_exists(TKA_WP_UTILS_PATH . 'admin/js/media-folders.js') ? filemtime(TKA_WP_UTILS_PATH . 'admin/js/media-folders.js') : TKA_WP_UTILS_VERSION;
+		$css_ver = file_exists(TKA_SITE_UTILITIES_PATH . 'admin/css/media-folders.css') ? filemtime(TKA_SITE_UTILITIES_PATH . 'admin/css/media-folders.css') : TKA_SITE_UTILITIES_VERSION;
+		$js_ver = file_exists(TKA_SITE_UTILITIES_PATH . 'admin/js/media-folders.js') ? filemtime(TKA_SITE_UTILITIES_PATH . 'admin/js/media-folders.js') : TKA_SITE_UTILITIES_VERSION;
 
 		// Enqueue styling
 		wp_enqueue_style(
 			'tka-media-folders-css',
-			TKA_WP_UTILS_URL . 'admin/css/media-folders.css',
+			TKA_SITE_UTILITIES_URL . 'admin/css/media-folders.css',
 			[],
 			$css_ver
 		);
@@ -80,7 +80,7 @@ class MediaFolders
 		// Enqueue scripts
 		wp_enqueue_script(
 			'tka-media-folders-js',
-			TKA_WP_UTILS_URL . 'admin/js/media-folders.js',
+			TKA_SITE_UTILITIES_URL . 'admin/js/media-folders.js',
 			['jquery', 'media-views'],
 			$js_ver,
 			true
@@ -91,14 +91,14 @@ class MediaFolders
 			'ajaxUrl' => admin_url('admin-ajax.php'),
 			'nonce' => wp_create_nonce('tka-media-folders-nonce'),
 			'i18n' => [
-				'allFiles' => __('All Files', 'tka-wp-utils'),
-				'unassigned' => __('Unassigned', 'tka-wp-utils'),
-				'newFolder' => __('New Folder', 'tka-wp-utils'),
-				'renameFolder' => __('Rename Folder', 'tka-wp-utils'),
-				'deleteFolder' => __('Delete Folder', 'tka-wp-utils'),
-				'confirmDelete' => __('Are you sure you want to delete this folder? Subfolders will be moved to the parent folder.', 'tka-wp-utils'),
-				'emptyName' => __('Folder name cannot be empty.', 'tka-wp-utils'),
-				'promptName' => __('Enter folder name:', 'tka-wp-utils'),
+				'allFiles' => __('All Files', 'tka-site-utilities'),
+				'unassigned' => __('Unassigned', 'tka-site-utilities'),
+				'newFolder' => __('New Folder', 'tka-site-utilities'),
+				'renameFolder' => __('Rename Folder', 'tka-site-utilities'),
+				'deleteFolder' => __('Delete Folder', 'tka-site-utilities'),
+				'confirmDelete' => __('Are you sure you want to delete this folder? Subfolders will be moved to the parent folder.', 'tka-site-utilities'),
+				'emptyName' => __('Folder name cannot be empty.', 'tka-site-utilities'),
+				'promptName' => __('Enter folder name:', 'tka-site-utilities'),
 			]
 		]);
 	}
@@ -109,8 +109,10 @@ class MediaFolders
 	public function filterAttachmentsQuery(array $query): array
 	{
 		$requested_folder = null;
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		if (!empty($_REQUEST['query'][self::TAXONOMY])) {
-			$requested_folder = $_REQUEST['query'][self::TAXONOMY];
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$requested_folder = sanitize_text_field(wp_unslash($_REQUEST['query'][self::TAXONOMY]));
 		} elseif (!empty($query[self::TAXONOMY])) {
 			$requested_folder = $query[self::TAXONOMY];
 		}
@@ -119,6 +121,7 @@ class MediaFolders
 			$folder = sanitize_text_field($requested_folder);
 
 			if (!isset($query['tax_query']) || !is_array($query['tax_query'])) {
+				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_tax_query
 				$query['tax_query'] = [];
 			}
 
@@ -152,7 +155,7 @@ class MediaFolders
 		check_ajax_referer('tka-media-folders-nonce', 'nonce');
 
 		if (!current_user_can('upload_files')) {
-			wp_send_json_error(['message' => __('Unauthorized.', 'tka-wp-utils')]);
+			wp_send_json_error(['message' => __('Unauthorized.', 'tka-site-utilities')]);
 		}
 
 		$terms = get_terms([
@@ -202,7 +205,8 @@ class MediaFolders
 			'post_status' => 'inherit',
 			'posts_per_page' => -1,
 			'fields' => 'ids',
-			'suppress_filters' => true,
+			'suppress_filters' => false,
+			// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_tax_query
 			'tax_query' => [
 				[
 					'taxonomy' => self::TAXONOMY,
@@ -223,14 +227,14 @@ class MediaFolders
 		check_ajax_referer('tka-media-folders-nonce', 'nonce');
 
 		if (!current_user_can('upload_files')) {
-			wp_send_json_error(['message' => __('Unauthorized.', 'tka-wp-utils')]);
+			wp_send_json_error(['message' => __('Unauthorized.', 'tka-site-utilities')]);
 		}
 
-		$name = sanitize_text_field($_POST['name'] ?? '');
-		$parent = intval($_POST['parent'] ?? 0);
+		$name = isset($_POST['name']) ? sanitize_text_field(wp_unslash($_POST['name'])) : '';
+		$parent = isset($_POST['parent']) ? intval(wp_unslash($_POST['parent'])) : 0;
 
 		if (empty($name)) {
-			wp_send_json_error(['message' => __('Folder name is required.', 'tka-wp-utils')]);
+			wp_send_json_error(['message' => __('Folder name is required.', 'tka-site-utilities')]);
 		}
 
 		$result = wp_insert_term($name, self::TAXONOMY, [
@@ -255,14 +259,14 @@ class MediaFolders
 		check_ajax_referer('tka-media-folders-nonce', 'nonce');
 
 		if (!current_user_can('upload_files')) {
-			wp_send_json_error(['message' => __('Unauthorized.', 'tka-wp-utils')]);
+			wp_send_json_error(['message' => __('Unauthorized.', 'tka-site-utilities')]);
 		}
 
-		$id = intval($_POST['id'] ?? 0);
-		$name = sanitize_text_field($_POST['name'] ?? '');
+		$id = isset($_POST['id']) ? intval(wp_unslash($_POST['id'])) : 0;
+		$name = isset($_POST['name']) ? sanitize_text_field(wp_unslash($_POST['name'])) : '';
 
 		if (!$id || empty($name)) {
-			wp_send_json_error(['message' => __('Invalid parameters.', 'tka-wp-utils')]);
+			wp_send_json_error(['message' => __('Invalid parameters.', 'tka-site-utilities')]);
 		}
 
 		$result = wp_update_term($id, self::TAXONOMY, [
@@ -287,12 +291,12 @@ class MediaFolders
 		check_ajax_referer('tka-media-folders-nonce', 'nonce');
 
 		if (!current_user_can('upload_files')) {
-			wp_send_json_error(['message' => __('Unauthorized.', 'tka-wp-utils')]);
+			wp_send_json_error(['message' => __('Unauthorized.', 'tka-site-utilities')]);
 		}
 
 		$id = intval($_POST['id'] ?? 0);
 		if (!$id) {
-			wp_send_json_error(['message' => __('Invalid folder ID.', 'tka-wp-utils')]);
+			wp_send_json_error(['message' => __('Invalid folder ID.', 'tka-site-utilities')]);
 		}
 
 		// Move subfolders to parent before deleting
@@ -326,14 +330,14 @@ class MediaFolders
 		check_ajax_referer('tka-media-folders-nonce', 'nonce');
 
 		if (!current_user_can('upload_files')) {
-			wp_send_json_error(['message' => __('Unauthorized.', 'tka-wp-utils')]);
+			wp_send_json_error(['message' => __('Unauthorized.', 'tka-site-utilities')]);
 		}
 
-		$attachment_ids = array_map('intval', (array) ($_POST['attachment_ids'] ?? []));
-		$folder_id = sanitize_text_field($_POST['folder_id'] ?? ''); // Could be term ID or 'unassigned'
+		$attachment_ids = isset($_POST['attachment_ids']) ? array_map('intval', (array) wp_unslash($_POST['attachment_ids'])) : [];
+		$folder_id = isset($_POST['folder_id']) ? sanitize_text_field(wp_unslash($_POST['folder_id'])) : ''; // Could be term ID or 'unassigned'
 
 		if (empty($attachment_ids)) {
-			wp_send_json_error(['message' => __('No attachments specified.', 'tka-wp-utils')]);
+			wp_send_json_error(['message' => __('No attachments specified.', 'tka-site-utilities')]);
 		}
 
 		foreach ($attachment_ids as $attachment_id) {

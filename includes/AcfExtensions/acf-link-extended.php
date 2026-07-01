@@ -25,7 +25,7 @@ add_action( 'acf/include_field_types', function( $version ) {
             parent::initialize();
             
             $this->name     = 'link_extended';
-            $this->label    = __( 'Link (with Class)', 'acf' );
+            $this->label    = __( 'Link (with Class)', 'tka-site-utilities' );
             $this->category = 'relational';
         }
         
@@ -38,8 +38,8 @@ add_action( 'acf/include_field_types', function( $version ) {
             
             // Add our custom class choices setting
             acf_render_field_setting( $field, array(
-                'label'        => __( 'Class Choices', 'acf' ),
-                'instructions' => __( 'Enter each choice on a new line.<br>For more control, you may specify both a value and label like this:<br>button : Button<br>button-primary : Primary Button', 'acf' ),
+                'label'        => __( 'Class Choices', 'tka-site-utilities' ),
+                'instructions' => __( 'Enter each choice on a new line.<br>For more control, you may specify both a value and label like this:<br>button : Button<br>button-primary : Primary Button', 'tka-site-utilities' ),
                 'type'         => 'textarea',
                 'name'         => 'class_choices',
             ) );

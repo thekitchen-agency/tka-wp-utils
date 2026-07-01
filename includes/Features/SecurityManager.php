@@ -132,8 +132,8 @@ class SecurityManager {
 	 */
 	public function disableXmlrpcCall(): void {
 		wp_die(
-			__( 'XML-RPC is disabled on this site.', 'tka-wp-utils' ),
-			__( 'XML-RPC Disabled', 'tka-wp-utils' ),
+			esc_html__( 'XML-RPC is disabled on this site.', 'tka-site-utilities' ),
+			esc_html__( 'XML-RPC Disabled', 'tka-site-utilities' ),
 			[ 'response' => 403 ]
 		);
 	}

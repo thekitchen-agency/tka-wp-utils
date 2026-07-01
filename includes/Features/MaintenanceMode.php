@@ -45,12 +45,15 @@ class MaintenanceMode {
 		}
 
 		// Set HTTP 503 Service Unavailable header
-		$protocol = $_SERVER['SERVER_PROTOCOL'] ?? 'HTTP/1.1';
+		$protocol = isset( $_SERVER['SERVER_PROTOCOL'] ) ? sanitize_text_field( wp_unslash( $_SERVER['SERVER_PROTOCOL'] ) ) : 'HTTP/1.1';
+		if ( ! in_array( $protocol, [ 'HTTP/1.0', 'HTTP/1.1', 'HTTP/2', 'HTTP/2.0', 'HTTP/3' ], true ) ) {
+			$protocol = 'HTTP/1.1';
+		}
 		header( "$protocol 503 Service Unavailable", true, 503 );
 		header( 'Retry-After: 3600' ); // Recommend retry in 1 hour
 
-		$title = ! empty( $this->options['maintenance_title'] ) ? $this->options['maintenance_title'] : __( 'Under Maintenance', 'tka-wp-utils' );
-		$message = ! empty( $this->options['maintenance_message'] ) ? $this->options['maintenance_message'] : __( 'Our website is currently undergoing scheduled maintenance. We will be back shortly. Thank you for your patience!', 'tka-wp-utils' );
+		$title = ! empty( $this->options['maintenance_title'] ) ? $this->options['maintenance_title'] : __( 'Under Maintenance', 'tka-site-utilities' );
+		$message = ! empty( $this->options['maintenance_message'] ) ? $this->options['maintenance_message'] : __( 'Our website is currently undergoing scheduled maintenance. We will be back shortly. Thank you for your patience!', 'tka-site-utilities' );
 		$logo = $this->options['maintenance_logo'] ?? '';
 		$bg = $this->options['maintenance_background'] ?? '';
 
@@ -267,7 +270,7 @@ class MaintenanceMode {
 				<div style="margin-bottom: 24px;">
 					<span class="status-badge">
 						<span class="status-dot"></span>
-						<?php esc_html_e( 'Maintenance Mode', 'tka-wp-utils' ); ?>
+						<?php esc_html_e( 'Maintenance Mode', 'tka-site-utilities' ); ?>
 					</span>
 				</div>
 
@@ -278,7 +281,7 @@ class MaintenanceMode {
 		</body>
 		</html>
 		<?php
-		if ( ! defined( 'TKA_WP_UTILS_TESTING' ) ) {
+		if ( ! defined( 'TKA_SITE_UTILITIES_TESTING' ) ) {
 			exit;
 		}
 	}

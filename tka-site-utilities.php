@@ -1,15 +1,16 @@
 <?php
 /**
- * Plugin Name:       TKA WP Utils
- * Plugin URI:        https://github.com/thekitchen-agency/tka-wp-utils
+ * Plugin Name:       TKA Site Utilities
+ * Plugin URI:        https://github.com/thekitchen-agency/tka-site-utilities
  * Description:       A collection of utility tools to customize and secure your WordPress experience, including Classic Editor, Classic Widgets, Disable Gutenberg (granular), and Safe SVG upload validation.
- * Version:           1.12.0
+ * Version:           1.13.0
  * Author:            TKA
  * Author URI:        https://wp-play.ddev.site
  * License:           MIT
  * License URI:       https://opensource.org/licenses/MIT
- * Text Domain:       tka-wp-utils
+ * Text Domain:       tka-site-utilities
  * Domain Path:       /languages
+ * Requires at least: 6.2
  * Requires PHP:      8.3
  */
 
@@ -19,13 +20,13 @@ if (!defined('WPINC')) {
 }
 
 // Define plugin constants
-define('TKA_WP_UTILS_VERSION', '1.12.0');
-define('TKA_WP_UTILS_PATH', plugin_dir_path(__FILE__));
-define('TKA_WP_UTILS_URL', plugin_dir_url(__FILE__));
+define('TKA_SITE_UTILITIES_VERSION', '1.13.0');
+define('TKA_SITE_UTILITIES_PATH', plugin_dir_path(__FILE__));
+define('TKA_SITE_UTILITIES_URL', plugin_dir_url(__FILE__));
 
 // Define AUTOSAVE_INTERVAL early if the option is set and not already defined
 if (!defined('AUTOSAVE_INTERVAL')) {
-	$tka_options = get_option('tka_wp_utils_options', []);
+	$tka_options = get_option('tka_site_utilities_options', []);
 	if (!empty($tka_options['autosave_interval'])) {
 		define('AUTOSAVE_INTERVAL', intval($tka_options['autosave_interval']));
 	}
@@ -36,7 +37,7 @@ if (!defined('AUTOSAVE_INTERVAL')) {
  */
 spl_autoload_register(function ($class) {
 	$prefix = 'TKA\\WPUtils\\';
-	$base_dir = TKA_WP_UTILS_PATH . 'includes/';
+	$base_dir = TKA_SITE_UTILITIES_PATH . 'includes/';
 
 	$len = strlen($prefix);
 	if (strncmp($prefix, $class, $len) !== 0) {
@@ -54,7 +55,7 @@ spl_autoload_register(function ($class) {
 /**
  * Begin plugin execution.
  */
-function tka_wp_utils_run()
+function tka_site_utilities_run()
 {
 	$plugin = TKA\WPUtils\Core\Plugin::getInstance();
 	$plugin->run();
@@ -66,11 +67,11 @@ function tka_wp_utils_run()
 register_activation_hook(__FILE__, function () {
 	$current_user_id = get_current_user_id();
 	if ($current_user_id) {
-		update_option('tka_wp_utils_installer_id', $current_user_id);
+		update_option('tka_site_utilities_installer_id', $current_user_id);
 	}
 });
 
 // Require WooCommerce pluggable overrides early
-require_once TKA_WP_UTILS_PATH . 'includes/pluggables.php';
+require_once TKA_SITE_UTILITIES_PATH . 'includes/pluggables.php';
 
-tka_wp_utils_run();
+tka_site_utilities_run();

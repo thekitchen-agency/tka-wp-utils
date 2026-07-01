@@ -26,18 +26,18 @@ class RedirectManager
 			return;
 		}
 
-		$redirects = get_option('tka_wp_utils_redirects', []);
+		$redirects = get_option('tka_site_utilities_redirects', []);
 		if (empty($redirects)) {
 			return;
 		}
 
-		$request_uri = $_SERVER['REQUEST_URI'] ?? '';
+		$request_uri = isset($_SERVER['REQUEST_URI']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI'])) : '';
 		if (empty($request_uri)) {
 			return;
 		}
 
 		// Normalize requested URI by removing trailing slash for comparison
-		$path = parse_url($request_uri, PHP_URL_PATH);
+		$path = wp_parse_url($request_uri, PHP_URL_PATH);
 		$normalized_request = untrailingslashit($path);
 
 		foreach ($redirects as $rule) {
@@ -50,7 +50,7 @@ class RedirectManager
 
 			// Strip domain from old_url if accidentally provided
 			if (str_starts_with($old_url, 'http')) {
-				$old_url = parse_url($old_url, PHP_URL_PATH);
+				$old_url = wp_parse_url($old_url, PHP_URL_PATH);
 			}
 
 			$is_wildcard = str_ends_with($old_url, '*');
@@ -70,6 +70,7 @@ class RedirectManager
 						$destination = $new_url;
 					}
 
+					// phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect
 					wp_redirect($destination, 301);
 					exit;
 				}
@@ -77,6 +78,7 @@ class RedirectManager
 				// Exact match
 				$normalized_old = untrailingslashit($old_url);
 				if ($normalized_request === $normalized_old) {
+					// phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect
 					wp_redirect($new_url, 301);
 					exit;
 				}

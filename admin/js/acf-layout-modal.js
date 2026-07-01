@@ -1,5 +1,5 @@
 /**
- * TKA WP Utils - ACF Layout Modal Selection JavaScript Engine
+ * TKA Site Utilities - ACF Layout Modal Selection JavaScript Engine
  */
 
 (function($) {
@@ -7,7 +7,7 @@
 
 	// Enable layout modal active body class immediately on script load
 	$(function() {
-		console.log('TKA WP Utils: Script executed immediately on script load.');
+		console.log('TKA Site Utilities: Script executed immediately on script load.');
 		$('body').addClass('tka-layout-modal-active');
 	});
 
@@ -80,7 +80,7 @@
 
 		init() {
 			// Handled natively by acf.models.Tooltip.prototype.show override
-			console.log('TKA WP Utils: AcfLayoutModalPicker instance init complete.');
+			console.log('TKA Site Utilities: AcfLayoutModalPicker instance init complete.');
 		}
 
 		createModalMarkup() {
@@ -169,25 +169,25 @@
 
 			// Block card item click
 			$dialog.on('click', '.tka-layout-card', (e) => {
-				console.log('TKA WP Utils: Block card clicked.');
+				console.log('TKA Site Utilities: Block card clicked.');
 				const index = $(e.currentTarget).data('index');
 				const layout = this.layouts[index];
-				console.log('TKA WP Utils: Selected layout object:', layout);
+				console.log('TKA Site Utilities: Selected layout object:', layout);
 				
 				if (layout) {
 					// Set layout selection state to avoid closing native tooltip twice
 					this.selectingLayout = true;
 					
 					// Trigger programmatically standard click event on the native ACF dropdown anchor
-					console.log('TKA WP Utils: Triggering native click event on linkEl...');
+					console.log('TKA Site Utilities: Triggering native click event on linkEl...');
 					if (layout.linkEl && layout.linkEl[0]) {
 						layout.linkEl[0].click();
 					} else {
-						console.log('TKA WP Utils: WARNING: linkEl DOM element not found!');
+						console.log('TKA Site Utilities: WARNING: linkEl DOM element not found!');
 					}
 
 					// Close modal
-					console.log('TKA WP Utils: Closing modal...');
+					console.log('TKA Site Utilities: Closing modal...');
 					this.dialog.close();
 					
 					this.selectingLayout = false;
@@ -218,10 +218,10 @@
 
 			// Handle modal close event to hide the native tooltip cleanly
 			this.dialog.addEventListener('close', () => {
-				console.log('TKA WP Utils: Modal dialog close event triggered.');
+				console.log('TKA Site Utilities: Modal dialog close event triggered.');
 				if (!this.selectingLayout) {
 					if (window.tkaActiveAcfTooltip && typeof window.tkaActiveAcfTooltip.hide === 'function') {
-						console.log('TKA WP Utils: Hiding the native ACF tooltip...');
+						console.log('TKA Site Utilities: Hiding the native ACF tooltip...');
 						window.tkaActiveAcfTooltip.hide();
 					}
 				}
@@ -333,12 +333,12 @@
 	function initializePicker() {
 		if (window.tkaAcfLayoutModalPickerInstance) return;
 
-		console.log('TKA WP Utils: Registering custom Tooltip prototype hooks...');
+		console.log('TKA Site Utilities: Registering custom Tooltip prototype hooks...');
 		window.tkaAcfLayoutModalPickerInstance = new AcfLayoutModalPicker();
 
 		// Override Tooltip setup method to bypass subclass prototype shadowing
 		if (acf.models && acf.models.Tooltip) {
-			console.log('TKA WP Utils: Overriding acf.models.Tooltip.prototype.setup...');
+			console.log('TKA Site Utilities: Overriding acf.models.Tooltip.prototype.setup...');
 			const originalSetup = acf.models.Tooltip.prototype.setup;
 
 			acf.models.Tooltip.prototype.setup = function(e) {
@@ -355,7 +355,7 @@
 
 					// Intercept only the Flexible Content popup, ignoring the 'More Layout Actions' list
 					if (this.$el.hasClass('acf-fc-popup') && !this.$el.hasClass('acf-more-layout-actions')) {
-						console.log('TKA WP Utils: Intercepted Flexible Content Layout selection popup via instance show!');
+						console.log('TKA Site Utilities: Intercepted Flexible Content Layout selection popup via instance show!');
 						
 						// Save tooltip reference to close it if the modal is dismissed manually
 						window.tkaActiveAcfTooltip = this;
@@ -387,7 +387,7 @@
 								});
 							});
 
-							console.log('TKA WP Utils: Harvested layouts count:', picker.layouts.length);
+							console.log('TKA Site Utilities: Harvested layouts count:', picker.layouts.length);
 
 							if (picker.layouts.length > 0) {
 								picker.openModal();
@@ -401,23 +401,23 @@
 				return result;
 			};
 		} else {
-			console.log('TKA WP Utils: acf.models.Tooltip definition not found.');
+			console.log('TKA Site Utilities: acf.models.Tooltip definition not found.');
 		}
 	}
 
 	// Instantiate the Visual layout picker
 	$(document).ready(function() {
-		console.log('TKA WP Utils: JS script file evaluated on document ready.');
+		console.log('TKA Site Utilities: JS script file evaluated on document ready.');
 		
 		function checkAndBoot() {
 			if (typeof acf !== 'undefined') {
 				if (acf.didAction && acf.didAction('ready')) {
-					console.log('TKA WP Utils: ACF already ready. Initializing directly...');
+					console.log('TKA Site Utilities: ACF already ready. Initializing directly...');
 					initializePicker();
 				} else {
-					console.log('TKA WP Utils: ACF not yet ready. Hooking ready action...');
+					console.log('TKA Site Utilities: ACF not yet ready. Hooking ready action...');
 					acf.addAction('ready', function() {
-						console.log('TKA WP Utils: ACF ready action fired. Initializing...');
+						console.log('TKA Site Utilities: ACF ready action fired. Initializing...');
 						initializePicker();
 					});
 				}
@@ -427,7 +427,7 @@
 		}
 
 		if (!checkAndBoot()) {
-			console.log('TKA WP Utils: ACF object not found on load. Polling...');
+			console.log('TKA Site Utilities: ACF object not found on load. Polling...');
 			var acfCheckCount = 0;
 			var acfCheckInterval = setInterval(function() {
 				acfCheckCount++;
@@ -435,7 +435,7 @@
 					clearInterval(acfCheckInterval);
 				} else if (acfCheckCount > 50) {
 					clearInterval(acfCheckInterval);
-					console.log('TKA WP Utils: ACF object not found after 5 seconds of polling.');
+					console.log('TKA Site Utilities: ACF object not found after 5 seconds of polling.');
 				}
 			}, 100);
 		}

@@ -41,6 +41,21 @@ class GravityFormsManager {
 		if ( ! empty( $this->options['gf_submit_button_text_change'] ) ) {
 			add_action( 'wp_footer', [ $this, 'addSubmitButtonLoadingScript' ], 999 );
 		}
+
+		// 4. Core Web Vitals Optimizer (Aggressively lazy loads scripts & makes CSS async)
+		if ( ! empty( $this->options['gf_optimize_cwv'] ) ) {
+			// Move GF scripts to footer natively
+			add_filter( 'gform_init_scripts_footer', '__return_true' );
+			
+			// Inject JS Polyfill and Interaction Loader in head
+			add_action( 'wp_head', [ $this, 'injectCWVPolyfillAndLoader' ], 1 );
+			
+			// Delay script tags
+			add_filter( 'script_loader_tag', [ $this, 'delayGfScripts' ], 999, 2 );
+
+			// Async CSS
+			add_filter( 'style_loader_tag', [ $this, 'asyncGfCss' ], 999, 2 );
+		}
 	}
 
 	/**
@@ -111,5 +126,84 @@ class GravityFormsManager {
 			});
 		</script>
 		<?php
+	}
+
+	/**
+	 * Injects the window.gform polyfill and the vanilla JS interaction loader.
+	 */
+	public function injectCWVPolyfillAndLoader(): void {
+		?>
+		<script>
+		// Gravity Forms Lazy Loader Polyfill
+		window.gform = {
+			initializeOnLoaded: function(fn) {
+				window.gformInitQueue = window.gformInitQueue || [];
+				window.gformInitQueue.push(fn);
+			}
+		};
+		document.addEventListener('DOMContentLoaded', function() {
+			let loaded = false;
+			const loadGfScripts = () => {
+				if (loaded) return;
+				loaded = true;
+				const scripts = document.querySelectorAll('script[data-gf-src]');
+				let loadedCount = 0;
+				
+				scripts.forEach(script => {
+					const newScript = document.createElement('script');
+					newScript.src = script.getAttribute('data-gf-src');
+					newScript.async = false; // Preserve execution order
+					
+					if (script.id) newScript.id = script.id;
+					
+					newScript.onload = () => {
+						loadedCount++;
+						if (loadedCount === scripts.length) {
+							if (window.gform && window.gform.initializeOnLoaded && window.gformInitQueue) {
+								window.gformInitQueue.forEach(fn => window.gform.initializeOnLoaded(fn));
+								window.gformInitQueue = [];
+							}
+						}
+					};
+					document.body.appendChild(newScript);
+				});
+			};
+			['scroll', 'mousemove', 'touchstart', 'keydown'].forEach(e => {
+				window.addEventListener(e, loadGfScripts, { once: true, passive: true });
+			});
+		});
+		</script>
+		<?php
+	}
+
+	/**
+	 * Delays all GF and jQuery scripts by changing src to data-gf-src.
+	 */
+	public function delayGfScripts( string $tag, string $handle ): string {
+		if ( is_admin() || strpos( $tag, ' type="module"' ) !== false ) {
+			return $tag;
+		}
+
+		if ( strpos( $tag, '/jquery/' ) !== false || strpos( $tag, 'jquery.min.js' ) !== false || strpos( $tag, '/gravityforms/' ) !== false || strpos( $tag, 'gform' ) !== false ) {
+			return str_replace( ' src=', ' data-gf-src=', $tag );
+		}
+
+		return $tag;
+	}
+
+	/**
+	 * Transforms Gravity Forms CSS into async loaded CSS.
+	 */
+	public function asyncGfCss( string $html, string $handle ): string {
+		if ( is_admin() ) {
+			return $html;
+		}
+
+		if ( strpos( $handle, 'gform' ) !== false || strpos( $handle, 'gravity' ) !== false ) {
+			$html = str_replace( "media='all'", "media='print' onload=\"this.media='all'\"", $html );
+			$html = str_replace( 'media="all"', 'media="print" onload="this.media=\'all\'"', $html );
+		}
+
+		return $html;
 	}
 }

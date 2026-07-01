@@ -1,5 +1,5 @@
 /**
- * TKA WP Utils Page Transitions Frontend Script
+ * TKA Site Utilities Page Transitions Frontend Script
  */
 
 window.tkaInitPageTransitions = ( config ) => {
@@ -117,7 +117,8 @@ window.tkaInitPageTransitions = ( config ) => {
 						if (
 							typeof animationType === 'string' &&
 							( animationType.startsWith( 'slide' ) ||
-								animationType.startsWith( 'swipe' ) ) &&
+								animationType.startsWith( 'swipe' ) ||
+								animationType.startsWith( 'wipe' ) ) &&
 							name === 'main'
 						) {
 							return false;

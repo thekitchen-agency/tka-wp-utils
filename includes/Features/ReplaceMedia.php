@@ -177,13 +177,13 @@ class ReplaceMedia
 		<div class="tka-replace-media-wrapper">
 			<input type="file" id="tka-replace-media-file-' . esc_attr($post->ID) . '" accept="' . esc_attr($accept) . '" style="margin-bottom: 8px; width: 100%;" />
 			<button type="button" class="button button-secondary tka-replace-media-btn" data-id="' . esc_attr($post->ID) . '" data-nonce="' . esc_attr(wp_create_nonce('tka_replace_media_' . $post->ID)) . '">
-				' . esc_html__('Upload & Replace', 'tka-wp-utils') . '
+				' . esc_html__('Upload & Replace', 'tka-site-utilities') . '
 			</button>
 			<div id="tka-replace-status-' . esc_attr($post->ID) . '" class="tka-replace-status" style="margin-top: 8px; font-weight: 500;"></div>
 		</div>';
 
 		$form_fields['tka_replace_media'] = [
-			'label' => __('Replace File', 'tka-wp-utils'),
+			'label' => __('Replace File', 'tka-site-utilities'),
 			'input' => 'html',
 			'html'  => $html,
 		];
@@ -196,28 +196,28 @@ class ReplaceMedia
 	 */
 	public function ajaxReplaceMedia(): void
 	{
-		$attachment_id = isset($_POST['attachment_id']) ? intval($_POST['attachment_id']) : 0;
-		$nonce = isset($_POST['nonce']) ? sanitize_text_field($_POST['nonce']) : '';
+		$attachment_id = isset($_POST['attachment_id']) ? intval(wp_unslash($_POST['attachment_id'])) : 0;
+		$nonce = isset($_POST['nonce']) ? sanitize_text_field(wp_unslash($_POST['nonce'])) : '';
 
 		if (!$attachment_id || !wp_verify_nonce($nonce, 'tka_replace_media_' . $attachment_id)) {
-			wp_send_json_error(['message' => __('Invalid security token.', 'tka-wp-utils')]);
+			wp_send_json_error(['message' => __('Invalid security token.', 'tka-site-utilities')]);
 		}
 
 		if (!current_user_can('edit_post', $attachment_id)) {
-			wp_send_json_error(['message' => __('Insufficient permissions to edit this media.', 'tka-wp-utils')]);
+			wp_send_json_error(['message' => __('Insufficient permissions to edit this media.', 'tka-site-utilities')]);
 		}
 
-		if (empty($_FILES['replace_file']) || $_FILES['replace_file']['error'] !== UPLOAD_ERR_OK) {
-			wp_send_json_error(['message' => __('File upload failed.', 'tka-wp-utils')]);
+		if (empty($_FILES['replace_file']) || !isset($_FILES['replace_file']['error']) || $_FILES['replace_file']['error'] !== UPLOAD_ERR_OK) {
+			wp_send_json_error(['message' => __('File upload failed.', 'tka-site-utilities')]);
 		}
 
-		$uploaded_file = $_FILES['replace_file']['tmp_name'];
-		$new_filename = sanitize_file_name($_FILES['replace_file']['name']);
+		$uploaded_file = isset($_FILES['replace_file']['tmp_name']) ? sanitize_text_field(wp_unslash($_FILES['replace_file']['tmp_name'])) : '';
+		$new_filename = isset($_FILES['replace_file']['name']) ? sanitize_file_name(wp_unslash($_FILES['replace_file']['name'])) : '';
 		$new_ext = strtolower(pathinfo($new_filename, PATHINFO_EXTENSION));
 
 		$original_file_path = get_attached_file($attachment_id);
 		if (empty($original_file_path) || !file_exists($original_file_path)) {
-			wp_send_json_error(['message' => __('Original file not found on server.', 'tka-wp-utils')]);
+			wp_send_json_error(['message' => __('Original file not found on server.', 'tka-site-utilities')]);
 		}
 
 		$original_ext = strtolower(pathinfo($original_file_path, PATHINFO_EXTENSION));
@@ -228,7 +228,8 @@ class ReplaceMedia
 			// They are uploading a jpg/png to replace a webp
 			$is_webp_exception = true;
 		} elseif ($original_ext !== $new_ext) {
-			wp_send_json_error(['message' => sprintf(__('File extension mismatch. You must upload a .%s file.', 'tka-wp-utils'), $original_ext)]);
+			/* translators: %s: Expected file extension */
+			wp_send_json_error(['message' => sprintf(__('File extension mismatch. You must upload a .%s file.', 'tka-site-utilities'), $original_ext)]);
 		}
 
 		// Delete old thumbnails to ensure they are cleanly regenerated later
@@ -238,7 +239,7 @@ class ReplaceMedia
 			foreach ($old_metadata['sizes'] as $size) {
 				$thumb_path = $path_dir . '/' . $size['file'];
 				if (file_exists($thumb_path)) {
-					@unlink($thumb_path);
+					wp_delete_file($thumb_path);
 				}
 			}
 		}
@@ -247,7 +248,7 @@ class ReplaceMedia
 			// Use WordPress Image Editor to convert the uploaded jpg/png to webp, and save it over the original webp file
 			$editor = wp_get_image_editor($uploaded_file);
 			if (is_wp_error($editor)) {
-				wp_send_json_error(['message' => __('Failed to open uploaded file for WebP conversion.', 'tka-wp-utils')]);
+				wp_send_json_error(['message' => __('Failed to open uploaded file for WebP conversion.', 'tka-site-utilities')]);
 			}
 
 			// Apply default WebP quality (e.g., 82)
@@ -256,12 +257,17 @@ class ReplaceMedia
 			// Save the webp directly to the original file path
 			$saved = $editor->save($original_file_path, 'image/webp');
 			if (is_wp_error($saved)) {
-				wp_send_json_error(['message' => __('Failed to convert and save WebP file.', 'tka-wp-utils')]);
+				wp_send_json_error(['message' => __('Failed to convert and save WebP file.', 'tka-site-utilities')]);
 			}
 		} else {
-			// Direct file replacement
-			if (!move_uploaded_file($uploaded_file, $original_file_path)) {
-				wp_send_json_error(['message' => __('Failed to move uploaded file to target directory.', 'tka-wp-utils')]);
+			// Direct file replacement using WP_Filesystem
+			global $wp_filesystem;
+			if (empty($wp_filesystem)) {
+				require_once ABSPATH . 'wp-admin/includes/file.php';
+				WP_Filesystem();
+			}
+			if (!$wp_filesystem->move($uploaded_file, $original_file_path, true)) {
+				wp_send_json_error(['message' => __('Failed to move uploaded file to target directory.', 'tka-site-utilities')]);
 			}
 		}
 
@@ -286,7 +292,7 @@ class ReplaceMedia
 		\TKA\WPUtils\Core\Plugin::purgePageCaches();
 
 		wp_send_json_success([
-			'message' => __('File replaced successfully!', 'tka-wp-utils'),
+			'message' => __('File replaced successfully!', 'tka-site-utilities'),
 			'timestamp' => time() // Cache-buster for UI updates
 		]);
 	}

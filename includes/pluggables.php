@@ -3,6 +3,10 @@
  * Pluggable function overrides.
  */
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit; // Exit if accessed directly.
+}
+
 if (!function_exists('woocommerce_quantity_input')) {
 	/**
 	 * Override WooCommerce quantity input to convert it to a dropdown if enabled.
@@ -14,7 +18,7 @@ if (!function_exists('woocommerce_quantity_input')) {
 	 */
 	function woocommerce_quantity_input($args = array(), $product = null, $echo = true)
 	{
-		$options = get_option('tka_wp_utils_options', []);
+		$options = get_option('tka_site_utilities_options', []);
 
 		if (!empty($options['wc_quantity_dropdown'])) {
 			if (is_null($product)) {
@@ -55,7 +59,7 @@ if (!function_exists('woocommerce_quantity_input')) {
 				$options_html .= '<option value="' . esc_attr($count) . '" ' . $selected . '>' . esc_html($count) . '</option>';
 			}
 
-			$string = '<div class="quantity"><label for="' . esc_attr($args['input_id']) . '">' . esc_html__('Qty', 'woocommerce') . '</label><select id="' . esc_attr($args['input_id']) . '" name="' . esc_attr($args['input_name']) . '" class="' . esc_attr(join(' ', (array) $args['classes'])) . '">' . $options_html . '</select></div>';
+			$string = '<div class="quantity"><label for="' . esc_attr($args['input_id']) . '">' . esc_html__('Qty', 'tka-site-utilities') . '</label><select id="' . esc_attr($args['input_id']) . '" name="' . esc_attr($args['input_name']) . '" class="' . esc_attr(join(' ', (array) $args['classes'])) . '">' . $options_html . '</select></div>';
 
 			if ($echo) {
 				echo $string; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped

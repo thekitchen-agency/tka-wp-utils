@@ -1,5 +1,5 @@
 /**
- * TKA WP Utils - ACF Layout Visibility Toggle Engine
+ * TKA Site Utilities - ACF Layout Visibility Toggle Engine
  */
 (function ($) {
 	if (typeof acf === 'undefined') {

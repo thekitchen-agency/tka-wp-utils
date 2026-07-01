@@ -1,5 +1,5 @@
 /**
- * TKA WP Utils - ACF Flexible Layout Copy & Paste Engine
+ * TKA Site Utilities - ACF Flexible Layout Copy & Paste Engine
  */
 (function ($) {
 	if (typeof acf === 'undefined') {

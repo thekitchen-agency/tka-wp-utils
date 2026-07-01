@@ -95,7 +95,6 @@
 .wp-core-ui .media-frame .attachments-browser.tka-has-folders .uploader-inline,
 .wp-core-ui .media-frame .attachments-browser.tka-has-folders .attachments,
 .wp-core-ui .media-frame .attachments-browser.tka-has-folders .attachments-wrapper {
-
 	right: 0 !important;
 	width: auto !important;
 	transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -105,6 +104,21 @@
 .wp-core-ui .media-frame .attachments-browser.tka-has-folders.tka-folders-collapsed .uploader-inline,
 .wp-core-ui .media-frame .attachments-browser.tka-has-folders.tka-folders-collapsed .attachments,
 .wp-core-ui .media-frame .attachments-browser.tka-has-folders.tka-folders-collapsed .attachments-wrapper {}
+
+/* Shift absolute elements specifically inside the media modal to prevent overlaying the sidebar */
+.media-modal .attachments-browser.tka-has-folders .media-toolbar,
+.media-modal .attachments-browser.tka-has-folders .uploader-inline,
+.media-modal .attachments-browser.tka-has-folders .attachments,
+.media-modal .attachments-browser.tka-has-folders .attachments-wrapper {
+	left: 266px !important;
+}
+
+.media-modal .attachments-browser.tka-has-folders.tka-folders-collapsed .media-toolbar,
+.media-modal .attachments-browser.tka-has-folders.tka-folders-collapsed .uploader-inline,
+.media-modal .attachments-browser.tka-has-folders.tka-folders-collapsed .attachments,
+.media-modal .attachments-browser.tka-has-folders.tka-folders-collapsed .attachments-wrapper {
+	left: 68px !important;
+}
 
 /* Sidebar Header & Brand */
 .tka-folders-header {

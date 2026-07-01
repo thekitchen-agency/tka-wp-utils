@@ -47,7 +47,7 @@ final class PageTransitionAnimation {
 	 */
 	public function __construct( string $slug, array $config, array $default_args = [] ) {
 		if ( ! $this->isValidSlug( $slug ) ) {
-			throw new \InvalidArgumentException( sprintf( 'The animation slug "%s" is invalid.', $slug ) );
+			throw new \InvalidArgumentException( sprintf( 'The animation slug "%s" is invalid.', esc_html( $slug ) ) );
 		}
 
 		$this->slug = $slug;
@@ -77,7 +77,7 @@ final class PageTransitionAnimation {
 		if ( (bool) $this->use_stylesheet ) {
 			$stylesheet_path = $this->use_stylesheet;
 			if ( ! is_string( $stylesheet_path ) ) {
-				$stylesheet_path = TKA_WP_UTILS_PATH . "admin/css/view-transition-animation-{$this->slug}.css";
+				$stylesheet_path = TKA_SITE_UTILITIES_PATH . "admin/css/view-transition-animation-{$this->slug}.css";
 			}
 
 			if ( file_exists( $stylesheet_path ) ) {
@@ -138,7 +138,7 @@ final class PageTransitionAnimation {
 			$this->aliases = (array) $config['aliases'];
 			foreach ( $this->aliases as $alias ) {
 				if ( ! $this->isValidSlug( $alias ) ) {
-					throw new \InvalidArgumentException( sprintf( 'The animation alias "%s" is invalid.', $alias ) );
+					throw new \InvalidArgumentException( sprintf( 'The animation alias "%s" is invalid.', esc_html( $alias ) ) );
 				}
 			}
 		}

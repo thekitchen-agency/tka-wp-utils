@@ -24,8 +24,8 @@ class HtaccessManager {
 	 */
 	public function hook(): void {
 		// Hook when options are updated/added
-		add_action( 'update_option_tka_wp_utils_options', [ $this, 'onSettingsSaved' ], 10, 2 );
-		add_action( 'add_option_tka_wp_utils_options', [ $this, 'onSettingsSaved' ], 10, 2 );
+		add_action( 'update_option_tka_site_utilities_options', [ $this, 'onSettingsSaved' ], 10, 2 );
+		add_action( 'add_option_tka_site_utilities_options', [ $this, 'onSettingsSaved' ], 10, 2 );
 	}
 
 	/**
@@ -43,7 +43,7 @@ class HtaccessManager {
 	 * Check if the web server software runs Apache or LiteSpeed.
 	 */
 	public static function isApacheOrLiteSpeed(): bool {
-		$server = $_SERVER['SERVER_SOFTWARE'] ?? '';
+		$server = isset( $_SERVER['SERVER_SOFTWARE'] ) ? sanitize_text_field( wp_unslash( $_SERVER['SERVER_SOFTWARE'] ) ) : '';
 		if ( empty( $server ) ) {
 			return false;
 		}
@@ -83,9 +83,9 @@ class HtaccessManager {
 		$home_path = self::getHomePath();
 		$htaccess = $home_path . '.htaccess';
 		if ( file_exists( $htaccess ) ) {
-			return is_writable( $htaccess );
+			return self::isPathWritable( $htaccess );
 		}
-		return is_writable( $home_path );
+		return self::isPathWritable( $home_path );
 	}
 
 	/**
@@ -99,9 +99,9 @@ class HtaccessManager {
 		$uploads_path = $upload_dir['basedir'];
 		$htaccess = $uploads_path . '/.htaccess';
 		if ( file_exists( $htaccess ) ) {
-			return is_writable( $htaccess );
+			return self::isPathWritable( $htaccess );
 		}
-		return is_writable( $uploads_path );
+		return self::isPathWritable( $uploads_path );
 	}
 
 	/**
@@ -121,7 +121,7 @@ class HtaccessManager {
 
 		if ( self::isRootHtaccessWritable() ) {
 			// insert_with_markers expects rules as array of lines
-			$inserted = insert_with_markers( $root_htaccess, 'TKA_WP_Utils', $root_rules );
+			$inserted = insert_with_markers( $root_htaccess, 'TKA_Site_Utilities', $root_rules );
 			if ( ! $inserted ) {
 				$root_success = false;
 			}
@@ -137,16 +137,16 @@ class HtaccessManager {
 
 			if ( self::isUploadsHtaccessWritable() ) {
 				if ( ! empty( $uploads_rules ) ) {
-					$inserted = insert_with_markers( $uploads_htaccess, 'TKA_WP_Utils_Uploads', $uploads_rules );
+					$inserted = insert_with_markers( $uploads_htaccess, 'TKA_Site_Utilities_Uploads', $uploads_rules );
 					if ( ! $inserted ) {
 						$uploads_success = false;
 					}
 				} else {
 					// Clean up / remove markers if disabled
-					insert_with_markers( $uploads_htaccess, 'TKA_WP_Utils_Uploads', [] );
+					insert_with_markers( $uploads_htaccess, 'TKA_Site_Utilities_Uploads', [] );
 					// If the file is now empty, delete it
 					if ( file_exists( $uploads_htaccess ) && filesize( $uploads_htaccess ) === 0 ) {
-						@unlink( $uploads_htaccess);
+						wp_delete_file( $uploads_htaccess );
 					}
 				}
 			} else {
@@ -168,17 +168,17 @@ class HtaccessManager {
 		}
 
 		$root_htaccess = self::getHomePath() . '.htaccess';
-		if ( file_exists( $root_htaccess ) && is_writable( $root_htaccess ) ) {
-			insert_with_markers( $root_htaccess, 'TKA_WP_Utils', [] );
+		if ( file_exists( $root_htaccess ) && self::isPathWritable( $root_htaccess ) ) {
+			insert_with_markers( $root_htaccess, 'TKA_Site_Utilities', [] );
 		}
 
 		$upload_dir = wp_upload_dir();
 		if ( empty( $upload_dir['error'] ) ) {
 			$uploads_htaccess = $upload_dir['basedir'] . '/.htaccess';
-			if ( file_exists( $uploads_htaccess ) && is_writable( $uploads_htaccess ) ) {
-				insert_with_markers( $uploads_htaccess, 'TKA_WP_Utils_Uploads', [] );
+			if ( file_exists( $uploads_htaccess ) && self::isPathWritable( $uploads_htaccess ) ) {
+				insert_with_markers( $uploads_htaccess, 'TKA_Site_Utilities_Uploads', [] );
 				if ( filesize( $uploads_htaccess ) === 0 ) {
-					@unlink( $uploads_htaccess );
+					wp_delete_file( $uploads_htaccess );
 				}
 			}
 		}
@@ -416,5 +416,24 @@ class HtaccessManager {
 		}
 
 		return $rules;
+	}
+
+	/**
+	 * Check if a path is writable using WP_Filesystem.
+	 */
+	private static function isPathWritable( string $path ): bool {
+		global $wp_filesystem;
+		if ( empty( $wp_filesystem ) ) {
+			require_once ABSPATH . 'wp-admin/includes/file.php';
+			if ( ! WP_Filesystem() ) {
+				// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_is_writable
+				return is_writable( $path );
+			}
+		}
+		if ( $wp_filesystem ) {
+			return $wp_filesystem->is_writable( $path );
+		}
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_is_writable
+		return is_writable( $path );
 	}
 }

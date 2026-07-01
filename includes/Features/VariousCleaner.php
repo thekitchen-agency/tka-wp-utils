@@ -145,7 +145,7 @@ class VariousCleaner {
 		if ( ! is_user_logged_in() ) {
 			return new \WP_Error(
 				'rest_not_logged_in',
-				__( 'REST API restricted to authenticated users only.', 'tka-wp-utils' ),
+				__( 'REST API restricted to authenticated users only.', 'tka-site-utilities' ),
 				[ 'status' => 401 ]
 			);
 		}
@@ -173,9 +173,12 @@ class VariousCleaner {
 	 */
 	public function disableFeedRedirect(): void {
 		wp_die(
-			sprintf(
-				__( 'Feeds are disabled. Please visit our <a href="%s">homepage</a>.', 'tka-wp-utils' ),
-				esc_url( home_url( '/' ) )
+			wp_kses_post(
+				sprintf(
+					/* translators: %s: Homepage URL */
+					__( 'Feeds are disabled. Please visit our <a href="%s">homepage</a>.', 'tka-site-utilities' ),
+					esc_url( home_url( '/' ) )
+				)
 			)
 		);
 	}

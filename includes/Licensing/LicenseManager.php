@@ -20,8 +20,9 @@ class LicenseManager
 		$this->productRef = trim($productRef);
 
 		// Normalize domain
-		$host = parse_url($_SERVER['HTTP_HOST'] ?? 'localhost', PHP_URL_HOST);
-		$this->domain = $host ? $host : ($_SERVER['HTTP_HOST'] ?? 'localhost');
+		$raw_host = isset($_SERVER['HTTP_HOST']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_HOST'])) : 'localhost';
+		$host = wp_parse_url($raw_host, PHP_URL_HOST);
+		$this->domain = $host ? $host : $raw_host;
 	}
 
 	/**
@@ -54,35 +55,37 @@ class LicenseManager
 	private function sendRequest(string $endpoint): array
 	{
 		$url = $this->serverUrl . $endpoint;
-		$payload = json_encode([
+		$payload = [
 			'license_key' => $this->licenseKey,
-			'domain' => $this->domain,
-			'product_ref' => $this->productRef
+			'domain'      => $this->domain,
+			'product_ref' => $this->productRef,
+		];
+
+		$response = wp_remote_post($url, [
+			'headers' => [
+				'Content-Type' => 'application/json',
+				'Accept'       => 'application/json',
+			],
+			'body'    => json_encode($payload),
+			'timeout' => 5,
 		]);
 
-		$ch = curl_init($url);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt($ch, CURLOPT_POST, true);
-		curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
-		curl_setopt($ch, CURLOPT_TIMEOUT, 5); // 5-second strict threshold
-		curl_setopt($ch, CURLOPT_HTTPHEADER, [
-			'Content-Type: application/json',
-			'Accept: application/json'
-		]);
-
-		$response = curl_exec($ch);
-		$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-		curl_close($ch);
-
-		if ($response === false) {
+		if (is_wp_error($response)) {
 			return [
 				'success' => false,
-				'status' => 'network_error',
-				'error' => 'Licensing server unreachable.'
+				'status'  => 'network_error',
+				'error'   => 'Licensing server unreachable.',
 			];
 		}
 
-		$data = json_decode($response, true);
+		$httpCode = wp_remote_retrieve_response_code($response);
+		$body     = wp_remote_retrieve_body($response);
+		$data     = json_decode($body, true);
+
+		if (!is_array($data)) {
+			$data = [];
+		}
+
 		$data['http_code'] = $httpCode;
 		return $data;
 	}

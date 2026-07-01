@@ -56,9 +56,9 @@ class ImageOptimizer
 		add_filter('wp_handle_upload', [$this, 'optimizeAndConvertUpload'], 10, 2);
 
 		// Hook AJAX handlers for retroactive bulk optimization
-		add_action('wp_ajax_tka_wp_utils_bulk_get_images', [$this, 'ajaxBulkGetImages']);
-		add_action('wp_ajax_tka_wp_utils_bulk_optimize_image', [$this, 'ajaxBulkOptimizeImage']);
-		add_action('wp_ajax_tka_wp_utils_bulk_get_image_list', [$this, 'ajaxBulkGetImageList']);
+		add_action('wp_ajax_tka_site_utilities_bulk_get_images', [$this, 'ajaxBulkGetImages']);
+		add_action('wp_ajax_tka_site_utilities_bulk_optimize_image', [$this, 'ajaxBulkOptimizeImage']);
+		add_action('wp_ajax_tka_site_utilities_bulk_get_image_list', [$this, 'ajaxBulkGetImageList']);
 	}
 
 	/**
@@ -196,7 +196,7 @@ class ImageOptimizer
 							$this->stripMetadata($original_file_path);
 						}
 					} else {
-						@unlink($original_file_path);
+						wp_delete_file($original_file_path);
 					}
 				}
 			}
@@ -221,8 +221,9 @@ class ImageOptimizer
 	 */
 	public function ajaxBulkGetImages(): void
 	{
+		check_ajax_referer('tka_site_utilities_bulk_optimize', 'nonce');
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(['message' => __('Insufficient permissions.', 'tka-wp-utils')]);
+			wp_send_json_error(['message' => __('Insufficient permissions.', 'tka-site-utilities')]);
 		}
 
 		$query = new \WP_Query([
@@ -231,7 +232,7 @@ class ImageOptimizer
 			'post_status'      => 'inherit',
 			'posts_per_page'   => -1,
 			'fields'           => 'ids',
-			'suppress_filters' => true,
+			'suppress_filters' => false,
 		]);
 
 		wp_send_json_success(['ids' => $query->posts]);
@@ -242,13 +243,14 @@ class ImageOptimizer
 	 */
 	public function ajaxBulkGetImageList(): void
 	{
+		check_ajax_referer('tka_site_utilities_bulk_optimize', 'nonce');
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(['message' => __('Insufficient permissions.', 'tka-wp-utils')]);
+			wp_send_json_error(['message' => __('Insufficient permissions.', 'tka-site-utilities')]);
 		}
 
-		$page = isset($_POST['page']) ? max(1, intval($_POST['page'])) : 1;
-		$per_page = isset($_POST['per_page']) ? max(1, intval($_POST['per_page'])) : 50;
-		$status = isset($_POST['status']) ? sanitize_text_field($_POST['status']) : 'all';
+		$page = isset($_POST['page']) ? max(1, intval(wp_unslash($_POST['page']))) : 1;
+		$per_page = isset($_POST['per_page']) ? max(1, intval(wp_unslash($_POST['per_page']))) : 50;
+		$status = isset($_POST['status']) ? sanitize_text_field(wp_unslash($_POST['status'])) : 'all';
 
 		$args = [
 			'post_type'      => 'attachment',
@@ -262,6 +264,7 @@ class ImageOptimizer
 
 		if ($status === 'pending') {
 			$args['post_mime_type'] = ['image/jpeg', 'image/png'];
+			// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
 			$args['meta_query'] = [
 				'relation' => 'OR',
 				[
@@ -276,6 +279,7 @@ class ImageOptimizer
 			];
 		} elseif ($status === 'optimized') {
 			$args['post_mime_type'] = $mimes;
+			// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
 			$args['meta_query'] = [
 				'relation' => 'OR',
 				[
@@ -311,11 +315,11 @@ class ImageOptimizer
 
 			$is_optimized = ($mime === 'image/webp' || $savings !== '');
 			$status_class = $is_optimized ? 'status-optimized' : 'status-pending';
-			$status_label = $is_optimized ? __('Optimized', 'tka-wp-utils') : __('Pending', 'tka-wp-utils');
+			$status_label = $is_optimized ? __('Optimized', 'tka-site-utilities') : __('Pending', 'tka-site-utilities');
 			
 			$savings_text = '';
 			if ($is_optimized) {
-				$savings_text = ($savings !== '' && intval($savings) > 0) ? size_format(intval($savings)) : __('0 KB', 'tka-wp-utils');
+				$savings_text = ($savings !== '' && intval($savings) > 0) ? size_format(intval($savings)) : __('0 KB', 'tka-site-utilities');
 			}
 
 			$thumbnail_url = wp_get_attachment_image_url($att_id, [40, 40]);
@@ -360,20 +364,22 @@ class ImageOptimizer
 	 */
 	public function ajaxBulkOptimizeImage(): void
 	{
+		check_ajax_referer('tka_site_utilities_bulk_optimize', 'nonce');
 		if (!current_user_can('manage_options')) {
-			wp_send_json_error(['message' => __('Insufficient permissions.', 'tka-wp-utils')]);
+			wp_send_json_error(['message' => __('Insufficient permissions.', 'tka-site-utilities')]);
 		}
 
-		$attachment_id = isset($_POST['attachment_id']) ? intval($_POST['attachment_id']) : 0;
+		$attachment_id = isset($_POST['attachment_id']) ? intval(wp_unslash($_POST['attachment_id'])) : 0;
 		if (!$attachment_id) {
-			wp_send_json_error(['message' => __('Invalid attachment ID.', 'tka-wp-utils')]);
+			wp_send_json_error(['message' => __('Invalid attachment ID.', 'tka-site-utilities')]);
 		}
 
 		$file_path = get_attached_file($attachment_id);
 		$mime_type = get_post_mime_type($attachment_id);
 
 		if (empty($file_path) || !file_exists($file_path)) {
-			wp_send_json_error(['message' => sprintf(__('File not found: %s', 'tka-wp-utils'), basename($file_path))]);
+			/* translators: %s: name of the missing file */
+			wp_send_json_error(['message' => sprintf(__('File not found: %s', 'tka-site-utilities'), basename($file_path))]);
 		}
 
 		// Calculate old total storage footprint (main + thumbnails)
@@ -387,7 +393,7 @@ class ImageOptimizer
 				if (file_exists($thumb_path)) {
 					$old_size += filesize($thumb_path);
 					// Delete old JPEG/PNG thumbnail sizes so they are overwritten cleanly
-					@unlink($thumb_path);
+					wp_delete_file($thumb_path);
 				}
 			}
 		}
@@ -405,15 +411,11 @@ class ImageOptimizer
 
 		// If conversion to WebP occurred, update attachment parameters in DB
 		if ($optimized['type'] === 'image/webp') {
-			global $wpdb;
-			$wpdb->update(
-				$wpdb->posts,
-				[
-					'post_mime_type' => 'image/webp',
-					'guid'           => $optimized['url'],
-				],
-				['ID' => $attachment_id]
-			);
+			wp_update_post([
+				'ID'             => $attachment_id,
+				'post_mime_type' => 'image/webp',
+				'guid'           => $optimized['url'],
+			]);
 
 			// Compute relative path from WordPress upload base dir
 			$relative_path = ltrim(str_replace(wp_get_upload_dir()['basedir'], '', $optimized['file']), '/');
@@ -451,7 +453,8 @@ class ImageOptimizer
 			'bytes_saved'    => $bytes_saved,
 			'mime_type'      => $optimized['type'],
 			'affected_sizes' => $affected_sizes,
-			'message'        => sprintf(__('Successfully optimized %s.', 'tka-wp-utils'), basename($optimized['file'])),
+			/* translators: %s: name of the optimized file */
+			'message'        => sprintf(__('Successfully optimized %s.', 'tka-site-utilities'), basename($optimized['file'])),
 		]);
 	}
 }

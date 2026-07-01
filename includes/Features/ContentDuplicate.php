@@ -29,7 +29,7 @@ class ContentDuplicate {
 
 		add_filter( 'post_row_actions', [ $this, 'addDuplicateActionLink' ], 10, 2 );
 		add_filter( 'page_row_actions', [ $this, 'addDuplicateActionLink' ], 10, 2 );
-		add_action( 'admin_post_tka_wp_utils_duplicate_post', [ $this, 'handleDuplicationRequest' ] );
+		add_action( 'admin_post_tka_site_utilities_duplicate_post', [ $this, 'handleDuplicationRequest' ] );
 	}
 
 	/**
@@ -45,15 +45,15 @@ class ContentDuplicate {
 		}
 
 		$url = wp_nonce_url(
-			admin_url( 'admin-post.php?action=tka_wp_utils_duplicate_post&post_id=' . $post->ID ),
+			admin_url( 'admin-post.php?action=tka_site_utilities_duplicate_post&post_id=' . $post->ID ),
 			'tka-duplicate-post-' . $post->ID
 		);
 
 		$actions['duplicate'] = sprintf(
 			'<a href="%1$s" title="%2$s">%3$s</a>',
 			esc_url( $url ),
-			esc_attr__( 'Duplicate this item', 'tka-wp-utils' ),
-			esc_html__( 'Duplicate', 'tka-wp-utils' )
+			esc_attr__( 'Duplicate this item', 'tka-site-utilities' ),
+			esc_html__( 'Duplicate', 'tka-site-utilities' )
 		);
 
 		return $actions;
@@ -65,47 +65,48 @@ class ContentDuplicate {
 	public function handleDuplicationRequest(): void {
 		$post_id = isset( $_GET['post_id'] ) ? intval( $_GET['post_id'] ) : 0;
 		if ( ! $post_id ) {
-			wp_die( esc_html__( 'Error: No post ID specified.', 'tka-wp-utils' ) );
+			wp_die( esc_html__( 'Error: No post ID specified.', 'tka-site-utilities' ) );
 		}
 
 		check_admin_referer( 'tka-duplicate-post-' . $post_id );
 
 		if ( ! current_user_can( 'edit_posts' ) ) {
-			wp_die( esc_html__( 'Insufficient permissions.', 'tka-wp-utils' ) );
+			wp_die( esc_html__( 'Insufficient permissions.', 'tka-site-utilities' ) );
 		}
 
 		$new_post_id = $this->duplicatePost( $post_id );
 
 		if ( $new_post_id ) {
 			// Redirect straight to post editor screen
-			wp_redirect( admin_url( 'post.php?action=edit&post=' . $new_post_id ) );
+			wp_safe_redirect( admin_url( 'post.php?action=edit&post=' . $new_post_id ) );
 			exit;
 		} else {
-			wp_die( esc_html__( 'Duplication failed: Could not clone post.', 'tka-wp-utils' ) );
+			wp_die( esc_html__( 'Duplication failed: Could not clone post.', 'tka-site-utilities' ) );
 		}
 	}
 
 	/**
 	 * Deep duplication engine logic.
 	 *
-	 * Clones Title (Copy), Excerpt, Content, Taxonomies, and Custom Meta fields,
-	 * saving the duplicate as a Draft under current user's authorship.
+	 * @param int $post_id Post ID.
+	 * @return int|bool New post ID or false on failure.
 	 */
-	public function duplicatePost( int $post_id ): int|bool {
+	public function duplicatePost( int $post_id ) {
 		$post = get_post( $post_id );
 		if ( ! $post ) {
 			return false;
 		}
 
 		$current_user = wp_get_current_user();
+		$new_post_author = $current_user->ID;
 
 		$args = [
-			'post_title'            => $post->post_title . ' ' . __( '(Copy)', 'tka-wp-utils' ),
+			'post_title'            => $post->post_title . ' (Copy)',
 			'post_content'          => $post->post_content,
 			'post_excerpt'          => $post->post_excerpt,
 			'post_status'           => 'draft',
 			'post_type'             => $post->post_type,
-			'post_author'           => $current_user->ID,
+			'post_author'           => $new_post_author,
 			'post_parent'           => $post->post_parent,
 			'menu_order'            => $post->menu_order,
 			'comment_status'        => $post->comment_status,
@@ -119,29 +120,19 @@ class ContentDuplicate {
 			return false;
 		}
 
-		// 1. Duplicate post custom fields (metadata) using direct database query to bypass filters
-		global $wpdb;
-		$meta_data = $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT meta_key, meta_value FROM $wpdb->postmeta WHERE post_id = %d",
-				$post_id
-			)
-		);
-
-		if ( ! empty( $meta_data ) ) {
-			foreach ( $meta_data as $meta ) {
-				$key = $meta->meta_key;
+		// 1. Duplicate post custom fields (metadata)
+		$custom_keys = get_post_custom_keys( $post_id );
+		if ( ! empty( $custom_keys ) ) {
+			foreach ( $custom_keys as $key ) {
 				if ( in_array( $key, [ '_edit_lock', '_edit_last', '_wp_old_slug' ], true ) ) {
 					continue;
 				}
-				$wpdb->insert(
-					$wpdb->postmeta,
-					[
-						'post_id'    => $new_post_id,
-						'meta_key'   => $key,
-						'meta_value' => $meta->meta_value,
-					]
-				);
+				$values = get_post_custom_values( $key, $post_id );
+				if ( is_array( $values ) ) {
+					foreach ( $values as $value ) {
+						add_post_meta( $new_post_id, $key, maybe_unserialize( $value ) );
+					}
+				}
 			}
 		}
 

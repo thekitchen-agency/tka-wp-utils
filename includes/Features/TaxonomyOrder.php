@@ -28,7 +28,7 @@ class TaxonomyOrder {
 		}
 
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueueAssets' ] );
-		add_action( 'wp_ajax_tka_wp_utils_save_term_order', [ $this, 'saveOrderAjax' ] );
+		add_action( 'wp_ajax_tka_site_utilities_save_term_order', [ $this, 'saveOrderAjax' ] );
 		add_filter( 'terms_clauses', [ $this, 'filterTermsClauses' ], 10, 3 );
 	}
 
@@ -47,16 +47,16 @@ class TaxonomyOrder {
 
 		wp_enqueue_script( 'jquery-ui-sortable' );
 		wp_enqueue_script(
-			'tka-wp-utils-order-js',
-			TKA_WP_UTILS_URL . 'admin/js/admin-order.js',
+			'tka-site-utilities-order-js',
+			TKA_SITE_UTILITIES_URL . 'admin/js/admin-order.js',
 			[ 'jquery', 'jquery-ui-sortable' ],
-			TKA_WP_UTILS_VERSION,
+			TKA_SITE_UTILITIES_VERSION,
 			true
 		);
 
-		wp_localize_script( 'tka-wp-utils-order-js', 'tkaWpUtilsOrder', [
+		wp_localize_script( 'tka-site-utilities-order-js', 'tkaWpUtilsOrder', [
 			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-			'nonce'   => wp_create_nonce( 'tka-wp-utils-order-nonce' ),
+			'nonce'   => wp_create_nonce( 'tka-site-utilities-order-nonce' ),
 		] );
 
 		// Inject custom inline styling for drag-and-drop feedback
@@ -71,15 +71,15 @@ class TaxonomyOrder {
 	 * Handle sorting order AJAX updates safely.
 	 */
 	public function saveOrderAjax(): void {
-		check_ajax_referer( 'tka-wp-utils-order-nonce', 'nonce' );
+		check_ajax_referer( 'tka-site-utilities-order-nonce', 'nonce' );
 
 		if ( ! current_user_can( 'edit_posts' ) ) {
-			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'tka-wp-utils' ) ] );
+			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'tka-site-utilities' ) ] );
 		}
 
-		$term_ids = $_POST['ids'] ?? [];
+		$term_ids = isset( $_POST['ids'] ) ? map_deep( wp_unslash( $_POST['ids'] ), 'intval' ) : [];
 		if ( ! is_array( $term_ids ) || empty( $term_ids ) ) {
-			wp_send_json_error( [ 'message' => __( 'Invalid term IDs sequence.', 'tka-wp-utils' ) ] );
+			wp_send_json_error( [ 'message' => __( 'Invalid term IDs sequence.', 'tka-site-utilities' ) ] );
 		}
 
 		foreach ( $term_ids as $index => $term_id ) {
@@ -87,8 +87,8 @@ class TaxonomyOrder {
 			update_term_meta( $term_id, '_tka_term_order', $index );
 		}
 
-		do_action( 'tka_wp_utils_term_order_saved', $term_ids );
-		wp_send_json_success( [ 'message' => __( 'Term order saved successfully.', 'tka-wp-utils' ) ] );
+		do_action( 'tka_site_utilities_term_order_saved', $term_ids );
+		wp_send_json_success( [ 'message' => __( 'Term order saved successfully.', 'tka-site-utilities' ) ] );
 	}
 
 	/**

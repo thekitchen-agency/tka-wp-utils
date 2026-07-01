@@ -1,5 +1,5 @@
 /**
- * TKA WP Utils Admin Dashboard Styling
+ * TKA Site Utilities Admin Dashboard Styling
  * Slate/Indigo Aesthetic
  */
 
@@ -21,7 +21,7 @@
 	--tka-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.07), 0 4px 6px -4px rgb(0 0 0 / 0.07);
 }
 
-.tka-wp-utils-wrap {
+.tka-site-utilities-wrap {
 	margin: 20px 20px 0 0;
 	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
 }

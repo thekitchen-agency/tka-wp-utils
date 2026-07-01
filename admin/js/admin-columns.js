@@ -79,7 +79,7 @@ jQuery(document).ready(function($) {
 				<div class="tka-column-inputs-grid">
 					<!-- Label Input -->
 					<div>
-						<input type="text" name="tka_wp_utils_columns[${postType}][${index}][label]" value="" placeholder="Column Header Label (e.g. Price)" class="tka-col-input-field">
+						<input type="text" name="tka_site_utilities_columns[${postType}][${index}][label]" value="" placeholder="Column Header Label (e.g. Price)" class="tka-col-input-field">
 					</div>
 
 					<!-- Meta Key Selector Dropdown + Text Input -->
@@ -88,13 +88,13 @@ jQuery(document).ready(function($) {
 							<select class="tka-meta-key-select">
 								${metaOptions}
 							</select>
-							<input type="text" class="tka-meta-key-input" name="tka_wp_utils_columns[${postType}][${index}][meta_key]" value="" placeholder="${tkaWpUtilsColumns.i18n.customKeyPlaceholder}" style="font-family: monospace; display: none;">
+							<input type="text" class="tka-meta-key-input" name="tka_site_utilities_columns[${postType}][${index}][meta_key]" value="" placeholder="${tkaWpUtilsColumns.i18n.customKeyPlaceholder}" style="font-family: monospace; display: none;">
 						</div>
 					</div>
 
 					<!-- Field Type Select -->
 					<div>
-						<select name="tka_wp_utils_columns[${postType}][${index}][field_type]" class="tka-field-type-select">
+						<select name="tka_site_utilities_columns[${postType}][${index}][field_type]" class="tka-field-type-select">
 							<option value="text">${tkaWpUtilsColumns.i18n.plainText}</option>
 							<option value="post_relation">${tkaWpUtilsColumns.i18n.relatedPost}</option>
 							<option value="term_relation">${tkaWpUtilsColumns.i18n.relatedTerm}</option>

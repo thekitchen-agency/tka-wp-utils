@@ -24,7 +24,7 @@ final class PageTransitionAnimationRegistry {
 		if ( isset( $this->alias_map[ $slug ] ) ) {
 			_doing_it_wrong(
 				__METHOD__,
-				sprintf( 'The animation slug "%s" conflicts with an existing slug or alias.', $slug ),
+				sprintf( 'The animation slug "%s" conflicts with an existing slug or alias.', esc_html( $slug ) ),
 				'1.0.0'
 			);
 			return false;
@@ -47,7 +47,7 @@ final class PageTransitionAnimationRegistry {
 			if ( isset( $this->alias_map[ $alias ] ) ) {
 				_doing_it_wrong(
 					__METHOD__,
-					sprintf( 'The animation alias "%s" conflicts with an existing slug or alias.', $alias ),
+					sprintf( 'The animation alias "%s" conflicts with an existing slug or alias.', esc_html( $alias ) ),
 					'1.0.0'
 				);
 				return false;

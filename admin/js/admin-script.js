@@ -1,5 +1,5 @@
 /**
- * TKA WP Utils Admin Scripts
+ * TKA Site Utilities Admin Scripts
  */
 
 document.addEventListener( 'DOMContentLoaded', function () {
@@ -47,7 +47,7 @@ document.addEventListener( 'DOMContentLoaded', function () {
 	}
 
 	// 2. Gutenberg Radio Options Toggles
-	const gutenbergRadios = document.querySelectorAll( 'input[name="tka_wp_utils_options[disable_gutenberg]"]' );
+	const gutenbergRadios = document.querySelectorAll( 'input[name="tka_site_utilities_options[disable_gutenberg]"]' );
 	const postTypesRow     = document.querySelector( '.nested-gutenberg-post-types' );
 
 	gutenbergRadios.forEach( function ( radio ) {
@@ -229,7 +229,7 @@ document.addEventListener( 'DOMContentLoaded', function () {
 			newRow.innerHTML = `
 				<!-- FROM PAGE -->
 				<div style="flex: 2; display: flex; flex-direction: column; gap: 5px;">
-					<select name="tka_wp_utils_options[page_transitions_rules][${ruleIndex}][from_type]" class="tka-rule-from-select" style="width: 100%; padding: 5px; border-radius: 6px;">
+					<select name="tka_site_utilities_options[page_transitions_rules][${ruleIndex}][from_type]" class="tka-rule-from-select" style="width: 100%; padding: 5px; border-radius: 6px;">
 						<option value="any">Any Page</option>
 						<option value="home">Homepage</option>
 						<option value="archive">Archive/Category</option>
@@ -237,12 +237,12 @@ document.addEventListener( 'DOMContentLoaded', function () {
 						<option value="single_page">Single Page</option>
 						<option value="custom_url">Custom URL Pattern...</option>
 					</select>
-					<input type="text" name="tka_wp_utils_options[page_transitions_rules][${ruleIndex}][from_url]" value="" placeholder="/blog/*" class="tka-rule-from-url" style="width: 100%; padding: 5px; border-radius: 6px; border: 1px solid var(--tka-border); font-family: monospace; display: none;">
+					<input type="text" name="tka_site_utilities_options[page_transitions_rules][${ruleIndex}][from_url]" value="" placeholder="/blog/*" class="tka-rule-from-url" style="width: 100%; padding: 5px; border-radius: 6px; border: 1px solid var(--tka-border); font-family: monospace; display: none;">
 				</div>
 
 				<!-- TO PAGE -->
 				<div style="flex: 2; display: flex; flex-direction: column; gap: 5px;">
-					<select name="tka_wp_utils_options[page_transitions_rules][${ruleIndex}][to_type]" class="tka-rule-to-select" style="width: 100%; padding: 5px; border-radius: 6px;">
+					<select name="tka_site_utilities_options[page_transitions_rules][${ruleIndex}][to_type]" class="tka-rule-to-select" style="width: 100%; padding: 5px; border-radius: 6px;">
 						<option value="any">Any Page</option>
 						<option value="home">Homepage</option>
 						<option value="archive">Archive/Category</option>
@@ -250,12 +250,12 @@ document.addEventListener( 'DOMContentLoaded', function () {
 						<option value="single_page">Single Page</option>
 						<option value="custom_url">Custom URL Pattern...</option>
 					</select>
-					<input type="text" name="tka_wp_utils_options[page_transitions_rules][${ruleIndex}][to_url]" value="" placeholder="/shop/*" class="tka-rule-to-url" style="width: 100%; padding: 5px; border-radius: 6px; border: 1px solid var(--tka-border); font-family: monospace; display: none;">
+					<input type="text" name="tka_site_utilities_options[page_transitions_rules][${ruleIndex}][to_url]" value="" placeholder="/shop/*" class="tka-rule-to-url" style="width: 100%; padding: 5px; border-radius: 6px; border: 1px solid var(--tka-border); font-family: monospace; display: none;">
 				</div>
 
 				<!-- ANIMATION -->
 				<div style="flex: 1.5;">
-					<select name="tka_wp_utils_options[page_transitions_rules][${ruleIndex}][animation]" class="tka-rule-anim-select" style="width: 100%; padding: 5px; border-radius: 6px;">
+					<select name="tka_site_utilities_options[page_transitions_rules][${ruleIndex}][animation]" class="tka-rule-anim-select" style="width: 100%; padding: 5px; border-radius: 6px;">
 						<option value="fade">Fade (default)</option>
 						<option value="slide-from-right">Slide (from right)</option>
 						<option value="slide-from-left">Slide (from left)</option>
@@ -275,7 +275,7 @@ document.addEventListener( 'DOMContentLoaded', function () {
 
 				<!-- CUSTOM CLASS -->
 				<div style="flex: 1.5;">
-					<input type="text" name="tka_wp_utils_options[page_transitions_rules][${ruleIndex}][custom_class]" value="" placeholder="tka-transition-zoom" class="tka-rule-class-input" style="width: 100%; padding: 5px; border-radius: 6px; border: 1px solid var(--tka-border); display: none;">
+					<input type="text" name="tka_site_utilities_options[page_transitions_rules][${ruleIndex}][custom_class]" value="" placeholder="tka-transition-zoom" class="tka-rule-class-input" style="width: 100%; padding: 5px; border-radius: 6px; border: 1px solid var(--tka-border); display: none;">
 				</div>
 
 				<!-- DELETE BUTTON -->
@@ -323,12 +323,12 @@ document.addEventListener( 'DOMContentLoaded', function () {
 		jQuery(this).closest('.tka-rule-row-item').remove();
 		jQuery('#tka-transitions-rules-list .tka-rule-row-item').each(function(index, el) {
 			const $row = jQuery(el);
-			$row.find('.tka-rule-from-select').attr('name', `tka_wp_utils_options[page_transitions_rules][${index}][from_type]`);
-			$row.find('.tka-rule-from-url').attr('name', `tka_wp_utils_options[page_transitions_rules][${index}][from_url]`);
-			$row.find('.tka-rule-to-select').attr('name', `tka_wp_utils_options[page_transitions_rules][${index}][to_type]`);
-			$row.find('.tka-rule-to-url').attr('name', `tka_wp_utils_options[page_transitions_rules][${index}][to_url]`);
-			$row.find('.tka-rule-anim-select').attr('name', `tka_wp_utils_options[page_transitions_rules][${index}][animation]`);
-			$row.find('.tka-rule-class-input').attr('name', `tka_wp_utils_options[page_transitions_rules][${index}][custom_class]`);
+			$row.find('.tka-rule-from-select').attr('name', `tka_site_utilities_options[page_transitions_rules][${index}][from_type]`);
+			$row.find('.tka-rule-from-url').attr('name', `tka_site_utilities_options[page_transitions_rules][${index}][from_url]`);
+			$row.find('.tka-rule-to-select').attr('name', `tka_site_utilities_options[page_transitions_rules][${index}][to_type]`);
+			$row.find('.tka-rule-to-url').attr('name', `tka_site_utilities_options[page_transitions_rules][${index}][to_url]`);
+			$row.find('.tka-rule-anim-select').attr('name', `tka_site_utilities_options[page_transitions_rules][${index}][animation]`);
+			$row.find('.tka-rule-class-input').attr('name', `tka_site_utilities_options[page_transitions_rules][${index}][custom_class]`);
 		});
 	});
 
@@ -470,7 +470,8 @@ document.addEventListener( 'DOMContentLoaded', function () {
 		tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 30px; color: var(--tka-text-muted);"><span class="spinner is-active" style="float: none; margin-right: 8px;"></span> Loading images...</td></tr>`;
 		
 		const formData = new FormData();
-		formData.append( 'action', 'tka_wp_utils_bulk_get_image_list' );
+		formData.append( 'action', 'tka_site_utilities_bulk_get_image_list' );
+		formData.append( 'nonce', tkaWpUtilsAdmin.bulkOptimizeNonce );
 		formData.append( 'page', currentPage );
 		formData.append( 'per_page', itemsPerPage );
 		formData.append( 'status', currentStatus );
@@ -593,7 +594,8 @@ document.addEventListener( 'DOMContentLoaded', function () {
 
 			// Fetch all eligible attachment IDs
 			const formData = new FormData();
-			formData.append( 'action', 'tka_wp_utils_bulk_get_images' );
+			formData.append( 'action', 'tka_site_utilities_bulk_get_images' );
+			formData.append( 'nonce', tkaWpUtilsAdmin.bulkOptimizeNonce );
 
 			bulkStartBtn.disabled = true;
 			bulkStartBtn.textContent = 'Scanning...';
@@ -681,7 +683,8 @@ document.addEventListener( 'DOMContentLoaded', function () {
 					optimizedCountSpan.textContent = index;
 
 					const singleData = new FormData();
-					singleData.append( 'action', 'tka_wp_utils_bulk_optimize_image' );
+					singleData.append( 'action', 'tka_site_utilities_bulk_optimize_image' );
+					singleData.append( 'nonce', tkaWpUtilsAdmin.bulkOptimizeNonce );
 					singleData.append( 'attachment_id', ids[index] );
 
 					fetch( tkaWpUtilsAdmin.ajaxUrl, {
@@ -791,7 +794,7 @@ document.addEventListener( 'DOMContentLoaded', function () {
 	if ( toggleAllScriptsBtn ) {
 		toggleAllScriptsBtn.addEventListener( 'click', function ( e ) {
 			e.preventDefault();
-			const checkboxes = document.querySelectorAll( 'input[name="tka_wp_utils_options[deferred_scripts][]"]' );
+			const checkboxes = document.querySelectorAll( 'input[name="tka_site_utilities_options[deferred_scripts][]"]' );
 			if ( checkboxes.length === 0 ) return;
 			
 			// Check if all are currently checked
@@ -810,7 +813,7 @@ document.addEventListener( 'DOMContentLoaded', function () {
 	// 10. Database Maintenance
 	const dbPanel = document.getElementById( 'panel-database' );
 	if ( dbPanel ) {
-		const nonce = document.getElementById( 'tka_wp_utils_db_nonce' ) ? document.getElementById( 'tka_wp_utils_db_nonce' ).value : '';
+		const nonce = document.getElementById( 'tka_site_utilities_db_nonce' ) ? document.getElementById( 'tka_site_utilities_db_nonce' ).value : '';
 		const msgBox = document.getElementById( 'tka-db-messages' );
 		
 		function showDbMessage( msg, isError = false ) {
@@ -846,7 +849,7 @@ document.addEventListener( 'DOMContentLoaded', function () {
 		// Initial load counts
 		function fetchDbCounts() {
 			const data = new FormData();
-			data.append( 'action', 'tka_wp_utils_db_get_counts' );
+			data.append( 'action', 'tka_site_utilities_db_get_counts' );
 			data.append( 'nonce', nonce );
 			
 			fetch( tkaWpUtilsAdmin.ajaxUrl, { method: 'POST', body: data } )
@@ -892,7 +895,7 @@ document.addEventListener( 'DOMContentLoaded', function () {
 				this.innerHTML = '<span class="spinner is-active" style="float:none; margin:0;"></span>';
 				
 				const data = new FormData();
-				data.append( 'action', 'tka_wp_utils_db_clean' );
+				data.append( 'action', 'tka_site_utilities_db_clean' );
 				data.append( 'action_type', actionType );
 				data.append( 'nonce', nonce );
 				
@@ -943,7 +946,7 @@ document.addEventListener( 'DOMContentLoaded', function () {
 					}
 					
 					const data = new FormData();
-					data.append( 'action', 'tka_wp_utils_db_clean' );
+					data.append( 'action', 'tka_site_utilities_db_clean' );
 					data.append( 'action_type', actions[current] );
 					data.append( 'nonce', nonce );
 					
@@ -1004,7 +1007,7 @@ document.addEventListener( 'DOMContentLoaded', function () {
 				backupMsgArea.innerHTML = '';
 
 				const data = new FormData();
-				data.append( 'action', 'tka_wp_utils_search_replace' );
+				data.append( 'action', 'tka_site_utilities_search_replace' );
 				data.append( 'nonce', nonce );
 				data.append( 'search_string', searchStr );
 				data.append( 'replace_string', replaceStr );

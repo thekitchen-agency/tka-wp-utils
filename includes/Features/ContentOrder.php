@@ -29,7 +29,7 @@ class ContentOrder {
 
 		add_action( 'init', [ $this, 'addOrderSupport' ], 9999 );
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueueAssets' ] );
-		add_action( 'wp_ajax_tka_wp_utils_save_order', [ $this, 'saveOrderAjax' ] );
+		add_action( 'wp_ajax_tka_site_utilities_save_order', [ $this, 'saveOrderAjax' ] );
 		add_action( 'pre_get_posts', [ $this, 'filterPostsQueryOrder' ] );
 	}
 
@@ -57,16 +57,16 @@ class ContentOrder {
 
 		wp_enqueue_script( 'jquery-ui-sortable' );
 		wp_enqueue_script(
-			'tka-wp-utils-order-js',
-			TKA_WP_UTILS_URL . 'admin/js/admin-order.js',
+			'tka-site-utilities-order-js',
+			TKA_SITE_UTILITIES_URL . 'admin/js/admin-order.js',
 			[ 'jquery', 'jquery-ui-sortable' ],
-			TKA_WP_UTILS_VERSION,
+			TKA_SITE_UTILITIES_VERSION,
 			true
 		);
 
-		wp_localize_script( 'tka-wp-utils-order-js', 'tkaWpUtilsOrder', [
+		wp_localize_script( 'tka-site-utilities-order-js', 'tkaWpUtilsOrder', [
 			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-			'nonce'   => wp_create_nonce( 'tka-wp-utils-order-nonce' ),
+			'nonce'   => wp_create_nonce( 'tka-site-utilities-order-nonce' ),
 		] );
 
 		// Inject custom inline styling for drag-and-drop feedback
@@ -81,34 +81,27 @@ class ContentOrder {
 	 * Handle sorting order AJAX updates safely.
 	 */
 	public function saveOrderAjax(): void {
-		check_ajax_referer( 'tka-wp-utils-order-nonce', 'nonce' );
+		check_ajax_referer( 'tka-site-utilities-order-nonce', 'nonce' );
 
 		if ( ! current_user_can( 'edit_posts' ) ) {
-			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'tka-wp-utils' ) ] );
+			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'tka-site-utilities' ) ] );
 		}
 
-		$post_ids = $_POST['ids'] ?? ($_POST['post_ids'] ?? []);
+		$post_ids = isset( $_POST['ids'] ) ? map_deep( wp_unslash( $_POST['ids'] ), 'intval' ) : ( isset( $_POST['post_ids'] ) ? map_deep( wp_unslash( $_POST['post_ids'] ), 'intval' ) : [] );
 		if ( ! is_array( $post_ids ) || empty( $post_ids ) ) {
-			wp_send_json_error( [ 'message' => __( 'Invalid post IDs sequence.', 'tka-wp-utils' ) ] );
+			wp_send_json_error( [ 'message' => __( 'Invalid post IDs sequence.', 'tka-site-utilities' ) ] );
 		}
-
-		global $wpdb;
 
 		foreach ( $post_ids as $index => $post_id ) {
 			$post_id = intval( $post_id );
-			$wpdb->update(
-				$wpdb->posts,
-				[ 'menu_order' => $index ],
-				[ 'ID' => $post_id ],
-				[ '%d' ],
-				[ '%d' ]
-			);
-
-			clean_post_cache( $post_id );
+			wp_update_post( [
+				'ID'         => $post_id,
+				'menu_order' => $index,
+			] );
 		}
 
-		do_action( 'tka_wp_utils_order_saved', $post_ids );
-		wp_send_json_success( [ 'message' => __( 'Order saved successfully.', 'tka-wp-utils' ) ] );
+		do_action( 'tka_site_utilities_order_saved', $post_ids );
+		wp_send_json_success( [ 'message' => __( 'Order saved successfully.', 'tka-site-utilities' ) ] );
 	}
 
 	/**
@@ -120,6 +113,7 @@ class ContentOrder {
 			if ( $query->is_main_query() ) {
 				$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
 				if ( $screen && 'edit' === $screen->base && in_array( $screen->post_type, $this->post_types, true ) ) {
+					// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 					if ( ! isset( $_GET['orderby'] ) ) {
 						$query->set( 'orderby', 'menu_order' );
 						$query->set( 'order', 'ASC' );

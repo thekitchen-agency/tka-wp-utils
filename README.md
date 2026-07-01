@@ -1,6 +1,6 @@
-# TKA WP Utils
+# TKA Site Utilities
 
-[![WordPress Plugin Directory](https://img.shields.io/badge/WordPress.org-Plugin-blue.svg?logo=wordpress&logoColor=white)](https://wordpress.org/plugins/tka-wp-utils/)
+[![WordPress Plugin Directory](https://img.shields.io/badge/WordPress.org-Plugin-blue.svg?logo=wordpress&logoColor=white)](https://wordpress.org/plugins/tka-site-utilities/)
 [![WordPress Version Requirement](https://img.shields.io/badge/WordPress-6.0%2B-indigo.svg?logo=wordpress&logoColor=white)](https://wordpress.org/)
 [![PHP Version Requirement](https://img.shields.io/badge/PHP-8.3-teal.svg?logo=php&logoColor=white)](https://www.php.net/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -25,7 +25,7 @@ A comprehensive suite of utility tools designed for developers and agencies to s
 ### 🗂️ 3. Navigation & Dashboard Control
 *   **Granular Gutenberg Editor Control**: Globally disable the Gutenberg Block Editor, allow it everywhere, or selectively activate/deactivate it per public post type.
 *   **Classic Experience Restored**: Revert post/page creation back to the Classic rich text (TinyMCE) editor and restore the traditional widgets dashboard.
-*   **Dedicated Admin Menu Organizer Subpage**: Moved to a standalone submenu page (`tka-wp-utils-menu-organizer`) with a split-view drag-and-drop builder to easily rearrange, hide, and sort sidebar menus.
+*   **Dedicated Admin Menu Organizer Subpage**: Moved to a standalone submenu page (`tka-site-utilities-menu-organizer`) with a split-view drag-and-drop builder to easily rearrange, hide, and sort sidebar menus.
 *   **Multi-User Superadmin Access Control**: Grant full plugin configuration access to designated administrators, while hiding the plugin entirely from regular administrators.
 *   **Dynamic Widget Sniffer**: Reliably intercepts and hides stubborn third-party dashboard widgets (like Gravity Forms) by monitoring and recording widgets during actual dashboard visits.
 
@@ -55,13 +55,14 @@ A comprehensive suite of utility tools designed for developers and agencies to s
 *   **Sidebar Visibility & Shortcode Hardening**: Restricts sidebar Custom Fields editor access to the developer/installer only, and strictly disables front-end shortcode execution for robust security hardening.
 *   **Local JSON Shared Storage**: Integrates with ACF to automatically direct ACF local JSON configurations into the theme-independent `/wp-content/acf-json/` directory.
 *   **Dynamic Custom Field Extensions Engine**: Drop any PHP file into the `/includes/AcfExtensions/` directory with a valid header comment, and the plugin will automatically discover and present it as a toggleable checkbox in the ACF settings tab. Includes a built-in "Gravity Forms Field Fallback" extension out-of-the-box.
+*   **ACF Icon Picker Extension**: Comes bundled with a sleek, native, searchable Icon Picker field specifically for ACF, completely replacing the need for heavy third-party FontAwesome plugins.
 *   **Auto-Inject Video Poster Field**: Optionally registers a "Video Poster Image" (`video_poster_image`) ACF field directly onto all video attachments in the native Media Library, making it incredibly simple to assign fallback cover images to MP4 uploads.
 
 ### 🖼️ 6. Image Optimization & WebP Engine
 *   **Automatic WebP Conversion**: Converts newly uploaded JPEG and PNG images into modern WebP format, generating WebP sub-sizes automatically to ensure lightning-fast site loading.
 *   **Original Image Retention & Compression**: Gives developers the flexibility to delete original uploads or keep compressed JPEG/PNG originals. Intercepts files on upload and compresses them in-place using customizable quality standards.
 *   **Custom Compression Quality Slider**: Sleek range slider enqueued into the dashboard settings to let developers choose the target compression ratio (e.g. 75% or 82%).
-*   **Dedicated Bulk Optimizer Subpage**: Features an advanced sequential batch retroactive image optimizer page (`tka-wp-utils-bulk-optimizer`) that processes existing media assets safely to prevent gateway timeouts. Includes pagination, tabbed views, page size selectors, and pause/resume capabilities. Also available as a shortcut under the Media menu for regular administrators.
+*   **Dedicated Bulk Optimizer Subpage**: Features an advanced sequential batch retroactive image optimizer page (`tka-site-utilities-bulk-optimizer`) that processes existing media assets safely to prevent gateway timeouts. Includes pagination, tabbed views, page size selectors, and pause/resume capabilities. Also available as a shortcut under the Media menu for regular administrators.
 *   **Interactive Media Library Status Table**: Displays a real-time responsive dashboard listing all JPEGs, PNGs, and WebPs in the Media Library. Shows format badges, optimized status pills, and direct database-backed all-time total size savings metadata (`_tka_image_savings`). Rows transition dynamically in real-time with visual CSS success flash highlight animations upon process completion.
 
 ### 🛒 7. WooCommerce Settings & Helpers
@@ -80,6 +81,7 @@ A comprehensive suite of utility tools designed for developers and agencies to s
 *   **Markup Cleanup**: Convert standard submit input tags to semantic HTML5 `<button type="submit">` tags for better flex/grid layout control.
 *   **Stylesheet Suppressor**: Disable default Gravity Forms CSS styles completely to make custom styling with frameworks (Tailwind, bootstrap) easier.
 *   **Submit Loading Feedback**: Set up custom loading/sending text feedback upon button clicks to prevent double clicks and double submissions.
+*   **Core Web Vitals Optimizer**: A toggle to aggressively delay all Gravity Forms JavaScript and jQuery until user interaction (scroll/mousemove) using a native JS polyfill, while converting all GF CSS stylesheets to non-render blocking async execution. Ensures perfect 99 Lighthouse scores even on pages with heavy forms.
 
 ### 🛠️ 9. Premium Maintenance Mode
 *   **Seamless Site Suspension**: Take the site offline temporarily for scheduled maintenance while serving a beautiful glassmorphic dark-themed screen.
@@ -90,6 +92,7 @@ A comprehensive suite of utility tools designed for developers and agencies to s
 ### 🔄 10. Cross-Document Page Transitions
 *   **Native View Transitions API**: Leverage modern cross-document view transitions for smooth page loads with zero layout shifts.
 *   **Pre-defined Animations**: Slide, swipe, and wipe animations with CSS keyframe custom timings and standard easing functions.
+*   **Header Flash Prevention**: Automatically prevents global site headers from flashing or cross-fading during page navigations, keeping them persistent while the main content animates seamlessly.
 *   **Dynamic Rules Engine**: Select transition rules dynamically using a From/To page type mapping (e.g. Front Page to Blog Page) or custom URI patterns.
 *   **Custom CSS Stylesheet Editor**: Live stylesheet block rendered directly in the `<head>` of the page for customizing target transition animations (e.g., configuring `view-transition-name` on elements).
 
@@ -109,6 +112,9 @@ A comprehensive suite of utility tools designed for developers and agencies to s
 *   **Heartbeat API Control**: Optimize server performance by rate-limiting or completely disabling the WordPress Heartbeat API background AJAX operations (Disable Everywhere, Disable on Dashboard, or Allow only on Post Edit Screen). Customize request interval frequencies (15s to 120s).
 *   **Post Revisions & Autosave Control**: Reduce database growth and bloat by programmatically setting a cap on post revisions (Unlimited, Disabled, or 1-10 Revisions). Adjust the autosave interval frequency (60s to 300s) early in the plugin lifecycle to override WordPress defaults.
 *   **Gutenberg Stylesheet Dequeuer**: Dequeue the heavy core block editor stylesheets (`wp-block-library.css` and `wp-block-library-theme.css`) globally on the frontend when Gutenberg is disabled or block elements are not used.
+*   **Link Hover Prefetcher**: Intelligently fetch and cache pages via Javascript the moment a user hovers over a link, resulting in near-instant perceived page load times across the entire site.
+*   **Global JS Interaction Delayer**: Specify custom script handles to delay entirely until user interaction (scroll, click, touch) using a `data-tka-src` injection logic, allowing heavy third-party scripts to completely bypass Lighthouse parsing metrics.
+*   **Asynchronous CSS Engine**: Designate specific stylesheet handles to load asynchronously via the `media="print"` trick, preventing render-blocking warnings for custom fonts or plugin CSS.
 
 ### 🌐 14. .htaccess Control & Hardening
 *   **Root .htaccess Customizations**: Enable directory browsing block, deny direct access to `wp-config.php`, `user.ini`, and `.htaccess` files, XML-RPC block, author scans block, CORS headers, Gzip compression, and browser caching (mod_headers and mod_expires rules).
@@ -139,7 +145,7 @@ A comprehensive suite of utility tools designed for developers and agencies to s
 ## Directory Structure
 
 ```text
-tka-wp-utils/
+tka-site-utilities/
 ├── admin/
 │   ├── css/
 │   │   ├── acf-copy-paste.css    # Layout highlights & custom checkboxes
@@ -190,25 +196,25 @@ tka-wp-utils/
 ├── LICENSE                       # MIT License
 ├── README.md                     # GitHub Developer Guide
 ├── readme.txt                    # Official WordPress.org Readme
-└── tka-wp-utils.php              # Plugin Entry point & PSR-4 autoloader
+└── tka-site-utilities.php              # Plugin Entry point & PSR-4 autoloader
 ```
 
 ---
 
 ## Installation
 
-1. Clone or download the repository into your `/wp-content/plugins/tka-wp-utils` directory:
+1. Clone or download the repository into your `/wp-content/plugins/tka-site-utilities` directory:
    ```bash
-   git clone git@github.com:thekitchen-agency/tka-wp-utils.git
+   git clone git@github.com:thekitchen-agency/tka-site-utilities.git
    ```
 2. Activate the plugin via the **Plugins** dashboard in WordPress.
-3. Access configuration tools through the **TKA WP Utils** menu in the admin sidebar.
+3. Access configuration tools through the **TKA Site Utilities** menu in the admin sidebar.
 
 ## Local Development & Setup
 
 This plugin uses standard WordPress enqueues and native client scripts (jQuery, jQuery UI Sortable).
 *   **Requirements**: PHP 8.3+, WordPress 6.0+
-*   **Autoloading**: Utilizes a PSR-4 compliant autoloader registered inside `tka-wp-utils.php`. Ensure namespace naming structures correspond to folders inside `includes/`.
+*   **Autoloading**: Utilizes a PSR-4 compliant autoloader registered inside `tka-site-utilities.php`. Ensure namespace naming structures correspond to folders inside `includes/`.
 
 ---
 

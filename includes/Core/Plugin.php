@@ -29,6 +29,8 @@ use TKA\WPUtils\Features\HtaccessManager;
 use TKA\WPUtils\Features\SmtpManager;
 use TKA\WPUtils\Features\ScriptDeferManager;
 use TKA\WPUtils\Features\DatabaseMaintenance;
+use TKA\WPUtils\Features\LinkPrefetcher;
+use TKA\WPUtils\Features\AsyncCssManager;
 
 /**
  * Main Plugin Coordinator class.
@@ -110,7 +112,7 @@ class Plugin
 		}
 
 		// Fetch currently saved options
-		$options = get_option('tka_wp_utils_options', []);
+		$options = get_option('tka_site_utilities_options', []);
 
 		// Load and hook features if they are enabled
 		if (!empty($options['classic_editor'])) {
@@ -144,6 +146,16 @@ class Plugin
 		// Script Defer Manager
 		$script_defer_manager = new ScriptDeferManager($options);
 		$script_defer_manager->hook();
+
+		// Async CSS Manager
+		$async_css_manager = new AsyncCssManager($options);
+		$async_css_manager->hook();
+
+		// Link Hover Prefetcher
+		if (!empty($options['link_prefetch'])) {
+			$link_prefetcher = new LinkPrefetcher();
+			$link_prefetcher->hook();
+		}
 
 		// Database Maintenance
 		$db_maintenance = new DatabaseMaintenance();
@@ -216,7 +228,7 @@ class Plugin
 		$smtp_manager->hook();
 
 		// Custom Admin Columns manager
-		$columns_options = get_option('tka_wp_utils_columns', []);
+		$columns_options = get_option('tka_site_utilities_columns', []);
 		if (!empty($columns_options)) {
 			$admin_columns = new AdminColumns($columns_options);
 			$admin_columns->hook();

@@ -7,8 +7,8 @@ namespace TKA\WPUtils\Licensing;
  */
 class Licensing
 {
-	private static string $option_key = 'tka_wp_utils_license_status';
-	private static string $transient_key = 'tka_wp_utils_license_check_transient';
+	private static string $option_key = 'tka_site_utilities_license_status';
+	private static string $transient_key = 'tka_site_utilities_license_check_transient';
 	private static string $server_url = 'https://plugins.thekitchen.agency';
 
 	public static function init(): void
@@ -56,7 +56,7 @@ class Licensing
 			return;
 		}
 
-		$manager = new LicenseManager(self::$server_url, $saved['license_key'], 'tka-wp-utils');
+		$manager = new LicenseManager(self::$server_url, $saved['license_key'], 'tka-site-utilities');
 		$result = $manager->verify();
 
 		if (isset($result['success']) && $result['success'] && isset($result['status']) && $result['status'] === 'active') {

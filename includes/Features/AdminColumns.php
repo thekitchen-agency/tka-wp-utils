@@ -66,12 +66,21 @@ class AdminColumns {
 					$label      = $col['label'] ?? $meta_key;
 					$field_type = $col['field_type'];
 
-					global $wpdb;
-					// Fetch distinct metadata values to get referenced IDs
-					$raw_values = $wpdb->get_col( $wpdb->prepare(
-						"SELECT DISTINCT meta_value FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value != ''",
-						$meta_key
-					) );
+					$cache_key   = 'tka_distinct_meta_' . md5( $meta_key );
+					$cache_group = 'tka-site-utilities';
+					$raw_values  = wp_cache_get( $cache_key, $cache_group );
+					if ( false === $raw_values ) {
+						global $wpdb;
+						// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+						$raw_values = $wpdb->get_col( $wpdb->prepare(
+							"SELECT DISTINCT meta_value FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value != ''",
+							$meta_key
+						) );
+						if ( ! is_array( $raw_values ) ) {
+							$raw_values = [];
+						}
+						wp_cache_set( $cache_key, $raw_values, $cache_group, HOUR_IN_SECONDS );
+					}
 
 					$related_ids = [];
 					foreach ( $raw_values as $val ) {
@@ -112,10 +121,12 @@ class AdminColumns {
 						continue;
 					}
 
-					$selected_value = isset( $_GET[ 'tka_filter_' . $meta_key ] ) ? sanitize_text_field( $_GET[ 'tka_filter_' . $meta_key ] ) : '';
+					// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+					$selected_value = isset( $_GET[ 'tka_filter_' . $meta_key ] ) ? sanitize_text_field( wp_unslash( $_GET[ 'tka_filter_' . $meta_key ] ) ) : '';
 
 					echo '<select name="' . esc_attr( 'tka_filter_' . $meta_key ) . '" id="' . esc_attr( 'tka_filter_' . $meta_key ) . '" style="max-width: 200px;">';
-					echo '<option value="">' . esc_html( sprintf( __( 'All %s', 'tka-wp-utils' ), $label ) ) . '</option>';
+					/* translators: %s: Column label */
+					echo '<option value="">' . esc_html( sprintf( __( 'All %s', 'tka-site-utilities' ), $label ) ) . '</option>';
 					foreach ( $related_ids as $id ) {
 						if ( 'term_relation' === $field_type ) {
 							$term = get_term( $id );
@@ -129,7 +140,8 @@ class AdminColumns {
 						} else {
 							$title = get_the_title( $id );
 							if ( empty( $title ) ) {
-								$title = sprintf( __( 'Post #%d', 'tka-wp-utils' ), $id );
+								/* translators: %d: Post ID */
+								$title = sprintf( __( 'Post #%d', 'tka-site-utilities' ), $id );
 							}
 							$post_type_obj = get_post_type_object( get_post_type( $id ) );
 							$pt_label      = $post_type_obj ? ' (' . $post_type_obj->labels->singular_name . ')' : '';
@@ -162,8 +174,10 @@ class AdminColumns {
 					$meta_key     = $col['meta_key'];
 					$filter_param = 'tka_filter_' . $meta_key;
 
+					// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 					if ( ! empty( $_GET[ $filter_param ] ) ) {
-						$val = sanitize_text_field( $_GET[ $filter_param ] );
+						// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+						$val = sanitize_text_field( wp_unslash( $_GET[ $filter_param ] ) );
 
 						// Match numeric IDs, serialized arrays/keys, and comma-separated IDs
 						$meta_query[] = [
@@ -282,7 +296,8 @@ class AdminColumns {
 			foreach ( $related_ids as $id ) {
 				$title = get_the_title( $id );
 				if ( empty( $title ) ) {
-					$title = sprintf( __( 'Post #%d', 'tka-wp-utils' ), $id );
+					/* translators: %d: Post ID */
+					$title = sprintf( __( 'Post #%d', 'tka-site-utilities' ), $id );
 				}
 
 				if ( current_user_can( 'edit_post', $id ) ) {
@@ -291,7 +306,7 @@ class AdminColumns {
 					$links[] = esc_html( $title );
 				}
 			}
-			echo implode( ', ', $links );
+			echo wp_kses_post( implode( ', ', $links ) );
 		} elseif ( 'term_relation' === $field_type ) {
 			$related_ids = [];
 			if ( is_numeric( $value ) ) {
@@ -339,7 +354,8 @@ class AdminColumns {
 			foreach ( $related_ids as $id ) {
 				$term = get_term( $id );
 				if ( is_wp_error( $term ) || ! $term ) {
-					$links[] = sprintf( __( 'Term #%d', 'tka-wp-utils' ), $id );
+					/* translators: %d: Term ID */
+					$links[] = sprintf( __( 'Term #%d', 'tka-site-utilities' ), $id );
 					continue;
 				}
 
@@ -352,7 +368,7 @@ class AdminColumns {
 					$links[] = esc_html( $title );
 				}
 			}
-			echo implode( ', ', $links );
+			echo wp_kses_post( implode( ', ', $links ) );
 		} else {
 			if ( is_array( $value ) ) {
 				echo esc_html( implode( ', ', $value ) );

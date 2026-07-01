@@ -40,6 +40,7 @@ class WooCommerceManager {
 				echo "<script type='text/javascript'>\n";
 				echo "document.addEventListener('DOMContentLoaded', function() {\n";
 				foreach ( $this->vanilla_scripts as $s ) {
+					// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 					echo $s . "\n";
 				}
 				echo "});\n";
@@ -286,7 +287,7 @@ class WooCommerceManager {
 			'/checkout-link/'
 		) );
 
-		echo ' &mdash; OR &mdash; <a href="' . esc_url( $buy_now_url ) . '" class="single_add_to_cart_button button buy_now_button" data-product-id="' . esc_attr( $product_id ) . '">' . esc_html__( 'Buy Now', 'tka-wp-utils' ) . '</a>';
+		echo ' &mdash; OR &mdash; <a href="' . esc_url( $buy_now_url ) . '" class="single_add_to_cart_button button buy_now_button" data-product-id="' . esc_attr( $product_id ) . '">' . esc_html__( 'Buy Now', 'tka-site-utilities' ) . '</a>';
 
 		$this->enqueueVanillaJs( 'buy_now', "
 			function updateBuyNowURL() {

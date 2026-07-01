@@ -91,8 +91,8 @@ class AdminInterface {
 		// expose "Menus" (nav-menus.php) as a standalone top-level menu page.
 		if ( in_array( 'themes.php', $hidden_menus, true ) && current_user_can( 'edit_theme_options' ) ) {
 			add_menu_page(
-				__( 'Menus', 'tka-wp-utils' ),
-				__( 'Menus', 'tka-wp-utils' ),
+				__( 'Menus', 'tka-site-utilities' ),
+				__( 'Menus', 'tka-site-utilities' ),
 				'edit_theme_options',
 				'nav-menus.php',
 				'',
@@ -106,7 +106,7 @@ class AdminInterface {
 	 * Get the stored owner installer ID with founder fallback.
 	 */
 	public static function getInstallerId(): int {
-		$installer_id = get_option( 'tka_wp_utils_installer_id' );
+		$installer_id = get_option( 'tka_site_utilities_installer_id' );
 		if ( ! $installer_id ) {
 			$admins = get_users( [
 				'role'    => 'administrator',
@@ -116,7 +116,7 @@ class AdminInterface {
 			] );
 			if ( ! empty( $admins ) ) {
 				$installer_id = $admins[0]->ID;
-				update_option( 'tka_wp_utils_installer_id', $installer_id );
+				update_option( 'tka_site_utilities_installer_id', $installer_id );
 			}
 		}
 		return intval( $installer_id );
@@ -135,7 +135,7 @@ class AdminInterface {
 			return true;
 		}
 
-		$options = get_option( 'tka_wp_utils_options', [] );
+		$options = get_option( 'tka_site_utilities_options', [] );
 		$superadmins = $options['superadmin_users'] ?? [];
 
 		return in_array( $current_user_id, $superadmins, true );
@@ -285,6 +285,7 @@ class AdminInterface {
 			foreach ( $widgets as $widget_id ) {
 				$css .= '#' . esc_attr( $widget_id ) . ' { display: none !important; } ';
 			}
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 			echo '<style>' . $css . '</style>';
 		} );
 	}
@@ -344,6 +345,7 @@ class AdminInterface {
 			}';
 		}
 		if ( ! empty( $custom_css ) ) {
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 			echo wp_strip_all_tags( $custom_css );
 		}
 		echo '</style>';

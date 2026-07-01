@@ -1,5 +1,5 @@
 /**
- * TKA WP Utils Admin Drag & Drop Sorting Script
+ * TKA Site Utilities Admin Drag & Drop Sorting Script
  */
 
 jQuery( document ).ready( function ( $ ) {
@@ -33,7 +33,7 @@ jQuery( document ).ready( function ( $ ) {
 			// Add a subtle opacity while saving
 			$tbody.css( 'opacity', '0.6' );
 
-			var actionName = isTerm ? 'tka_wp_utils_save_term_order' : 'tka_wp_utils_save_order';
+			var actionName = isTerm ? 'tka_site_utilities_save_term_order' : 'tka_site_utilities_save_order';
 
 			$.post( tkaWpUtilsOrder.ajaxUrl, {
 				action: actionName,

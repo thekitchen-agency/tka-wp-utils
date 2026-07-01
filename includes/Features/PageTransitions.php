@@ -35,7 +35,7 @@ class PageTransitions {
 	 * Render metadata generator tag.
 	 */
 	public function renderGenerator(): void {
-		echo '<meta name="generator" content="tka-wp-utils-page-transitions ' . esc_attr( TKA_WP_UTILS_VERSION ) . '">' . "\n";
+		echo '<meta name="generator" content="tka-site-utilities-page-transitions ' . esc_attr( TKA_SITE_UTILITIES_VERSION ) . '">' . "\n";
 	}
 
 	/**
@@ -148,7 +148,7 @@ class PageTransitions {
 
 		// Inline style for enabling navigation transitions
 		$stylesheet = '@view-transition { navigation: auto; }';
-		wp_register_style( 'tka-view-transitions', false, [], null );
+		wp_register_style( 'tka-view-transitions', false, [], TKA_SITE_UTILITIES_VERSION );
 		wp_add_inline_style( 'tka-view-transitions', $stylesheet );
 		wp_enqueue_style( 'tka-view-transitions' );
 
@@ -204,7 +204,7 @@ class PageTransitions {
 		];
 
 		// Read and output inline page transitions JS file
-		$js_path = TKA_WP_UTILS_PATH . 'admin/js/page-transitions.js';
+		$js_path = TKA_SITE_UTILITIES_PATH . 'admin/js/page-transitions.js';
 		$src_script = '';
 		if ( file_exists( $js_path ) ) {
 			$src_script = file_get_contents( $js_path );
@@ -218,7 +218,7 @@ class PageTransitions {
 			wp_json_encode( $config, JSON_FORCE_OBJECT | JSON_HEX_TAG | JSON_UNESCAPED_SLASHES )
 		);
 
-		wp_register_script( 'tka-view-transitions', false, [], null, [] );
+		wp_register_script( 'tka-view-transitions', false, [], TKA_SITE_UTILITIES_VERSION, true );
 		wp_add_inline_script( 'tka-view-transitions', $src_script );
 		wp_add_inline_script( 'tka-view-transitions', $init_script );
 		wp_enqueue_script( 'tka-view-transitions' );
@@ -243,7 +243,7 @@ class PageTransitions {
 
 		$duration = absint( $this->options['page_transitions_default_animation_duration'] ?? 400 );
 
-		$css = "\n/* TKA WP Utils Page Transitions Keyframes */\n";
+		$css = "\n/* TKA Site Utilities Page Transitions Keyframes */\n";
 		foreach ( $animations as $anim ) {
 			$anim_css = $registry->getAnimationStylesheet( $anim );
 			if ( ! empty( $anim_css ) ) {
@@ -255,12 +255,16 @@ class PageTransitions {
 		$fade_seconds = $duration / 1000;
 		$css .= "html.tka-transition-fade::view-transition-group(*) { animation-duration: {$fade_seconds}s; }\n";
 
+		// Prevent header from flashing/fading (keep it persistent and static)
+		$css .= "::view-transition-old(header), ::view-transition-new(header) { animation: none; mix-blend-mode: normal; }\n";
+
 		// Output custom CSS
 		if ( ! empty( $this->options['page_transitions_custom_css'] ) ) {
 			$css .= "\n/* Custom User Page Transitions CSS */\n";
 			$css .= $this->options['page_transitions_custom_css'] . "\n";
 		}
 
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		echo '<style id="tka-page-transitions-css">' . $css . '</style>' . "\n";
 	}
 
@@ -400,7 +404,7 @@ class PageTransitions {
 					'wipe-from-top',
 				],
 				'use_stylesheet'              => true,
-				'use_global_transition_names' => false,
+				'use_global_transition_names' => true,
 				'use_post_transition_names'   => true,
 				'get_stylesheet_callback'     => static function ( string $css, string $alias, array $args ) {
 					if ( str_ends_with( $alias, 'left' ) ) {
