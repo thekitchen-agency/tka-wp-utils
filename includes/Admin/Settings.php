@@ -4118,7 +4118,7 @@ class Settings
 
 		$request_method = isset($_SERVER['REQUEST_METHOD']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_METHOD'])) : '';
 		// If no POST action, we do a real-time heartbeat check on this page load to make sure UI is up-to-date
-		if ($request_method !== 'POST' && !empty($status['license_key'])) {
+		if ($request_method !== 'POST' && !empty($status['license_key']) && !\TKA\WPUtils\Licensing\Licensing::isLocalEnvironment()) {
 			$manager = new \TKA\WPUtils\Licensing\LicenseManager($server_url, $status['license_key'], 'tka-site-utilities');
 			$result = $manager->verify();
 
@@ -4209,7 +4209,18 @@ class Settings
 
 						<div class="tka-settings-card" style="padding: 24px; margin-top: 20px;">
 							
-							<?php if ($is_active): ?>
+							<?php 
+							$is_local = \TKA\WPUtils\Licensing\Licensing::isLocalEnvironment();
+							$is_really_active = !empty($status['status']) && $status['status'] === 'active';
+							
+							if ($is_local): ?>
+								<div style="margin-bottom: 20px; padding: 15px; background: rgba(34, 197, 94, 0.1); border-left: 3px solid #22c55e; border-radius: 4px;">
+									<p style="margin: 0; font-size: 14px; color: var(--tka-text-main);">
+										<span class="dashicons dashicons-yes-alt" style="color: #22c55e; vertical-align: middle;"></span>
+										<strong><?php esc_html_e('Local development bypass active.', 'tka-site-utilities'); ?></strong> <?php esc_html_e('Plugin features are unlocked. Enter a license key below to receive updates.', 'tka-site-utilities'); ?>
+									</p>
+								</div>
+							<?php elseif ($is_really_active): ?>
 								<div style="margin-bottom: 20px; padding: 15px; background: rgba(34, 197, 94, 0.1); border-left: 3px solid #22c55e; border-radius: 4px;">
 									<p style="margin: 0; font-size: 14px; color: var(--tka-text-main);">
 										<span class="dashicons dashicons-yes-alt" style="color: #22c55e; vertical-align: middle;"></span>
@@ -4239,14 +4250,14 @@ class Settings
 									<tr>
 										<th scope="row"><label for="tka_license_key"><?php esc_html_e('License Key', 'tka-site-utilities'); ?></label></th>
 										<td>
-											<input type="text" id="tka_license_key" name="tka_license_key" value="<?php echo esc_attr($current_key); ?>" class="regular-text tka-input" style="width: 100%; max-width: 400px;" <?php echo $is_active ? 'readonly' : ''; ?> />
+											<input type="text" id="tka_license_key" name="tka_license_key" value="<?php echo esc_attr($current_key); ?>" class="regular-text tka-input" style="width: 100%; max-width: 400px;" <?php echo $is_really_active ? 'readonly' : ''; ?> />
 											<p class="description" style="color: var(--tka-text-muted); margin-top: 5px;"><?php esc_html_e('Enter your license key provided by TKA Systems.', 'tka-site-utilities'); ?></p>
 										</td>
 									</tr>
 								</table>
 								
 								<p class="submit" style="margin: 0; padding: 0;">
-									<?php if ($is_active): ?>
+									<?php if ($is_really_active): ?>
 										<input type="hidden" name="tka_license_action_type" value="deactivate">
 										<button type="submit" class="tka-btn tka-btn-danger"><?php esc_html_e('Deactivate License', 'tka-site-utilities'); ?></button>
 									<?php else: ?>

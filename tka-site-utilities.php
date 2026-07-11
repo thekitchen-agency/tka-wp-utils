@@ -3,7 +3,7 @@
  * Plugin Name:       TKA Site Utilities
  * Plugin URI:        https://github.com/thekitchen-agency/tka-site-utilities
  * Description:       A collection of utility tools to customize and secure your WordPress experience, including Classic Editor, Classic Widgets, Disable Gutenberg (granular), and Safe SVG upload validation.
- * Version:           1.13.0
+ * Version:           1.14.0
  * Author:            TKA
  * Author URI:        https://wp-play.ddev.site
  * License:           MIT

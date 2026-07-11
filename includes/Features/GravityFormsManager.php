@@ -180,7 +180,7 @@ class GravityFormsManager {
 	 * Delays all GF and jQuery scripts by changing src to data-gf-src.
 	 */
 	public function delayGfScripts( string $tag, string $handle ): string {
-		if ( is_admin() || strpos( $tag, ' type="module"' ) !== false ) {
+		if ( is_admin() || strpos( $tag, ' type="module"' ) !== false || (function_exists('is_woocommerce') && (is_woocommerce() || is_cart() || is_checkout() || is_account_page())) ) {
 			return $tag;
 		}
 
