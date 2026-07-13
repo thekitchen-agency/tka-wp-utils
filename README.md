@@ -43,6 +43,7 @@ A comprehensive suite of utility tools designed for developers and agencies to s
     *   **Toolbar Filters**: Injects matching dropdown filters at the top of the post list tables to filter entries by selected relations.
 
 ### 🔌 6. ACF Integration & Copy/Paste Engine
+*   **ACF Flexible Content Layout Location Rules**: Control where individual layouts (blocks) are available inside the post editor based on rules like Post Type, Page Template, Page Parent, Post ID, and User Role, using an interactive AND/OR rule builder inside layout settings in the Field Group editor.
 *   **ACF Flexible Content Visual Layout Selection Modal**: Replaces the standard narrow ACF layout selector dropdown list with a gorgeous, searchable, and category-filtered grid modal showing block descriptions, custom icons, and theme screenshot previews.
 *   **Dynamic Theme-Agnostic Discovery**: Automatically scans active theme block template directories (supporting both PHP and Blade templates) and dynamically extracts custom block metadata (Title, Category, Icon, Description) from template file comment headers natively using `get_file_data()`.
 *   **Automated Fallback Generation**: Features automatic title-based and keyword-based metadata fallback generators for any new custom block layout, allowing zero-configuration setup for any third-party block theme.

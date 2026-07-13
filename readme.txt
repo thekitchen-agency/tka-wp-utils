@@ -3,7 +3,7 @@ Contributors: thekitchen-agency
 Tags: classic editor, svg upload, admin columns, hardening, image optimization
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 1.13.0
+Stable tag: 1.15.0
 Requires PHP: 8.3
 License: MIT
 License URI: https://opensource.org/licenses/MIT
@@ -146,6 +146,15 @@ Since images are permanently converted to WebP in the database, deactivating the
 *   Added compatibility check to disable conflicting plugin layout features when Advanced Custom Fields Extended (ACFE) is active.
 *   Fixed CPT duplication where fields were copied as empty by switching from add_post_meta to direct database inserts ($wpdb->insert) and clearing cache.
 *   Removed conflicting theme-level duplicate post actions from the functions.php file.
+
+= 1.15.0 =
+*   Added ACF Flexible Content Layout Location Rules extension.
+*   Allows restricting flexible content layouts (blocks) based on Post Type, Page Template, Page Parent, Post ID, and User Role.
+*   Includes an interactive AND/OR rules builder directly within layout settings in the Field Group editor.
+*   Hides restricted layout blocks dynamically from both standard ACF layout selection lists and custom layout selection modals.
+
+= 1.14.0 =
+*   Improved Field Group editor settings styling and asset enqueues.
 
 = 1.5.0 =
 *   Added Premium Maintenance Mode feature allowing custom titles, messages, logo, and background images.

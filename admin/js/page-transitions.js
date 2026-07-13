@@ -126,8 +126,12 @@ window.tkaInitPageTransitions = ( config ) => {
 						return true;
 					} )
 					.map( ( [ selector, name ] ) => {
-						const element = bodyElement.querySelector( selector );
-						return [ element, name ];
+						try {
+							const element = bodyElement ? bodyElement.querySelector( selector ) : null;
+							return [ element, name ];
+						} catch ( e ) {
+							return [ null, name ];
+						}
 					} )
 			: [];
 
@@ -135,8 +139,12 @@ window.tkaInitPageTransitions = ( config ) => {
 			animationConfig.usePostTransitionNames && articleElement
 				? Object.entries( config.postTransitionNames || {} ).map(
 						( [ selector, name ] ) => {
-							const element = articleElement.querySelector( selector );
-							return [ element, name ];
+							try {
+								const element = articleElement.querySelector( selector );
+								return [ element, name ];
+							} catch ( e ) {
+								return [ null, name ];
+							}
 						}
 				  )
 				: [];
@@ -155,13 +163,17 @@ window.tkaInitPageTransitions = ( config ) => {
 			element.style.viewTransitionName = name;
 		}
 
-		await vtPromise;
-
-		for ( const [ element ] of entries ) {
-			if ( ! element ) {
-				continue;
+		try {
+			await vtPromise;
+		} catch ( e ) {
+			// Ignore rejection so cleanup still runs
+		} finally {
+			for ( const [ element ] of entries ) {
+				if ( ! element ) {
+					continue;
+				}
+				element.style.viewTransitionName = '';
 			}
-			element.style.viewTransitionName = '';
 		}
 	};
 
@@ -176,22 +188,32 @@ window.tkaInitPageTransitions = ( config ) => {
 		if ( ! config.postSelector ) {
 			return null;
 		}
-		return document.querySelector( config.postSelector );
+		try {
+			return document.querySelector( config.postSelector );
+		} catch ( e ) {
+			return null;
+		}
 	};
 
 	const getArticleForUrl = ( url ) => {
-		if ( ! config.postSelector ) {
+		if ( ! config.postSelector || ! url ) {
 			return null;
 		}
-		const postLinkSelector = appendSelectors(
-			config.postSelector,
-			'a[href="' + url + '"]'
-		);
-		const articleLink = document.querySelector( postLinkSelector );
-		if ( ! articleLink ) {
+		try {
+			// CSS.escape is a helper to ensure URLs containing special characters do not break the CSS selector parsing
+			const safeUrl = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape( url ) : url.replace( /"/g, '\\"' );
+			const postLinkSelector = appendSelectors(
+				config.postSelector,
+				'a[href="' + safeUrl + '"]'
+			);
+			const articleLink = document.querySelector( postLinkSelector );
+			if ( ! articleLink ) {
+				return null;
+			}
+			return articleLink.closest( config.postSelector );
+		} catch ( e ) {
 			return null;
 		}
-		return articleLink.closest( config.postSelector );
 	};
 
 	/**
@@ -199,7 +221,8 @@ window.tkaInitPageTransitions = ( config ) => {
 	 */
 	window.addEventListener( 'pageswap', ( event ) => {
 		if ( event.viewTransition ) {
-			const srcType = detectPageType( document.body );
+			const bodyEl = document.body;
+			const srcType = detectPageType( bodyEl );
 			const srcUrl = window.location.href;
 			
 			let destUrl = '';
@@ -238,27 +261,30 @@ window.tkaInitPageTransitions = ( config ) => {
 				transitionClass
 			} );
 
-			// Add transition type to event
-			event.viewTransition.types.add( animationType );
+			// Add transition type to event (if browser supports types)
+			if ( event.viewTransition.types ) {
+				event.viewTransition.types.add( animationType );
+			}
 				
 			document.documentElement.classList.add( transitionClass );
 			sessionStorage.setItem( 'tka_active_transition_class', transitionClass );
 
 			// Set temporary transition names
 			let articleEl = null;
-			if ( document.body.classList.contains( 'single' ) || document.body.classList.contains( 'page' ) ) {
+			if ( bodyEl && ( bodyEl.classList.contains( 'single' ) || bodyEl.classList.contains( 'page' ) ) ) {
 				articleEl = getArticle();
 			} else if (
-				document.body.classList.contains( 'home' ) ||
-				document.body.classList.contains( 'blog' ) ||
-				document.body.classList.contains( 'archive' )
+				bodyEl &&
+				( bodyEl.classList.contains( 'home' ) ||
+					bodyEl.classList.contains( 'blog' ) ||
+					bodyEl.classList.contains( 'archive' ) )
 			) {
 				articleEl = getArticleForUrl( destUrl );
 			}
 
 			const viewTransitionEntries = getViewTransitionEntries(
 				animationType,
-				document.body,
+				bodyEl,
 				articleEl
 			);
 
@@ -269,8 +295,8 @@ window.tkaInitPageTransitions = ( config ) => {
 				);
 			}
 			
-			// Clean up transition class when finished
-			event.viewTransition.finished.then(() => {
+			// Clean up transition class when finished (or aborted/skipped)
+			event.viewTransition.finished.finally(() => {
 				document.documentElement.classList.remove( transitionClass );
 			});
 		}
@@ -281,7 +307,8 @@ window.tkaInitPageTransitions = ( config ) => {
 	 */
 	window.addEventListener( 'pagereveal', ( event ) => {
 		if ( event.viewTransition ) {
-			const destType = detectPageType( document.body );
+			const bodyEl = document.body;
+			const destType = detectPageType( bodyEl );
 			const destUrl = window.location.href;
 
 			// Retrieve source state from sessionStorage
@@ -300,7 +327,9 @@ window.tkaInitPageTransitions = ( config ) => {
 			const rule = findMatchingRule( srcType, srcUrl, destUrl, destType );
 			const animationType = rule ? rule.animation : config.defaultAnimation;
 
-			event.viewTransition.types.add( animationType );
+			if ( event.viewTransition.types ) {
+				event.viewTransition.types.add( animationType );
+			}
 
 			// Get the active transition class name (either stored or re-evaluated)
 			let transitionClass = sessionStorage.getItem( 'tka_active_transition_class' );
@@ -322,11 +351,12 @@ window.tkaInitPageTransitions = ( config ) => {
 			document.documentElement.classList.add( transitionClass );
 
 			let articleEl = null;
-			if ( document.body.classList.contains( 'single' ) || document.body.classList.contains( 'page' ) ) {
+			if ( bodyEl && ( bodyEl.classList.contains( 'single' ) || bodyEl.classList.contains( 'page' ) ) ) {
 				articleEl = getArticle();
 			} else if (
-				document.body.classList.contains( 'home' ) ||
-				document.body.classList.contains( 'archive' )
+				bodyEl &&
+				( bodyEl.classList.contains( 'home' ) ||
+					bodyEl.classList.contains( 'archive' ) )
 			) {
 				const fromUrl = ( window.navigation && window.navigation.activation && window.navigation.activation.from )
 					? window.navigation.activation.from.url
@@ -336,7 +366,7 @@ window.tkaInitPageTransitions = ( config ) => {
 
 			const viewTransitionEntries = getViewTransitionEntries(
 				animationType,
-				document.body,
+				bodyEl,
 				articleEl
 			);
 
@@ -347,8 +377,8 @@ window.tkaInitPageTransitions = ( config ) => {
 				);
 			}
 
-			// Clean up classes and sessionStorage
-			event.viewTransition.finished.then( () => {
+			// Clean up classes and sessionStorage when finished (or aborted/skipped)
+			event.viewTransition.finished.finally( () => {
 				document.documentElement.classList.remove( transitionClass );
 				sessionStorage.removeItem( 'tka_active_transition_class' );
 			} );

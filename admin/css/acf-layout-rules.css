@@ -1,0 +1,108 @@
+/**
+ * TKA Site Utilities - ACF Layout Location Rules Styles
+ */
+
+.tka-layout-location-rules {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #e1e1e1;
+    clear: both;
+    width: 100%;
+    flex: 0 0 100%;
+    box-sizing: border-box;
+}
+
+.tka-layout-location-rules .tka-rules-title {
+    font-weight: bold;
+    display: block;
+    margin-bottom: 5px;
+    font-size: 13px;
+    color: #23282d;
+}
+
+.tka-layout-location-rules .description {
+    margin-bottom: 12px;
+    color: #666;
+}
+
+.tka-rules-groups-container {
+    margin-bottom: 12px;
+}
+
+.tka-rules-group {
+    background: #f9f9f9;
+    border: 1px solid #e1e1e1;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    position: relative;
+    border-radius: 3px;
+}
+
+.tka-rule-group-or {
+    position: absolute;
+    top: -12px;
+    left: 15px;
+    background: #f1f1f1;
+    padding: 1px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #666;
+    border: 1px solid #e1e1e1;
+    border-radius: 2px;
+    line-height: 1.4;
+}
+
+.tka-rules-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.tka-rules-table tr td {
+    padding: 4px 6px;
+    border: none;
+    vertical-align: middle;
+}
+
+.tka-rules-table tr td.param {
+    width: 25%;
+}
+
+.tka-rules-table tr td.operator {
+    width: 20%;
+}
+
+.tka-rules-table tr td.value {
+    width: 45%;
+}
+
+.tka-rules-table tr td.actions {
+    width: 10%;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.tka-rules-table select,
+.tka-rules-table input[type="number"] {
+    width: 100%;
+    max-width: 100%;
+    height: 28px;
+    line-height: 28px;
+    margin: 0;
+    padding: 2px 6px;
+}
+
+.tka-rules-table select {
+    padding-right: 24px;
+}
+
+.tka-rules-table .acf-icon {
+    display: inline-block;
+    margin-left: 4px;
+    float: none;
+    vertical-align: middle;
+}
+
+.tka-rules-actions {
+    margin-top: 5px;
+}
