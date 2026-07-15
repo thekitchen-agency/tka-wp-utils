@@ -873,7 +873,7 @@ class Settings
 												<?php esc_html_e('Gravity Forms', 'tka-site-utilities'); ?>
 											</a>
 									<?php endif; ?>
-									<?php if (class_exists('WooCommerce')): ?>
+									<?php if (class_exists('WooCommerce') && !class_exists('TKA\WooUtils\Core\Plugin')): ?>
 											<a href="#woocommerce" class="tka-nav-item" data-tab="woocommerce">
 												<span class="dashicons dashicons-cart"></span>
 												<?php esc_html_e('WooCommerce', 'tka-site-utilities'); ?>
@@ -2402,7 +2402,7 @@ class Settings
 											</section>
 									<?php endif; ?>
 
-									<?php if (class_exists('WooCommerce')): ?>
+									<?php if (class_exists('WooCommerce') && !class_exists('TKA\WooUtils\Core\Plugin')): ?>
 											<!-- WOOCOMMERCE PANEL -->
 											<section id="panel-woocommerce" class="tka-tab-panel">
 												<h2><?php esc_html_e('WooCommerce Speed & Bloat Settings', 'tka-site-utilities'); ?></h2>

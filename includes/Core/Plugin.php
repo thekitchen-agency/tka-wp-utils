@@ -249,7 +249,7 @@ class Plugin
 			}
 
 			// WooCommerce Integration (only runs if WooCommerce is active)
-			if (class_exists('WooCommerce')) {
+			if (class_exists('WooCommerce') && !class_exists('TKA\WooUtils\Core\Plugin')) {
 				$woocommerce_manager = new WooCommerceManager($options);
 				$woocommerce_manager->hook();
 			}

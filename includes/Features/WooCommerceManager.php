@@ -287,7 +287,8 @@ class WooCommerceManager {
 			'/checkout-link/'
 		) );
 
-		echo ' &mdash; OR &mdash; <a href="' . esc_url( $buy_now_url ) . '" class="single_add_to_cart_button button buy_now_button" data-product-id="' . esc_attr( $product_id ) . '">' . esc_html__( 'Buy Now', 'tka-site-utilities' ) . '</a>';
+		echo '<span class="tka-buy-now-separator" style="float: left; margin: 0 15px; line-height: 50px;">&mdash; OR &mdash;</span>';
+		echo '<a href="' . esc_url( $buy_now_url ) . '" class="single_add_to_cart_button button buy_now_button" data-product-id="' . esc_attr( $product_id ) . '" style="float: left;">' . esc_html__( 'Buy Now', 'tka-site-utilities' ) . '</a>';
 
 		$this->enqueueVanillaJs( 'buy_now', "
 			function updateBuyNowURL() {
