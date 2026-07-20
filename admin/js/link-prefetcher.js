@@ -26,6 +26,11 @@
 			return false;
 		}
 
+		// Exclude WooCommerce add-to-cart URLs to prevent duplicate cart additions on hover/touch prefetch
+		if (url.includes('add-to-cart') || url.includes('customer-logout') || url.includes('logout') || url.includes('wp-login.php?action=logout')) {
+			return false;
+		}
+
 		try {
 			const parsedUrl = new URL(url, window.location.href);
 
