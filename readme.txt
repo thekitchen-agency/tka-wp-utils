@@ -3,7 +3,7 @@ Contributors: thekitchen-agency
 Tags: classic editor, svg upload, admin columns, hardening, image optimization
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 1.15.0
+Stable tag: 1.15.1
 Requires PHP: 8.3
 License: MIT
 License URI: https://opensource.org/licenses/MIT

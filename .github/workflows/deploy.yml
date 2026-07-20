@@ -1,0 +1,20 @@
+name: Deploy State to Production
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /home/thekitch/www/test-dac.thekitchen.dev
+            git pull origin main
+            /usr/local/php84/bin/composer install --no-dev --optimize-autoloader
+            /usr/local/php84/bin/php wp dac apply
