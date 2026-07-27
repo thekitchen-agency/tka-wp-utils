@@ -6,6 +6,93 @@
 		return;
 	}
 
+	// Native XHR & Fetch Interceptor to ensure media_folder is ALWAYS present in upload payloads
+	(function() {
+		var origSend = XMLHttpRequest.prototype.send;
+		XMLHttpRequest.prototype.send = function(body) {
+			if (body && body instanceof FormData) {
+				var $activeItem = $('.tka-media-folders-sidebar .tka-folder-item.active');
+				var activeFolder = $activeItem.length ? ($activeItem.attr('data-id') || '') : (localStorage.getItem('tka_media_folders_active_folder') || '');
+				if (activeFolder && activeFolder !== 'unassigned') {
+					if (!body.has('media_folder')) {
+						body.append('media_folder', activeFolder);
+					}
+				}
+			}
+			return origSend.apply(this, arguments);
+		};
+
+		if (window.fetch) {
+			var origFetch = window.fetch;
+			window.fetch = function(input, init) {
+				if (init && init.body && init.body instanceof FormData) {
+					var $activeItem = $('.tka-media-folders-sidebar .tka-folder-item.active');
+					var activeFolder = $activeItem.length ? ($activeItem.attr('data-id') || '') : (localStorage.getItem('tka_media_folders_active_folder') || '');
+					if (activeFolder && activeFolder !== 'unassigned') {
+						if (!init.body.has('media_folder')) {
+							init.body.append('media_folder', activeFolder);
+						}
+					}
+				}
+				return origFetch.apply(this, arguments);
+			};
+		}
+	})();
+
+	// Force wp.media.model.Query to observe wp.Uploader.queue even when custom props like media_folder are set
+	if (wp.media.model && wp.media.model.Query) {
+		var originalQueryInit = wp.media.model.Query.prototype.initialize;
+		wp.media.model.Query.prototype.initialize = function(models, options) {
+			originalQueryInit.apply(this, arguments);
+			if (wp.Uploader && wp.Uploader.queue) {
+				this.observe(wp.Uploader.queue);
+			}
+		};
+	}
+
+	// Register media_folder validator on Attachments collection filters
+	if (wp.media.model && wp.media.model.Attachments && wp.media.model.Attachments.filters) {
+		wp.media.model.Attachments.filters.media_folder = function(attachment) {
+			var folder = this.props.get('media_folder');
+			if (!folder || folder === '') {
+				return true;
+			}
+			// Always allow transient models currently being uploaded
+			if (attachment.get('uploading') || attachment.file || !attachment.id) {
+				return true;
+			}
+			if (folder === 'unassigned') {
+				var terms = attachment.get('media_folder');
+				return !terms || (Array.isArray(terms) && terms.length === 0);
+			}
+			var folderTerms = attachment.get('media_folder');
+			if (Array.isArray(folderTerms)) {
+				var folderInt = parseInt(folder, 10);
+				return folderTerms.indexOf(folderInt) !== -1 || folderTerms.indexOf(String(folder)) !== -1;
+			}
+			return true;
+		};
+	}
+
+	// Global AJAX prefilter to inject media_folder parameter into all WordPress async-upload.php requests
+	$.ajaxPrefilter(function(options, originalOptions, jqXHR) {
+		if (options.url && options.url.indexOf('async-upload.php') !== -1) {
+			var $activeItem = $('.tka-media-folders-sidebar .tka-folder-item.active');
+			var activeFolder = $activeItem.length ? ($activeItem.attr('data-id') || '') : (localStorage.getItem('tka_media_folders_active_folder') || '');
+			if (activeFolder && activeFolder !== 'unassigned') {
+				if (options.data instanceof FormData) {
+					if (!options.data.has('media_folder')) {
+						options.data.append('media_folder', activeFolder);
+					}
+				} else if (typeof options.data === 'string') {
+					if (options.data.indexOf('media_folder=') === -1) {
+						options.data += (options.data ? '&' : '') + 'media_folder=' + encodeURIComponent(activeFolder);
+					}
+				}
+			}
+		}
+	});
+
 	var AttachmentsBrowser = wp.media.view.AttachmentsBrowser;
 
 	// Extend the AttachmentsBrowser to inject our folders sidebar
@@ -58,6 +145,7 @@
 						'<h3><span class="dashicons dashicons-portfolio"></span><span>' + tkaMediaFolders.i18n.allFiles + '</span></h3>' +
 						'<button class="tka-folders-collapse-btn" title="Collapse/Expand Folders"><span class="dashicons dashicons-menu"></span></button>' +
 					'</div>' +
+					'<div class="tka-folder-upload-notice-container"></div>' +
 					'<button type="button" class="tka-folders-new-btn"><span class="dashicons dashicons-plus"></span><span>' + tkaMediaFolders.i18n.newFolder + '</span></button>' +
 					'<ul class="tka-folders-tree">' +
 						// Static All Files Node
@@ -97,6 +185,78 @@
 
 			// Hook into uploader to auto-assign folder on upload
 			this.hookUploader();
+		},
+
+		getActiveFolderId: function() {
+			var $activeItem = $('.tka-media-folders-sidebar .tka-folder-item.active');
+			if ($activeItem.length) {
+				var id = $activeItem.attr('data-id');
+				if (typeof id !== 'undefined' && id !== null) {
+					return String(id);
+				}
+			}
+			return localStorage.getItem('tka_media_folders_active_folder') || '';
+		},
+
+		getActiveFolderName: function() {
+			var $activeItem = $('.tka-media-folders-sidebar .tka-folder-item.active');
+			return $activeItem.length ? $activeItem.find('.folder-name').text() : '';
+		},
+
+		selectFolder: function(folderId) {
+			if (!this.foldersSidebar) {
+				return;
+			}
+			localStorage.setItem('tka_media_folders_active_folder', folderId || '');
+			var $targetItem = this.foldersSidebar.find('.tka-folder-item[data-id="' + folderId + '"]');
+			if ($targetItem.length) {
+				this.foldersSidebar.find('.tka-folder-item').removeClass('active');
+				$targetItem.addClass('active');
+				$targetItem.parents('.tka-folder-node').addClass('expanded');
+				$targetItem.parents('ul').show();
+			}
+			this.filterByFolder(folderId);
+		},
+
+		refreshCurrentFolder: function() {
+			var self = this;
+			self.loadFolderTree();
+			var activeFolder = self.getActiveFolderId();
+			if (self.collection) {
+				self.collection.props.set('media_folder', activeFolder, { silent: true });
+				self.collection._hasMore = true;
+				delete self.collection._more;
+				if (self.collection.mirroring) {
+					self.collection.mirroring._hasMore = true;
+					delete self.collection.mirroring._more;
+					self.collection.mirroring.fetch({ reset: true });
+				} else if (typeof self.collection.fetch === 'function') {
+					self.collection.fetch({ reset: true });
+				}
+			}
+		},
+
+		showUploadNotice: function(msg) {
+			if (!this.foldersSidebar) {
+				return;
+			}
+			var $container = this.foldersSidebar.find('.tka-folder-upload-notice-container');
+			var html = '<div class="tka-folder-upload-notice"><span class="spinner is-active"></span><span>' + msg + '</span></div>';
+			$container.html(html).stop(true, true).fadeIn(150);
+		},
+
+		showUploadSuccessNotice: function(msg) {
+			if (!this.foldersSidebar) {
+				return;
+			}
+			var $container = this.foldersSidebar.find('.tka-folder-upload-notice-container');
+			var html = '<div class="tka-folder-upload-notice success"><span class="dashicons dashicons-yes-alt"></span><span>' + msg + '</span></div>';
+			$container.html(html).stop(true, true).fadeIn(150);
+			setTimeout(function() {
+				$container.fadeOut(300, function() {
+					$container.empty();
+				});
+			}, 3000);
 		},
 
 		bindSidebarEvents: function() {
@@ -223,8 +383,22 @@
 				$(this).removeClass('drag-over');
 				
 				var folderId = $(this).attr('data-id');
-				var rawData = e.originalEvent.dataTransfer.getData('text/plain');
+				var files = e.originalEvent.dataTransfer ? e.originalEvent.dataTransfer.files : null;
 				
+				// Desktop files dropped directly onto folder item
+				if (files && files.length > 0) {
+					self.selectFolder(folderId);
+					if (wp.media.uploader && wp.media.uploader.uploader && wp.media.uploader.uploader.uploader) {
+						var plup = wp.media.uploader.uploader.uploader;
+						plup.settings.multipart_params = plup.settings.multipart_params || {};
+						plup.settings.multipart_params.media_folder = folderId;
+						plup.addFile(Array.from(files));
+					}
+					return;
+				}
+
+				// Internal media items drag and drop
+				var rawData = e.originalEvent.dataTransfer.getData('text/plain');
 				try {
 					if (rawData) {
 						var dragData = JSON.parse(rawData);
@@ -242,10 +416,22 @@
 			if (this.collection) {
 				// Setting the custom prop triggers requery in Backbone dynamically
 				this.collection.props.set('media_folder', folderId);
+				this.collection._hasMore = true;
+				delete this.collection._more;
+				if (this.collection.mirroring) {
+					this.collection.mirroring._hasMore = true;
+					delete this.collection.mirroring._more;
+					this.collection.mirroring.fetch({ reset: true });
+				} else if (typeof this.collection.fetch === 'function') {
+					this.collection.fetch({ reset: true });
+				}
+				if (wp.Uploader && wp.Uploader.queue) {
+					this.collection.observe(wp.Uploader.queue);
+				}
 			}
 		},
 
-		loadFolderTree: function() {
+		loadFolderTree: function(callback) {
 			var self = this;
 			$.ajax({
 				url: tkaMediaFolders.ajaxUrl,
@@ -257,7 +443,20 @@
 				dataType: 'json',
 				success: function(response) {
 					if (response.success) {
+						var activeId = self.getActiveFolderId() || localStorage.getItem('tka_media_folders_active_folder') || '';
 						self.renderTree(response.data);
+						if (activeId !== '') {
+							var $activeItem = self.foldersSidebar.find('.tka-folder-item[data-id="' + activeId + '"]');
+							if ($activeItem.length) {
+								self.foldersSidebar.find('.tka-folder-item').removeClass('active');
+								$activeItem.addClass('active');
+								$activeItem.parents('.tka-folder-node').addClass('expanded');
+								$activeItem.parents('ul').show();
+							}
+						}
+						if (typeof callback === 'function') {
+							callback(response.data);
+						}
 					}
 				}
 			});
@@ -328,10 +527,13 @@
 				},
 				dataType: 'json',
 				success: function(response) {
-					if (response.success) {
-						self.loadFolderTree();
+					if (response.success && response.data && response.data.id) {
+						var newFolderId = String(response.data.id);
+						self.loadFolderTree(function() {
+							self.selectFolder(newFolderId);
+						});
 					} else {
-						alert(response.data.message);
+						alert(response.data ? response.data.message : 'Failed to create folder.');
 					}
 				}
 			});
@@ -399,7 +601,7 @@
 						
 						// If we are currently filtered by a folder and that folder is NOT the one we dropped onto,
 						// remove the items dynamically from the current Backbone collection so they disappear.
-						var activeFolder = self.foldersSidebar.find('.tka-folder-item.active').attr('data-id');
+						var activeFolder = self.getActiveFolderId();
 						if (activeFolder !== '' && activeFolder !== folderId) {
 							ids.forEach(function(id) {
 								var model = self.collection.get(id);
@@ -417,13 +619,127 @@
 
 		hookUploader: function() {
 			var self = this;
-			// Hook into wp.media.frame's uploader success event
-			if (wp.media.frame && wp.media.frame.uploader) {
-				wp.media.frame.uploader.on('uploader:success', function(attachment) {
-					var activeFolder = self.foldersSidebar.find('.tka-folder-item.active').attr('data-id');
+
+			var attachPlupload = function(plup) {
+				if (!plup || plup._tkaHooked) {
+					return;
+				}
+				plup._tkaHooked = true;
+
+				plup.bind('BeforeUpload', function(up, file) {
+					var activeFolder = self.getActiveFolderId();
 					if (activeFolder && activeFolder !== 'unassigned') {
+						up.settings.multipart_params = up.settings.multipart_params || {};
+						up.settings.multipart_params.media_folder = activeFolder;
+					} else if (up.settings.multipart_params) {
+						delete up.settings.multipart_params.media_folder;
+					}
+
+					var folderName = self.getActiveFolderName();
+					var targetText = folderName ? ' to "' + folderName + '"' : '';
+					self.showUploadNotice('Uploading file(s)' + targetText + '...');
+				});
+
+				plup.bind('FileUploaded', function(up, file, response) {
+					var activeFolder = self.getActiveFolderId();
+					if (activeFolder && activeFolder !== 'unassigned') {
+						try {
+							var res = typeof response.response === 'string' ? JSON.parse(response.response) : response.response;
+							if (res && res.success && res.data && res.data.id) {
+								self.moveAttachmentsToFolder([res.data.id], activeFolder);
+							}
+						} catch (e) {
+							console.error('Error parsing upload response:', e);
+						}
+					}
+				});
+
+				plup.bind('UploadProgress', function(up, file) {
+					var folderName = self.getActiveFolderName();
+					var targetText = folderName ? ' to "' + folderName + '"' : '';
+					self.showUploadNotice('Uploading ' + up.total.percent + '%' + targetText);
+				});
+
+				plup.bind('UploadComplete', function(up, files) {
+					self.showUploadSuccessNotice('✓ Upload completed');
+					self.refreshCurrentFolder();
+				});
+			};
+
+			// Check wp.media.uploader
+			if (wp.media.uploader && wp.media.uploader.uploader && wp.media.uploader.uploader.uploader) {
+				attachPlupload(wp.media.uploader.uploader.uploader);
+			} else if (wp.Uploader && wp.Uploader.prototype) {
+				var oldInit = wp.Uploader.prototype.init;
+				wp.Uploader.prototype.init = function() {
+					if (oldInit) {
+						oldInit.apply(this, arguments);
+					}
+					if (this.uploader) {
+						attachPlupload(this.uploader);
+					}
+				};
+			}
+
+			// Backbone central wp.Uploader.queue listeners
+			if (wp.Uploader && wp.Uploader.queue) {
+				wp.Uploader.queue.on('add change:percent', function() {
+					var count = wp.Uploader.queue.length;
+					if (count > 0) {
+						var folderName = self.getActiveFolderName();
+						var targetText = folderName ? ' to "' + folderName + '"' : '';
+						var totalPercent = 0;
+						wp.Uploader.queue.each(function(m) {
+							totalPercent += (m.get('percent') || 0);
+						});
+						var avgPercent = count > 0 ? Math.round(totalPercent / count) : 0;
+						self.showUploadNotice('Uploading ' + count + ' file(s)' + targetText + ' (' + avgPercent + '%)');
+					}
+				});
+
+				wp.Uploader.queue.on('change:attachment', function(model) {
+					var activeFolder = self.getActiveFolderId();
+					if (activeFolder && activeFolder !== 'unassigned') {
+						var att = model ? model.get('attachment') : null;
+						if (att && att.id && !att._tkaMoved) {
+							att._tkaMoved = true;
+							if (typeof att.set === 'function') {
+								att.set('media_folder', [parseInt(activeFolder, 10)]);
+							}
+							self.moveAttachmentsToFolder([att.id], activeFolder);
+						}
+					}
+				});
+
+				wp.Uploader.queue.on('reset remove', function() {
+					if (wp.Uploader.queue.length === 0) {
+						self.showUploadSuccessNotice('✓ Upload completed');
+						self.refreshCurrentFolder();
+					}
+				});
+			}
+
+			// Backbone framework uploader listeners
+			if (wp.media.frame && wp.media.frame.uploader) {
+				wp.media.frame.uploader.on('uploader:start', function() {
+					var folderName = self.getActiveFolderName();
+					var targetText = folderName ? ' to "' + folderName + '"' : '';
+					self.showUploadNotice('Uploading file(s)' + targetText + '...');
+				});
+
+				wp.media.frame.uploader.on('uploader:success', function(attachment) {
+					var activeFolder = self.getActiveFolderId();
+					if (activeFolder && activeFolder !== 'unassigned') {
+						if (attachment && typeof attachment.set === 'function') {
+							attachment.set('media_folder', [parseInt(activeFolder, 10)]);
+						}
 						self.moveAttachmentsToFolder([attachment.id], activeFolder);
 					}
+				});
+
+				wp.media.frame.uploader.on('uploader:end', function() {
+					self.showUploadSuccessNotice('✓ Upload completed');
+					self.refreshCurrentFolder();
 				});
 			}
 		}

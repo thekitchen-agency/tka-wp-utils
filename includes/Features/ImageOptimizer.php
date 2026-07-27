@@ -52,6 +52,9 @@ class ImageOptimizer
 		add_filter('jpeg_quality', [$this, 'setImageQuality']);
 		add_filter('wp_editor_set_quality', [$this, 'setImageEditorQuality'], 10, 2);
 
+		// Filter original image path for WordPress image regeneration workflows
+		add_filter('wp_get_original_image_path', [$this, 'filterOriginalImagePath'], 10, 2);
+
 		// Hook upload pipeline to optimize original files and convert to WebP
 		add_filter('wp_handle_upload', [$this, 'optimizeAndConvertUpload'], 10, 2);
 
@@ -84,6 +87,81 @@ class ImageOptimizer
 	public function setImageEditorQuality(int $quality, string $mime_type): int
 	{
 		return $this->setImageQuality($quality);
+	}
+
+	/**
+	 * Filters the original image path for WordPress image regeneration workflows.
+	 *
+	 * @param string $path          Default original image path.
+	 * @param int    $attachment_id Attachment ID.
+	 * @return string Original image path if available.
+	 */
+	public function filterOriginalImagePath(string $path, int $attachment_id): string
+	{
+		$original = $this->getOriginalFilePath($attachment_id);
+		return ($original && file_exists($original)) ? $original : $path;
+	}
+
+	/**
+	 * Locates the original JPEG/PNG source file for an attachment if preserved on disk.
+	 *
+	 * @param int $attachment_id Attachment ID.
+	 * @return string|null Absolute file path to original source image, or null.
+	 */
+	public function getOriginalFilePath(int $attachment_id): ?string
+	{
+		// Check explicit meta if stored
+		$meta_original = get_post_meta($attachment_id, '_tka_original_file', true);
+		if (!empty($meta_original)) {
+			$upload_dir = wp_get_upload_dir();
+			$full_path = $upload_dir['basedir'] . '/' . ltrim($meta_original, '/');
+			if (file_exists($full_path)) {
+				return $full_path;
+			}
+		}
+
+		// Infer original file from attached file path on disk
+		$attached_file = get_attached_file($attachment_id, true);
+		if (empty($attached_file)) {
+			return null;
+		}
+
+		$ext = strtolower(pathinfo($attached_file, PATHINFO_EXTENSION));
+
+		// If attached file is already JPEG/PNG, it IS the original
+		if (in_array($ext, ['jpg', 'jpeg', 'png'], true)) {
+			if (file_exists($attached_file)) {
+				return $attached_file;
+			}
+			return null;
+		}
+
+		// If attached file is WebP, check for matching .jpg, .jpeg, or .png in the same directory
+		if ($ext === 'webp') {
+			$dir = pathinfo($attached_file, PATHINFO_DIRNAME);
+			$filename = pathinfo($attached_file, PATHINFO_FILENAME);
+
+			$candidate_filenames = [$filename];
+			if (str_ends_with($filename, '-scaled')) {
+				$candidate_filenames[] = substr($filename, 0, -7);
+			}
+
+			$possible_exts = ['jpg', 'jpeg', 'png'];
+
+			foreach ($candidate_filenames as $name) {
+				foreach ($possible_exts as $possible_ext) {
+					$candidate_path = $dir . '/' . $name . '.' . $possible_ext;
+					if (file_exists($candidate_path)) {
+						$upload_dir = wp_get_upload_dir();
+						$rel_path = ltrim(str_replace($upload_dir['basedir'], '', $candidate_path), '/');
+						update_post_meta($attachment_id, '_tka_original_file', $rel_path);
+						return $candidate_path;
+					}
+				}
+			}
+		}
+
+		return null;
 	}
 
 	/**
@@ -228,14 +306,27 @@ class ImageOptimizer
 
 		$query = new \WP_Query([
 			'post_type'        => 'attachment',
-			'post_mime_type'   => ['image/jpeg', 'image/png'],
+			'post_mime_type'   => ['image/jpeg', 'image/png', 'image/webp'],
 			'post_status'      => 'inherit',
 			'posts_per_page'   => -1,
 			'fields'           => 'ids',
 			'suppress_filters' => false,
 		]);
 
-		wp_send_json_success(['ids' => $query->posts]);
+		$eligible_ids = [];
+		foreach ($query->posts as $id) {
+			$mime = get_post_mime_type($id);
+			if (in_array($mime, ['image/jpeg', 'image/png'], true)) {
+				$eligible_ids[] = $id;
+			} else {
+				// If it's WebP, check if an original JPEG/PNG source exists on disk
+				if ($this->getOriginalFilePath($id) !== null) {
+					$eligible_ids[] = $id;
+				}
+			}
+		}
+
+		wp_send_json_success(['ids' => $eligible_ids]);
 	}
 
 	/**
@@ -336,6 +427,8 @@ class ImageOptimizer
 				}
 			}
 
+			$has_original = ($this->getOriginalFilePath($att_id) !== null);
+
 			$rows[] = [
 				'id'            => $att_id,
 				'filename'      => $filename,
@@ -346,6 +439,7 @@ class ImageOptimizer
 				'status_class'  => $status_class,
 				'status_label'  => $status_label,
 				'is_optimized'  => $is_optimized,
+				'has_original'  => $has_original,
 				'savings_text'  => $savings_text,
 				'sizes'         => $sizes,
 			];
@@ -374,12 +468,28 @@ class ImageOptimizer
 			wp_send_json_error(['message' => __('Invalid attachment ID.', 'tka-site-utilities')]);
 		}
 
-		$file_path = get_attached_file($attachment_id);
-		$mime_type = get_post_mime_type($attachment_id);
+		// Try to locate original source file (.jpg / .png) first if preserved
+		$original_file = $this->getOriginalFilePath($attachment_id);
+		$file_path = $original_file ?: get_attached_file($attachment_id);
 
 		if (empty($file_path) || !file_exists($file_path)) {
 			/* translators: %s: name of the missing file */
 			wp_send_json_error(['message' => sprintf(__('File not found: %s', 'tka-site-utilities'), basename($file_path))]);
+		}
+
+		$ext = strtolower(pathinfo($file_path, PATHINFO_EXTENSION));
+		$mime_type = match ($ext) {
+			'jpg', 'jpeg' => 'image/jpeg',
+			'png'        => 'image/png',
+			'webp'       => 'image/webp',
+			default      => get_post_mime_type($attachment_id),
+		};
+
+		// If source file is JPEG/PNG, save its relative path for future reference
+		if (in_array($ext, ['jpg', 'jpeg', 'png'], true)) {
+			$upload_dir = wp_get_upload_dir();
+			$rel_path = ltrim(str_replace($upload_dir['basedir'], '', $file_path), '/');
+			update_post_meta($attachment_id, '_tka_original_file', $rel_path);
 		}
 
 		// Calculate old total storage footprint (main + thumbnails)
@@ -390,9 +500,9 @@ class ImageOptimizer
 		if (!empty($old_metadata['sizes'])) {
 			foreach ($old_metadata['sizes'] as $size) {
 				$thumb_path = $path_dir . '/' . $size['file'];
-				if (file_exists($thumb_path)) {
+				if (file_exists($thumb_path) && $thumb_path !== $file_path) {
 					$old_size += filesize($thumb_path);
-					// Delete old JPEG/PNG thumbnail sizes so they are overwritten cleanly
+					// Delete old thumbnail sizes so they are overwritten cleanly
 					wp_delete_file($thumb_path);
 				}
 			}

@@ -22,6 +22,8 @@ class MediaFolders
 		add_action('admin_enqueue_scripts', [$this, 'enqueueAssets']);
 		add_action('wp_enqueue_media', [$this, 'enqueueAssets']);
 		add_filter('ajax_query_attachments_args', [$this, 'filterAttachmentsQuery']);
+		add_action('add_attachment', [$this, 'autoAssignFolderOnUpload']);
+		add_filter('wp_prepare_attachment_for_js', [$this, 'prepareAttachmentForJs'], 10, 3);
 
 		// AJAX Endpoints
 		add_action('wp_ajax_tka_media_folders_get_tree', [$this, 'ajaxGetTree']);
@@ -58,6 +60,7 @@ class MediaFolders
 			'query_var' => true,
 			'rewrite' => ['slug' => 'media-folder'],
 			'show_in_rest' => true,
+			'update_count_callback' => '_update_generic_term_count',
 		]);
 	}
 
@@ -202,7 +205,7 @@ class MediaFolders
 		$term_ids = array_merge([$term_id], get_term_children($term_id, self::TAXONOMY));
 		$query = new \WP_Query([
 			'post_type' => 'attachment',
-			'post_status' => 'inherit',
+			'post_status' => 'any',
 			'posts_per_page' => -1,
 			'fields' => 'ids',
 			'suppress_filters' => false,
@@ -342,12 +345,63 @@ class MediaFolders
 
 		foreach ($attachment_ids as $attachment_id) {
 			if ('unassigned' === $folder_id || '' === $folder_id) {
-				wp_set_object_terms($attachment_id, [], self::TAXONOMY);
+				wp_set_object_terms($attachment_id, [], self::TAXONOMY, false);
 			} else {
-				wp_set_object_terms($attachment_id, [intval($folder_id)], self::TAXONOMY);
+				$term_id = intval($folder_id);
+				wp_set_object_terms($attachment_id, [$term_id], self::TAXONOMY, false);
+				$taxonomy_obj = get_taxonomy(self::TAXONOMY);
+				if ($taxonomy_obj) {
+					_update_generic_term_count([$term_id], $taxonomy_obj);
+				}
 			}
+			clean_post_cache($attachment_id);
 		}
 
 		wp_send_json_success();
+	}
+
+	/**
+	 * Automatically assign folder taxonomy when a new attachment is uploaded.
+	 */
+	public function autoAssignFolderOnUpload(int $post_id): void
+	{
+		$folder_id = null;
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if (!empty($_REQUEST['media_folder'])) {
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$folder_id = sanitize_text_field(wp_unslash($_REQUEST['media_folder']));
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		} elseif (!empty($_REQUEST['query']['media_folder'])) {
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$folder_id = sanitize_text_field(wp_unslash($_REQUEST['query']['media_folder']));
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		} elseif (!empty($_POST['media_folder'])) {
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$folder_id = sanitize_text_field(wp_unslash($_POST['media_folder']));
+		}
+
+		if ($folder_id !== null && $folder_id !== '' && $folder_id !== 'unassigned') {
+			$term_id = intval($folder_id);
+			wp_set_object_terms($post_id, [$term_id], self::TAXONOMY, false);
+			$taxonomy_obj = get_taxonomy(self::TAXONOMY);
+			if ($taxonomy_obj) {
+				_update_generic_term_count([$term_id], $taxonomy_obj);
+			}
+			clean_post_cache($post_id);
+		}
+	}
+
+	/**
+	 * Include media_folder taxonomy terms in the attachment JSON response for JS Backbone models.
+	 */
+	public function prepareAttachmentForJs(array $response, \WP_Post $attachment, $meta): array
+	{
+		$terms = wp_get_object_terms($attachment->ID, self::TAXONOMY, ['fields' => 'ids']);
+		if (!is_wp_error($terms) && !empty($terms)) {
+			$response[self::TAXONOMY] = array_map('intval', $terms);
+		} else {
+			$response[self::TAXONOMY] = [];
+		}
+		return $response;
 	}
 }
