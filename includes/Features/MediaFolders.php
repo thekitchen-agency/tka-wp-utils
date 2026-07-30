@@ -9,7 +9,7 @@ class MediaFolders
 {
 
 	/**
-	 * Taxonomy slug.
+	 * Taxonomy slug kept for backward compatibility and JS mapping.
 	 */
 	const TAXONOMY = 'media_folder';
 
@@ -18,12 +18,12 @@ class MediaFolders
 	 */
 	public function hook(): void
 	{
-		add_action('init', [$this, 'registerTaxonomy']);
+		add_action('init', [$this, 'maybeCreateTables']);
 		add_action('admin_enqueue_scripts', [$this, 'enqueueAssets']);
 		add_action('wp_enqueue_media', [$this, 'enqueueAssets']);
 		add_filter('ajax_query_attachments_args', [$this, 'filterAttachmentsQuery']);
-		add_action('add_attachment', [$this, 'autoAssignFolderOnUpload']);
-		add_filter('wp_prepare_attachment_for_js', [$this, 'prepareAttachmentForJs'], 10, 3);
+		add_filter('posts_clauses', [$this, 'filterPostsClauses'], 10, 2);
+		add_action('delete_attachment', [$this, 'deleteAttachmentRelations']);
 
 		// AJAX Endpoints
 		add_action('wp_ajax_tka_media_folders_get_tree', [$this, 'ajaxGetTree']);
@@ -34,34 +34,41 @@ class MediaFolders
 	}
 
 	/**
-	 * Register the hierarchical custom taxonomy for attachments.
+	 * Create database tables if they do not exist.
 	 */
-	public function registerTaxonomy(): void
+	public function maybeCreateTables(): void
 	{
-		$labels = [
-			'name' => _x('Media Folders', 'taxonomy general name', 'tka-site-utilities'),
-			'singular_name' => _x('Folder', 'taxonomy singular name', 'tka-site-utilities'),
-			'search_items' => __('Search Folders', 'tka-site-utilities'),
-			'all_items' => __('All Folders', 'tka-site-utilities'),
-			'parent_item' => __('Parent Folder', 'tka-site-utilities'),
-			'parent_item_colon' => __('Parent Folder:', 'tka-site-utilities'),
-			'edit_item' => __('Edit Folder', 'tka-site-utilities'),
-			'update_item' => __('Update Folder', 'tka-site-utilities'),
-			'add_new_item' => __('Add New Folder', 'tka-site-utilities'),
-			'new_item_name' => __('New Folder Name', 'tka-site-utilities'),
-			'menu_name' => __('Folders', 'tka-site-utilities'),
-		];
+		global $wpdb;
+		$folders_table = $wpdb->prefix . 'tka_media_folders';
+		$posts_table = $wpdb->prefix . 'tka_media_folder_posts';
+		$charset_collate = $wpdb->get_charset_collate();
 
-		register_taxonomy(self::TAXONOMY, 'attachment', [
-			'hierarchical' => true,
-			'labels' => $labels,
-			'show_ui' => false, // We build our own UI
-			'show_admin_column' => true,
-			'query_var' => true,
-			'rewrite' => ['slug' => 'media-folder'],
-			'show_in_rest' => true,
-			'update_count_callback' => '_update_generic_term_count',
-		]);
+		// Check if folders table exists
+		if ($wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $folders_table)) !== $folders_table) {
+			require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+
+			$sql_folders = "CREATE TABLE {$folders_table} (
+				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+				parent bigint(20) unsigned NOT NULL DEFAULT 0,
+				name varchar(255) NOT NULL,
+				slug varchar(255) NOT NULL,
+				PRIMARY KEY  (id)
+			) {$charset_collate};";
+			dbDelta($sql_folders);
+		}
+
+		// Check if posts table exists
+		if ($wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $posts_table)) !== $posts_table) {
+			require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+
+			$sql_posts = "CREATE TABLE {$posts_table} (
+				attachment_id bigint(20) unsigned NOT NULL,
+				folder_id bigint(20) unsigned NOT NULL,
+				PRIMARY KEY  (attachment_id),
+				KEY folder_id (folder_id)
+			) {$charset_collate};";
+			dbDelta($sql_posts);
+		}
 	}
 
 	/**
@@ -121,33 +128,50 @@ class MediaFolders
 		}
 
 		if ($requested_folder !== null && $requested_folder !== '') {
-			$folder = sanitize_text_field($requested_folder);
-
-			if (!isset($query['tax_query']) || !is_array($query['tax_query'])) {
-				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_tax_query
-				$query['tax_query'] = [];
-			}
-
-			if ('unassigned' === $folder) {
-				$query['tax_query'][] = [
-					'taxonomy' => self::TAXONOMY,
-					'operator' => 'NOT EXISTS',
-				];
-			} else {
-				$query['tax_query'][] = [
-					'taxonomy' => self::TAXONOMY,
-					'field' => 'term_id',
-					'terms' => [intval($folder)],
-					'operator' => 'IN',
-					'include_children' => true,
-				];
-			}
-
-			// Unset the query_var from the query arguments to prevent WP_Query from auto-parsing it by term slug.
+			$query['tka_folder_id'] = sanitize_text_field($requested_folder);
 			unset($query[self::TAXONOMY]);
 		}
 
 		return $query;
+	}
+
+	/**
+	 * Modify SQL clauses to filter attachments by folder.
+	 */
+	public function filterPostsClauses(array $clauses, \WP_Query $query): array
+	{
+		global $wpdb;
+
+		// Only modify attachment queries
+		if ($query->get('post_type') !== 'attachment') {
+			return $clauses;
+		}
+
+		$requested_folder = null;
+		if (isset($query->query_vars['tka_folder_id'])) {
+			$requested_folder = $query->query_vars['tka_folder_id'];
+		}
+
+		if ($requested_folder !== null && $requested_folder !== '') {
+			$folder = sanitize_text_field($requested_folder);
+			$posts_table = $wpdb->prefix . 'tka_media_folder_posts';
+
+			// Join relationship table
+			$clauses['join'] .= " LEFT JOIN {$posts_table} AS tka_folder ON tka_folder.attachment_id = {$wpdb->posts}.ID ";
+
+			if ('unassigned' === $folder) {
+				// unassigned: attachment is either not in the posts table or folder_id is 0
+				$clauses['where'] .= " AND (tka_folder.folder_id IS NULL OR tka_folder.folder_id = 0) ";
+			} else {
+				$folder_id = intval($folder);
+				$folder_ids = $this->getFolderChildrenIdsRecursive($folder_id);
+				$folder_ids[] = $folder_id;
+				$folder_ids_in = implode(',', array_map('intval', $folder_ids));
+				$clauses['where'] .= " AND tka_folder.folder_id IN ({$folder_ids_in}) ";
+			}
+		}
+
+		return $clauses;
 	}
 
 	/**
@@ -161,34 +185,33 @@ class MediaFolders
 			wp_send_json_error(['message' => __('Unauthorized.', 'tka-site-utilities')]);
 		}
 
-		$terms = get_terms([
-			'taxonomy' => self::TAXONOMY,
-			'hide_empty' => false,
-		]);
+		global $wpdb;
+		$folders_table = $wpdb->prefix . 'tka_media_folders';
+		$folders = $wpdb->get_results("SELECT * FROM {$folders_table} ORDER BY name ASC");
 
-		if (is_wp_error($terms)) {
-			wp_send_json_error(['message' => $terms->get_error_message()]);
+		if (is_array($folders)) {
+			$tree = $this->buildTree($folders);
+			wp_send_json_success($tree);
+		} else {
+			wp_send_json_success([]);
 		}
-
-		$tree = $this->buildTree($terms);
-		wp_send_json_success($tree);
 	}
 
 	/**
-	 * Helper function to structure terms array hierarchically.
+	 * Helper function to structure folders array hierarchically.
 	 */
-	private function buildTree(array $terms, int $parent_id = 0): array
+	private function buildTree(array $folders, int $parent_id = 0): array
 	{
 		$branch = [];
-		foreach ($terms as $term) {
-			if (intval($term->parent) === $parent_id) {
-				$children = $this->buildTree($terms, $term->term_id);
-				$count = $this->getAttachmentCountForFolder($term->term_id);
+		foreach ($folders as $folder) {
+			if (intval($folder->parent) === $parent_id) {
+				$children = $this->buildTree($folders, intval($folder->id));
+				$count = $this->getAttachmentCountForFolder(intval($folder->id));
 
 				$branch[] = [
-					'id' => $term->term_id,
-					'name' => $term->name,
-					'slug' => $term->slug,
+					'id' => intval($folder->id),
+					'name' => $folder->name,
+					'slug' => $folder->slug,
 					'count' => $count,
 					'children' => $children,
 				];
@@ -200,26 +223,42 @@ class MediaFolders
 	/**
 	 * Get total attachments in folder, including child folders.
 	 */
-	private function getAttachmentCountForFolder(int $term_id): int
+	private function getAttachmentCountForFolder(int $folder_id): int
 	{
-		$term_ids = array_merge([$term_id], get_term_children($term_id, self::TAXONOMY));
-		$query = new \WP_Query([
-			'post_type' => 'attachment',
-			'post_status' => 'any',
-			'posts_per_page' => -1,
-			'fields' => 'ids',
-			'suppress_filters' => false,
-			// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_tax_query
-			'tax_query' => [
-				[
-					'taxonomy' => self::TAXONOMY,
-					'field' => 'term_id',
-					'terms' => $term_ids,
-					'operator' => 'IN',
-				],
-			],
-		]);
-		return $query->found_posts;
+		global $wpdb;
+		$posts_table = $wpdb->prefix . 'tka_media_folder_posts';
+
+		$folder_ids = $this->getFolderChildrenIdsRecursive($folder_id);
+		$folder_ids[] = $folder_id;
+		$folder_ids_in = implode(',', array_map('intval', $folder_ids));
+
+		$count = $wpdb->get_var("SELECT COUNT(*) FROM {$posts_table} WHERE folder_id IN ({$folder_ids_in})");
+		return intval($count);
+	}
+
+	/**
+	 * Helper to get all children folder IDs recursively.
+	 */
+	private function getFolderChildrenIdsRecursive(int $folder_id, array $visited = []): array
+	{
+		global $wpdb;
+		$folders_table = $wpdb->prefix . 'tka_media_folders';
+
+		if (in_array($folder_id, $visited, true)) {
+			return [];
+		}
+		$visited[] = $folder_id;
+
+		$children_ids = [];
+		$direct_children = $wpdb->get_col($wpdb->prepare("SELECT id FROM {$folders_table} WHERE parent = %d", $folder_id));
+
+		if (!empty($direct_children)) {
+			foreach ($direct_children as $child_id) {
+				$children_ids[] = intval($child_id);
+				$children_ids = array_merge($children_ids, $this->getFolderChildrenIdsRecursive(intval($child_id), $visited));
+			}
+		}
+		return $children_ids;
 	}
 
 	/**
@@ -240,16 +279,25 @@ class MediaFolders
 			wp_send_json_error(['message' => __('Folder name is required.', 'tka-site-utilities')]);
 		}
 
-		$result = wp_insert_term($name, self::TAXONOMY, [
-			'parent' => $parent,
-		]);
+		global $wpdb;
+		$folders_table = $wpdb->prefix . 'tka_media_folders';
 
-		if (is_wp_error($result)) {
-			wp_send_json_error(['message' => $result->get_error_message()]);
+		$inserted = $wpdb->insert(
+			$folders_table,
+			[
+				'name' => $name,
+				'parent' => $parent,
+				'slug' => sanitize_title($name),
+			],
+			['%s', '%d', '%s']
+		);
+
+		if ($inserted === false) {
+			wp_send_json_error(['message' => __('Failed to create folder in database.', 'tka-site-utilities')]);
 		}
 
 		wp_send_json_success([
-			'id' => $result['term_id'],
+			'id' => $wpdb->insert_id,
 			'name' => $name,
 		]);
 	}
@@ -272,12 +320,22 @@ class MediaFolders
 			wp_send_json_error(['message' => __('Invalid parameters.', 'tka-site-utilities')]);
 		}
 
-		$result = wp_update_term($id, self::TAXONOMY, [
-			'name' => $name,
-		]);
+		global $wpdb;
+		$folders_table = $wpdb->prefix . 'tka_media_folders';
 
-		if (is_wp_error($result)) {
-			wp_send_json_error(['message' => $result->get_error_message()]);
+		$updated = $wpdb->update(
+			$folders_table,
+			[
+				'name' => $name,
+				'slug' => sanitize_title($name),
+			],
+			['id' => $id],
+			['%s', '%s'],
+			['%d']
+		);
+
+		if ($updated === false) {
+			wp_send_json_error(['message' => __('Failed to rename folder.', 'tka-site-utilities')]);
 		}
 
 		wp_send_json_success([
@@ -302,24 +360,40 @@ class MediaFolders
 			wp_send_json_error(['message' => __('Invalid folder ID.', 'tka-site-utilities')]);
 		}
 
-		// Move subfolders to parent before deleting
-		$term = get_term($id, self::TAXONOMY);
-		if ($term) {
-			$children = get_term_children($id, self::TAXONOMY);
-			foreach ($children as $child_id) {
-				$child_term = get_term($child_id, self::TAXONOMY);
-				if ($child_term && intval($child_term->parent) === $id) {
-					wp_update_term($child_id, self::TAXONOMY, [
-						'parent' => intval($term->parent),
-					]);
-				}
-			}
+		global $wpdb;
+		$folders_table = $wpdb->prefix . 'tka_media_folders';
+		$posts_table = $wpdb->prefix . 'tka_media_folder_posts';
+
+		// Get the parent folder ID of the folder to delete
+		$parent_id = $wpdb->get_var($wpdb->prepare("SELECT parent FROM {$folders_table} WHERE id = %d", $id));
+		if ($parent_id === null) {
+			wp_send_json_error(['message' => __('Folder not found.', 'tka-site-utilities')]);
 		}
+		$parent_id = intval($parent_id);
 
-		$result = wp_delete_term($id, self::TAXONOMY);
+		// Move direct child folders of this folder to its parent
+		$wpdb->update(
+			$folders_table,
+			['parent' => $parent_id],
+			['parent' => $id],
+			['%d'],
+			['%d']
+		);
 
-		if (is_wp_error($result)) {
-			wp_send_json_error(['message' => $result->get_error_message()]);
+		// Move posts of this folder to its parent
+		$wpdb->update(
+			$posts_table,
+			['folder_id' => $parent_id],
+			['folder_id' => $id],
+			['%d'],
+			['%d']
+		);
+
+		// Delete the folder itself
+		$deleted = $wpdb->delete($folders_table, ['id' => $id], ['%d']);
+
+		if ($deleted === false) {
+			wp_send_json_error(['message' => __('Failed to delete folder.', 'tka-site-utilities')]);
 		}
 
 		wp_send_json_success();
@@ -337,71 +411,43 @@ class MediaFolders
 		}
 
 		$attachment_ids = isset($_POST['attachment_ids']) ? array_map('intval', (array) wp_unslash($_POST['attachment_ids'])) : [];
-		$folder_id = isset($_POST['folder_id']) ? sanitize_text_field(wp_unslash($_POST['folder_id'])) : ''; // Could be term ID or 'unassigned'
+		$folder_id = isset($_POST['folder_id']) ? sanitize_text_field(wp_unslash($_POST['folder_id'])) : ''; // Could be folder ID or 'unassigned'
 
 		if (empty($attachment_ids)) {
 			wp_send_json_error(['message' => __('No attachments specified.', 'tka-site-utilities')]);
 		}
 
+		global $wpdb;
+		$posts_table = $wpdb->prefix . 'tka_media_folder_posts';
+
 		foreach ($attachment_ids as $attachment_id) {
-			if ('unassigned' === $folder_id || '' === $folder_id) {
-				wp_set_object_terms($attachment_id, [], self::TAXONOMY, false);
+			if ('unassigned' === $folder_id || '' === $folder_id || 0 === intval($folder_id)) {
+				// Remove association from relationship table
+				$wpdb->delete($posts_table, ['attachment_id' => $attachment_id], ['%d']);
 			} else {
-				$term_id = intval($folder_id);
-				wp_set_object_terms($attachment_id, [$term_id], self::TAXONOMY, false);
-				$taxonomy_obj = get_taxonomy(self::TAXONOMY);
-				if ($taxonomy_obj) {
-					_update_generic_term_count([$term_id], $taxonomy_obj);
-				}
+				// Insert or update association
+				$wpdb->query(
+					$wpdb->prepare(
+						"INSERT INTO {$posts_table} (attachment_id, folder_id) VALUES (%d, %d)
+						ON DUPLICATE KEY UPDATE folder_id = %d",
+						$attachment_id,
+						intval($folder_id),
+						intval($folder_id)
+					)
+				);
 			}
-			clean_post_cache($attachment_id);
 		}
 
 		wp_send_json_success();
 	}
 
 	/**
-	 * Automatically assign folder taxonomy when a new attachment is uploaded.
+	 * Clean up folder associations when an attachment is deleted.
 	 */
-	public function autoAssignFolderOnUpload(int $post_id): void
+	public function deleteAttachmentRelations(int $post_id): void
 	{
-		$folder_id = null;
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		if (!empty($_REQUEST['media_folder'])) {
-			// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			$folder_id = sanitize_text_field(wp_unslash($_REQUEST['media_folder']));
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		} elseif (!empty($_REQUEST['query']['media_folder'])) {
-			// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			$folder_id = sanitize_text_field(wp_unslash($_REQUEST['query']['media_folder']));
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		} elseif (!empty($_POST['media_folder'])) {
-			// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			$folder_id = sanitize_text_field(wp_unslash($_POST['media_folder']));
-		}
-
-		if ($folder_id !== null && $folder_id !== '' && $folder_id !== 'unassigned') {
-			$term_id = intval($folder_id);
-			wp_set_object_terms($post_id, [$term_id], self::TAXONOMY, false);
-			$taxonomy_obj = get_taxonomy(self::TAXONOMY);
-			if ($taxonomy_obj) {
-				_update_generic_term_count([$term_id], $taxonomy_obj);
-			}
-			clean_post_cache($post_id);
-		}
-	}
-
-	/**
-	 * Include media_folder taxonomy terms in the attachment JSON response for JS Backbone models.
-	 */
-	public function prepareAttachmentForJs(array $response, \WP_Post $attachment, $meta): array
-	{
-		$terms = wp_get_object_terms($attachment->ID, self::TAXONOMY, ['fields' => 'ids']);
-		if (!is_wp_error($terms) && !empty($terms)) {
-			$response[self::TAXONOMY] = array_map('intval', $terms);
-		} else {
-			$response[self::TAXONOMY] = [];
-		}
-		return $response;
+		global $wpdb;
+		$posts_table = $wpdb->prefix . 'tka_media_folder_posts';
+		$wpdb->delete($posts_table, ['attachment_id' => $post_id], ['%d']);
 	}
 }

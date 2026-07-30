@@ -24,6 +24,8 @@ class Settings
 		add_action('admin_menu', [$this, 'addMenuPage']);
 		add_action('admin_init', [$this, 'registerSettings']);
 		add_action('admin_enqueue_scripts', [$this, 'enqueueAssets']);
+		add_action('admin_head', [$this, 'fixRestApiRootUrl'], 0);
+		add_action('wp_default_scripts', [$this, 'setupDefaultScripts']);
 	}
 
 	/**
@@ -722,6 +724,9 @@ class Settings
 			'settings_page_' . self::MENU_SLUG,
 			'tka-site-utilities_page_' . self::MENU_SLUG,
 			'admin_page_' . self::MENU_SLUG,
+			'upload.php',
+			'post.php',
+			'media.php',
 		];
 
 		if (!in_array($hook, $allowed_hooks, true)) {
@@ -729,6 +734,20 @@ class Settings
 		}
 
 		wp_enqueue_media();
+
+		if (function_exists('get_rest_url')) {
+			$rest_url = get_rest_url();
+			wp_enqueue_script('wp-api-fetch');
+			wp_script_add_data(
+				'wp-api-fetch',
+				'data',
+				sprintf('if ( typeof wp !== "undefined" && wp.apiFetch ) { wp.apiFetch.use( wp.apiFetch.createRootURLMiddleware( "%s" ) ); }', esc_url_raw($rest_url))
+			);
+			wp_localize_script('wp-api-fetch', 'wpApiSettings', [
+				'root'  => esc_url_raw($rest_url),
+				'nonce' => wp_create_nonce('wp_rest'),
+			]);
+		}
 
 		wp_enqueue_style(
 			'tka-site-utilities-admin-css',
@@ -799,6 +818,39 @@ class Settings
 		return array_values(array_filter($keys));
 	}
 
+	/**
+	 * Ensure wpApiSettings.root is populated before core Gutenberg/Preferences scripts execute.
+	 */
+	public function fixRestApiRootUrl(): void
+	{
+		if (function_exists('rest_url')) {
+			?>
+			<script id="tka-wp-api-root-fix">
+			window.wpApiSettings = window.wpApiSettings || {};
+			if (!window.wpApiSettings.root) {
+				window.wpApiSettings.root = <?php echo wp_json_encode(esc_url_raw(rest_url())); ?>;
+			}
+			if (!window.wpApiSettings.nonce) {
+				window.wpApiSettings.nonce = <?php echo wp_json_encode(wp_create_nonce('wp_rest')); ?>;
+			}
+			</script>
+			<?php
+		}
+	}
+
+	/**
+	 * Attach createRootURLMiddleware to wp-api-fetch at script definition time.
+	 */
+	public function setupDefaultScripts($scripts): void
+	{
+		if (is_admin() && function_exists('get_rest_url') && is_object($scripts)) {
+			$scripts->add_data(
+				'wp-api-fetch',
+				'data',
+				sprintf('if ( typeof wp !== "undefined" && wp.apiFetch ) { wp.apiFetch.use( wp.apiFetch.createRootURLMiddleware( "%s" ) ); }', esc_url_raw(get_rest_url()))
+			);
+		}
+	}
 
 	/**
 	 * Render the settings page HTML.
@@ -873,7 +925,7 @@ class Settings
 												<?php esc_html_e('Gravity Forms', 'tka-site-utilities'); ?>
 											</a>
 									<?php endif; ?>
-									<?php if (class_exists('WooCommerce') && !class_exists('TKA\WooUtils\Core\Plugin')): ?>
+									<?php if (class_exists('WooCommerce')): ?>
 											<a href="#woocommerce" class="tka-nav-item" data-tab="woocommerce">
 												<span class="dashicons dashicons-cart"></span>
 												<?php esc_html_e('WooCommerce', 'tka-site-utilities'); ?>
@@ -2402,7 +2454,7 @@ class Settings
 											</section>
 									<?php endif; ?>
 
-									<?php if (class_exists('WooCommerce') && !class_exists('TKA\WooUtils\Core\Plugin')): ?>
+									<?php if (class_exists('WooCommerce')): ?>
 											<!-- WOOCOMMERCE PANEL -->
 											<section id="panel-woocommerce" class="tka-tab-panel">
 												<h2><?php esc_html_e('WooCommerce Speed & Bloat Settings', 'tka-site-utilities'); ?></h2>
@@ -3805,15 +3857,23 @@ class Settings
 								<!-- Bulk Retroactive Image Optimizer Card -->
 								<div class="tka-settings-card" style="margin-top: 20px;">
 									<?php
+									$options = get_option('tka_site_utilities_options', []);
+									$optimizer_instance = new \TKA\WPUtils\Features\ImageOptimizer($options);
 									$images_query = new \WP_Query([
-										'post_type' => 'attachment',
-										'post_mime_type' => ['image/jpeg', 'image/png'],
-										'post_status' => 'inherit',
-										'posts_per_page' => -1,
-										'fields' => 'ids',
+										'post_type'        => 'attachment',
+										'post_mime_type'   => ['image/jpeg', 'image/png', 'image/webp'],
+										'post_status'      => 'inherit',
+										'posts_per_page'   => -1,
+										'fields'           => 'ids',
 										'suppress_filters' => false,
 									]);
-									$total_eligible_images = $images_query->post_count;
+									$total_eligible_images = 0;
+									foreach ($images_query->posts as $att_id_item) {
+										$att_mime = get_post_mime_type($att_id_item);
+										if (in_array($att_mime, ['image/jpeg', 'image/png'], true) || $optimizer_instance->getOriginalFilePath($att_id_item) !== null) {
+											$total_eligible_images++;
+										}
+									}
 									
 									$all_time_savings = wp_cache_get( 'tka_all_time_savings', 'tka-site-utilities' );
 									if ( false === $all_time_savings ) {
@@ -3918,11 +3978,12 @@ class Settings
 													<th style="width: 120px;"><?php esc_html_e('Current Format', 'tka-site-utilities'); ?></th>
 													<th style="width: 140px;"><?php esc_html_e('Status', 'tka-site-utilities'); ?></th>
 													<th style="width: 140px; text-align: right;"><?php esc_html_e('Size Savings', 'tka-site-utilities'); ?></th>
+													<th style="width: 110px; text-align: right;"><?php esc_html_e('Action', 'tka-site-utilities'); ?></th>
 												</tr>
 											</thead>
 											<tbody id="tka-bulk-status-table-body">
 												<tr>
-													<td colspan="5" style="text-align: center; padding: 30px; color: var(--tka-text-muted);">
+													<td colspan="6" style="text-align: center; padding: 30px; color: var(--tka-text-muted);">
 														<span class="spinner is-active" style="float: none; margin-right: 8px;"></span> <?php esc_html_e('Loading images...', 'tka-site-utilities'); ?>
 													</td>
 												</tr>

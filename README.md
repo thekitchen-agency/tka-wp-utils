@@ -57,6 +57,8 @@ A comprehensive suite of utility tools designed for developers and agencies to s
 *   **Local JSON Shared Storage**: Integrates with ACF to automatically direct ACF local JSON configurations into the theme-independent `/wp-content/acf-json/` directory.
 *   **Dynamic Custom Field Extensions Engine**: Drop any PHP file into the `/includes/AcfExtensions/` directory with a valid header comment, and the plugin will automatically discover and present it as a toggleable checkbox in the ACF settings tab. Includes a built-in "Gravity Forms Field Fallback" extension out-of-the-box.
 *   **ACF Icon Picker Extension**: Comes bundled with a sleek, native, searchable Icon Picker field specifically for ACF, completely replacing the need for heavy third-party FontAwesome plugins.
+*   **ACF SVG Picker Extension**: Built-in SVG Picker field type featuring searchable grid layouts, custom card dimensions, dark-themed previews, and hover animations.
+*   **ACF Dynamic Table Extension**: Includes a powerful dynamic table ACF field type (`tka_dynamic_table`), allowing configuration of locked rows and columns, prepopulated data, multi-level headers, file selectors, and custom styling.
 *   **Auto-Inject Video Poster Field**: Optionally registers a "Video Poster Image" (`video_poster_image`) ACF field directly onto all video attachments in the native Media Library, making it incredibly simple to assign fallback cover images to MP4 uploads.
 
 ### 🖼️ 6. Image Optimization & WebP Engine
@@ -100,8 +102,10 @@ A comprehensive suite of utility tools designed for developers and agencies to s
 ### 📁 11. Media Library Enhancements
 *   **Replace Media File**: Seamlessly overwrite images and PDFs with a new upload directly from the Media Library while keeping the exact same URL and attachment ID. Includes automatic browser cache-busting.
 *   **Smart WebP Exception**: When replacing a `.webp` image, the plugin allows `.jpg` or `.png` uploads, silently converting them to WebP in the background and replacing the original file automatically.
-*   **Virtual Media Folders**: Organize files in the Media Library using a nested virtual folders system without altering physical filesystem paths.
+*   **Virtual Media Folders (High Performance)**: Organize files in the Media Library using a nested virtual folders system, fully backed by custom database tables (`wp_tka_media_folders` and `wp_tka_media_folder_posts`) for optimized performance and avoiding taxonomy/term pollution.
 *   **Drag-and-Drop Sidebar Interface**: Drag attachments into folders and drag folders to reorganize or nest them inside the media library grid browser and selection modals.
+*   **Premium Custom Confirm Modal**: Features a custom HTML overlay confirm modal replacing the browser's native `confirm()` popup when permanently deleting assets.
+*   **Single WebP / Image Regeneration**: Action links in list table rows and media modal edit panels allow manual regeneration of WebP assets, dynamically disabling themselves when the image is up-to-date with current settings.
 *   **AJAX-Driven Operations**: Fully non-blocking AJAX actions for folder creation, renaming, deletion, and attachment reassignment.
 
 ### 🚀 12. WPML Performance Optimization

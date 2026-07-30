@@ -218,7 +218,7 @@
 
 .tka-acf-modal-search-wrap input {
     width: 100%;
-    padding: 6px 30px;
+    padding: 6px 50px;
     border: 1px solid #cbd5e1;
     border-radius: 4px;
     font-size: 13px;
@@ -260,7 +260,7 @@
 
 .tka-acf-modal-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    // grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
     gap: 12px;
 }
 
@@ -270,7 +270,7 @@
     align-items: center;
     justify-content: center;
     padding: 12px;
-    background: #f8fafc;
+    background: #333;
     border: 1px solid #e2e8f0;
     border-radius: 6px;
     cursor: pointer;
@@ -282,7 +282,8 @@
 
 .tka-svg-card:hover {
     border-color: #3b82f6;
-    background: #eff6ff;
+    background: #999;
+    color: #fff;
     transform: translateY(-2px);
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
@@ -294,8 +295,8 @@
 }
 
 .tka-svg-card-display {
-    width: 48px;
-    height: 48px;
+    width: 200px;
+    height: 200px;
     display: flex;
     align-items: center;
     justify-content: center;

@@ -1,109 +1,95 @@
-(function($) {
+(function ($) {
 	'use strict';
+
+	// Custom HTML confirm modal to replace browser native confirm()
+	function showCustomConfirm(message, onConfirm) {
+		$('.tka-confirm-modal-overlay').remove();
+
+		var heading = 'Delete Permanently';
+		var bodyText = message || 'Are you sure you want to permanently delete these items?';
+		var confirmLabel = 'Delete Permanently';
+		var cancelLabel = 'Cancel';
+
+		if (typeof tkaMediaFolders !== 'undefined' && tkaMediaFolders.locale && tkaMediaFolders.locale.indexOf('de') === 0) {
+			heading = 'Dauerhaft löschen';
+			confirmLabel = 'Dauerhaft löschen';
+			cancelLabel = 'Abbrechen';
+		}
+
+		var modalHtml = 
+			'<div class="tka-confirm-modal-overlay">' +
+				'<div class="tka-confirm-modal-box">' +
+					'<div class="tka-confirm-modal-header">' +
+						'<span class="dashicons dashicons-warning" style="color: #ef4444; font-size: 24px; width: 24px; height: 24px;"></span>' +
+						'<h3 style="margin:0; font-size: 18px; font-weight: 600; color: #0f172a;">' + heading + '</h3>' +
+					'</div>' +
+					'<div class="tka-confirm-modal-body" style="padding: 10px 24px 24px;">' +
+						'<p style="margin:0; font-size:14px; line-height:1.5; color:#475569;">' + bodyText + '</p>' +
+					'</div>' +
+					'<div class="tka-confirm-modal-footer">' +
+						'<button class="tka-confirm-modal-btn cancel">' + cancelLabel + '</button>' +
+						'<button class="tka-confirm-modal-btn confirm">' + confirmLabel + '</button>' +
+					'</div>' +
+				'</div>' +
+			'</div>';
+
+		var $modal = $(modalHtml);
+		$('body').append($modal);
+
+		setTimeout(function () {
+			$modal.addClass('active');
+		}, 10);
+
+		$modal.find('.tka-confirm-modal-btn.cancel').on('click', function (e) {
+			e.preventDefault();
+			e.stopPropagation();
+			$modal.removeClass('active');
+			setTimeout(function () {
+				$modal.remove();
+			}, 200);
+		});
+
+		$modal.find('.tka-confirm-modal-btn.confirm').on('click', function (e) {
+			e.preventDefault();
+			e.stopPropagation();
+			$modal.removeClass('active');
+			setTimeout(function () {
+				$modal.remove();
+				if (onConfirm) {
+					onConfirm();
+				}
+			}, 200);
+		});
+	}
 
 	// Safeguard check
 	if (typeof wp === 'undefined' || !wp.media || typeof tkaMediaFolders === 'undefined') {
 		return;
 	}
 
-	// Native XHR & Fetch Interceptor to ensure media_folder is ALWAYS present in upload payloads
-	(function() {
-		var origSend = XMLHttpRequest.prototype.send;
-		XMLHttpRequest.prototype.send = function(body) {
-			if (body && body instanceof FormData) {
-				var $activeItem = $('.tka-media-folders-sidebar .tka-folder-item.active');
-				var activeFolder = $activeItem.length ? ($activeItem.attr('data-id') || '') : (localStorage.getItem('tka_media_folders_active_folder') || '');
-				if (activeFolder && activeFolder !== 'unassigned') {
-					if (!body.has('media_folder')) {
-						body.append('media_folder', activeFolder);
-					}
-				}
-			}
-			return origSend.apply(this, arguments);
-		};
-
-		if (window.fetch) {
-			var origFetch = window.fetch;
-			window.fetch = function(input, init) {
-				if (init && init.body && init.body instanceof FormData) {
-					var $activeItem = $('.tka-media-folders-sidebar .tka-folder-item.active');
-					var activeFolder = $activeItem.length ? ($activeItem.attr('data-id') || '') : (localStorage.getItem('tka_media_folders_active_folder') || '');
-					if (activeFolder && activeFolder !== 'unassigned') {
-						if (!init.body.has('media_folder')) {
-							init.body.append('media_folder', activeFolder);
-						}
-					}
-				}
-				return origFetch.apply(this, arguments);
-			};
-		}
-	})();
-
-	// Force wp.media.model.Query to observe wp.Uploader.queue even when custom props like media_folder are set
-	if (wp.media.model && wp.media.model.Query) {
-		var originalQueryInit = wp.media.model.Query.prototype.initialize;
-		wp.media.model.Query.prototype.initialize = function(models, options) {
-			originalQueryInit.apply(this, arguments);
-			if (wp.Uploader && wp.Uploader.queue) {
-				this.observe(wp.Uploader.queue);
-			}
-		};
-	}
-
-	// Register media_folder validator on Attachments collection filters
-	if (wp.media.model && wp.media.model.Attachments && wp.media.model.Attachments.filters) {
-		wp.media.model.Attachments.filters.media_folder = function(attachment) {
-			var folder = this.props.get('media_folder');
-			if (!folder || folder === '') {
-				return true;
-			}
-			// Always allow transient models currently being uploaded
-			if (attachment.get('uploading') || attachment.file || !attachment.id) {
-				return true;
-			}
-			if (folder === 'unassigned') {
-				var terms = attachment.get('media_folder');
-				return !terms || (Array.isArray(terms) && terms.length === 0);
-			}
-			var folderTerms = attachment.get('media_folder');
-			if (Array.isArray(folderTerms)) {
-				var folderInt = parseInt(folder, 10);
-				return folderTerms.indexOf(folderInt) !== -1 || folderTerms.indexOf(String(folder)) !== -1;
-			}
-			return true;
-		};
-	}
-
-	// Global AJAX prefilter to inject media_folder parameter into all WordPress async-upload.php requests
-	$.ajaxPrefilter(function(options, originalOptions, jqXHR) {
-		if (options.url && options.url.indexOf('async-upload.php') !== -1) {
-			var $activeItem = $('.tka-media-folders-sidebar .tka-folder-item.active');
-			var activeFolder = $activeItem.length ? ($activeItem.attr('data-id') || '') : (localStorage.getItem('tka_media_folders_active_folder') || '');
-			if (activeFolder && activeFolder !== 'unassigned') {
-				if (options.data instanceof FormData) {
-					if (!options.data.has('media_folder')) {
-						options.data.append('media_folder', activeFolder);
-					}
-				} else if (typeof options.data === 'string') {
-					if (options.data.indexOf('media_folder=') === -1) {
-						options.data += (options.data ? '&' : '') + 'media_folder=' + encodeURIComponent(activeFolder);
-					}
-				}
-			}
-		}
-	});
+	// Plupload event bindings handle uploader integration natively.
 
 	var AttachmentsBrowser = wp.media.view.AttachmentsBrowser;
 
 	// Extend the AttachmentsBrowser to inject our folders sidebar
 	wp.media.view.AttachmentsBrowser = wp.media.view.AttachmentsBrowser.extend({
-		initialize: function() {
+		initialize: function () {
 			// Call the parent initialize method
 			AttachmentsBrowser.prototype.initialize.apply(this, arguments);
 			this.foldersSidebar = null;
+
+			// Listen to collection changes to reload folder tree counts
+			if (this.collection) {
+				this.listenTo(this.collection, 'remove destroy', _.debounce(_.bind(this.loadFolderTree, this), 100));
+			}
 		},
 
-		ready: function() {
+		remove: function () {
+			$('body').off('.tka_upload');
+			return AttachmentsBrowser.prototype.remove.apply(this, arguments);
+		},
+
+		ready: function () {
 			// Call the parent ready method
 			AttachmentsBrowser.prototype.ready.apply(this, arguments);
 
@@ -111,7 +97,7 @@
 			this.injectFoldersSidebar();
 		},
 
-		injectFoldersSidebar: function() {
+		injectFoldersSidebar: function () {
 			var self = this;
 			var container = this.$el;
 
@@ -139,34 +125,33 @@
 			}
 
 			// Construct Sidebar HTML
-			var sidebarHtml = 
+			var sidebarHtml =
 				'<div class="tka-media-folders-sidebar">' +
-					'<div class="tka-folders-header">' +
-						'<h3><span class="dashicons dashicons-portfolio"></span><span>' + tkaMediaFolders.i18n.allFiles + '</span></h3>' +
-						'<button class="tka-folders-collapse-btn" title="Collapse/Expand Folders"><span class="dashicons dashicons-menu"></span></button>' +
-					'</div>' +
-					'<div class="tka-folder-upload-notice-container"></div>' +
-					'<button type="button" class="tka-folders-new-btn"><span class="dashicons dashicons-plus"></span><span>' + tkaMediaFolders.i18n.newFolder + '</span></button>' +
-					'<ul class="tka-folders-tree">' +
-						// Static All Files Node
-						'<li class="tka-folder-node" data-id="">' +
-							'<div class="tka-folder-item active" data-id="">' +
-								'<span class="folder-expander"></span>' +
-								'<span class="dashicons dashicons-admin-media"></span>' +
-								'<span class="folder-name">' + tkaMediaFolders.i18n.allFiles + '</span>' +
-							'</div>' +
-						'</li>' +
-						// Static Unassigned Node
-						'<li class="tka-folder-node" data-id="unassigned">' +
-							'<div class="tka-folder-item" data-id="unassigned">' +
-								'<span class="folder-expander"></span>' +
-								'<span class="dashicons dashicons-admin-media"></span>' +
-								'<span class="folder-name">' + tkaMediaFolders.i18n.unassigned + '</span>' +
-							'</div>' +
-						'</li>' +
-						// Container for dynamic folder nodes
-						'<li class="tka-dynamic-folders-container"></li>' +
-					'</ul>' +
+				'<div class="tka-folders-header">' +
+				'<h3><span class="dashicons dashicons-portfolio"></span><span>' + tkaMediaFolders.i18n.allFiles + '</span></h3>' +
+				'<button class="tka-folders-collapse-btn" title="Collapse/Expand Folders"><span class="dashicons dashicons-menu"></span></button>' +
+				'</div>' +
+				'<button type="button" class="tka-folders-new-btn"><span class="dashicons dashicons-plus"></span><span>' + tkaMediaFolders.i18n.newFolder + '</span></button>' +
+				'<ul class="tka-folders-tree">' +
+				// Static All Files Node
+				'<li class="tka-folder-node" data-id="">' +
+				'<div class="tka-folder-item active" data-id="">' +
+				'<span class="folder-expander"></span>' +
+				'<span class="dashicons dashicons-admin-media"></span>' +
+				'<span class="folder-name">' + tkaMediaFolders.i18n.allFiles + '</span>' +
+				'</div>' +
+				'</li>' +
+				// Static Unassigned Node
+				'<li class="tka-folder-node" data-id="unassigned">' +
+				'<div class="tka-folder-item" data-id="unassigned">' +
+				'<span class="folder-expander"></span>' +
+				'<span class="dashicons dashicons-admin-media"></span>' +
+				'<span class="folder-name">' + tkaMediaFolders.i18n.unassigned + '</span>' +
+				'</div>' +
+				'</li>' +
+				// Container for dynamic folder nodes
+				'<li class="tka-dynamic-folders-container"></li>' +
+				'</ul>' +
 				'</div>';
 
 			var $sidebar = $(sidebarHtml);
@@ -185,87 +170,17 @@
 
 			// Hook into uploader to auto-assign folder on upload
 			this.hookUploader();
+
+			// Uploader integration is bound via Plupload event hooks.
 		},
 
-		getActiveFolderId: function() {
-			var $activeItem = $('.tka-media-folders-sidebar .tka-folder-item.active');
-			if ($activeItem.length) {
-				var id = $activeItem.attr('data-id');
-				if (typeof id !== 'undefined' && id !== null) {
-					return String(id);
-				}
-			}
-			return localStorage.getItem('tka_media_folders_active_folder') || '';
-		},
-
-		getActiveFolderName: function() {
-			var $activeItem = $('.tka-media-folders-sidebar .tka-folder-item.active');
-			return $activeItem.length ? $activeItem.find('.folder-name').text() : '';
-		},
-
-		selectFolder: function(folderId) {
-			if (!this.foldersSidebar) {
-				return;
-			}
-			localStorage.setItem('tka_media_folders_active_folder', folderId || '');
-			var $targetItem = this.foldersSidebar.find('.tka-folder-item[data-id="' + folderId + '"]');
-			if ($targetItem.length) {
-				this.foldersSidebar.find('.tka-folder-item').removeClass('active');
-				$targetItem.addClass('active');
-				$targetItem.parents('.tka-folder-node').addClass('expanded');
-				$targetItem.parents('ul').show();
-			}
-			this.filterByFolder(folderId);
-		},
-
-		refreshCurrentFolder: function() {
-			var self = this;
-			self.loadFolderTree();
-			var activeFolder = self.getActiveFolderId();
-			if (self.collection) {
-				self.collection.props.set('media_folder', activeFolder, { silent: true });
-				self.collection._hasMore = true;
-				delete self.collection._more;
-				if (self.collection.mirroring) {
-					self.collection.mirroring._hasMore = true;
-					delete self.collection.mirroring._more;
-					self.collection.mirroring.fetch({ reset: true });
-				} else if (typeof self.collection.fetch === 'function') {
-					self.collection.fetch({ reset: true });
-				}
-			}
-		},
-
-		showUploadNotice: function(msg) {
-			if (!this.foldersSidebar) {
-				return;
-			}
-			var $container = this.foldersSidebar.find('.tka-folder-upload-notice-container');
-			var html = '<div class="tka-folder-upload-notice"><span class="spinner is-active"></span><span>' + msg + '</span></div>';
-			$container.html(html).stop(true, true).fadeIn(150);
-		},
-
-		showUploadSuccessNotice: function(msg) {
-			if (!this.foldersSidebar) {
-				return;
-			}
-			var $container = this.foldersSidebar.find('.tka-folder-upload-notice-container');
-			var html = '<div class="tka-folder-upload-notice success"><span class="dashicons dashicons-yes-alt"></span><span>' + msg + '</span></div>';
-			$container.html(html).stop(true, true).fadeIn(150);
-			setTimeout(function() {
-				$container.fadeOut(300, function() {
-					$container.empty();
-				});
-			}, 3000);
-		},
-
-		bindSidebarEvents: function() {
+		bindSidebarEvents: function () {
 			var self = this;
 			var $sidebar = this.foldersSidebar;
 			var container = this.$el;
 
 			// Collapse/Expand Sidebar toggle
-			$sidebar.on('click', '.tka-folders-collapse-btn', function(e) {
+			$sidebar.on('click', '.tka-folders-collapse-btn', function (e) {
 				e.preventDefault();
 				e.stopPropagation();
 				$sidebar.toggleClass('collapsed');
@@ -274,11 +189,11 @@
 			});
 
 			// Select folder to filter
-			$sidebar.on('click', '.tka-folder-item', function(e) {
+			$sidebar.on('click', '.tka-folder-item', function (e) {
 				e.preventDefault();
-				
-				// Skip if click was on action buttons or expander
-				if ($(e.target).closest('.folder-actions').length > 0 || $(e.target).closest('.folder-expander').length > 0) {
+
+				// Skip if click was on action buttons, confirm delete, or expander
+				if ($(e.target).closest('.folder-actions').length > 0 || $(e.target).closest('.folder-delete-confirm').length > 0 || $(e.target).closest('.folder-expander').length > 0) {
 					return;
 				}
 
@@ -291,13 +206,13 @@
 			});
 
 			// Expand/Collapse folder tree node
-			$sidebar.on('click', '.folder-expander', function(e) {
+			$sidebar.on('click', '.folder-expander', function (e) {
 				e.preventDefault();
 				e.stopPropagation();
-				
+
 				var $node = $(this).closest('.tka-folder-node');
 				$node.toggleClass('expanded');
-				
+
 				var $sublist = $node.children('ul');
 				var $icon = $(this).find('.dashicons');
 
@@ -310,95 +225,115 @@
 				}
 			});
 
+			// Prevent mousedown/mouseup from bubbling up and triggering Backbone focus changes on folder action buttons
+			$sidebar.on('mousedown mouseup', '.tka-folders-new-btn, .folder-action-btn, .confirm-delete-yes, .confirm-delete-no', function (e) {
+				e.stopPropagation();
+			});
+
 			// Click Create New Folder
-			$sidebar.on('click', '.tka-folders-new-btn', function(e) {
+			$sidebar.on('click', '.tka-folders-new-btn', function (e) {
 				e.preventDefault();
 				e.stopPropagation();
-				
+
 				var parentId = $sidebar.find('.tka-folder-item.active').attr('data-id') || 0;
 				if (parentId === 'unassigned') {
 					parentId = 0;
 				}
 
-				var name = prompt(tkaMediaFolders.i18n.promptName);
-				if (name === null) {
-					return;
-				}
-				name = name.trim();
-				if (!name) {
-					alert(tkaMediaFolders.i18n.emptyName);
-					return;
-				}
-
-				self.createFolder(name, parentId);
+				self.showInlineCreateInput(parentId);
 			});
 
 			// Click Rename Folder
-			$sidebar.on('click', '.folder-action-btn.rename', function(e) {
+			$sidebar.on('click', '.folder-action-btn.rename', function (e) {
 				e.preventDefault();
 				e.stopPropagation();
-				
+
 				var folderId = $(this).attr('data-id');
 				var $nameEl = $(this).closest('.tka-folder-item').find('.folder-name');
-				var oldName = $nameEl.text();
 
-				var name = prompt(tkaMediaFolders.i18n.promptName, oldName);
-				if (name === null) {
-					return;
-				}
-				name = name.trim();
-				if (!name) {
-					alert(tkaMediaFolders.i18n.emptyName);
-					return;
-				}
-
-				self.renameFolder(folderId, name, $nameEl);
+				self.showInlineRenameInput(folderId, $nameEl);
 			});
 
-			// Click Delete Folder
-			$sidebar.on('click', '.folder-action-btn.delete', function(e) {
+			// Click Delete Folder (shows inline confirmation)
+			$sidebar.on('click', '.folder-action-btn.delete', function (e) {
 				e.preventDefault();
 				e.stopPropagation();
-				
+
+				var $item = $(this).closest('.tka-folder-item');
 				var folderId = $(this).attr('data-id');
-				if (confirm(tkaMediaFolders.i18n.confirmDelete)) {
-					self.deleteFolder(folderId);
-				}
+
+				// Hide original actions and count
+				$item.find('.folder-actions').hide();
+				$item.find('.folder-count').hide();
+
+				// Construct confirmation elements
+				var $confirmContainer = $('<div class="folder-delete-confirm" style="display: flex; gap: 4px; position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: inherit; padding-left: 5px; border-radius: var(--folders-radius);"></div>');
+
+				var $yesBtn = $('<button class="folder-action-btn confirm-delete-yes" title="Confirm Delete" style="color: hsl(0, 84%, 60%);"><span class="dashicons dashicons-yes"></span></button>');
+				var $noBtn = $('<button class="folder-action-btn confirm-delete-no" title="Cancel" style="color: var(--folders-text-muted);"><span class="dashicons dashicons-no"></span></button>');
+
+				// Bind events directly to YES button
+				$yesBtn.on('click mousedown mouseup', function (evt) {
+					evt.stopPropagation();
+					if (evt.type === 'click') {
+						evt.preventDefault();
+						self.deleteFolder(folderId);
+					}
+				});
+
+				// Bind events directly to NO button
+				$noBtn.on('click mousedown mouseup', function (evt) {
+					evt.stopPropagation();
+					if (evt.type === 'click') {
+						evt.preventDefault();
+						$confirmContainer.remove();
+						$item.find('.folder-count').show();
+					}
+				});
+
+				$confirmContainer.append($yesBtn).append($noBtn);
+				$item.append($confirmContainer);
 			});
 
 			// HTML5 Dragover target folders
-			$sidebar.on('dragover', '.tka-folder-item', function(e) {
+			$sidebar.on('dragover', '.tka-folder-item', function (e) {
 				e.preventDefault();
 				$(this).addClass('drag-over');
 			});
 
 			// HTML5 Dragleave target folders
-			$sidebar.on('dragleave', '.tka-folder-item', function(e) {
+			$sidebar.on('dragleave', '.tka-folder-item', function (e) {
 				$(this).removeClass('drag-over');
 			});
 
 			// HTML5 Drop on folders
-			$sidebar.on('drop', '.tka-folder-item', function(e) {
+			$sidebar.on('drop', '.tka-folder-item', function (e) {
 				e.preventDefault();
 				$(this).removeClass('drag-over');
-				
+
 				var folderId = $(this).attr('data-id');
-				var files = e.originalEvent.dataTransfer ? e.originalEvent.dataTransfer.files : null;
-				
-				// Desktop files dropped directly onto folder item
+
+				// Check if files are dropped
+				var files = e.originalEvent.dataTransfer.files;
 				if (files && files.length > 0) {
-					self.selectFolder(folderId);
-					if (wp.media.uploader && wp.media.uploader.uploader && wp.media.uploader.uploader.uploader) {
-						var plup = wp.media.uploader.uploader.uploader;
-						plup.settings.multipart_params = plup.settings.multipart_params || {};
-						plup.settings.multipart_params.media_folder = folderId;
-						plup.addFile(Array.from(files));
+					e.stopPropagation();
+					var plObj = self.getPluploadInstance();
+					if (plObj) {
+						Array.prototype.forEach.call(files, function (file) {
+							var plFile = plObj.addFile(file);
+							if (plFile) {
+								plFile._tkaTargetFolder = folderId;
+							}
+						});
+						if (plObj.state !== plupload.STARTED) {
+							plObj.start();
+						}
 					}
 					return;
 				}
 
-				// Internal media items drag and drop
 				var rawData = e.originalEvent.dataTransfer.getData('text/plain');
+
 				try {
 					if (rawData) {
 						var dragData = JSON.parse(rawData);
@@ -412,26 +347,14 @@
 			});
 		},
 
-		filterByFolder: function(folderId) {
+		filterByFolder: function (folderId) {
 			if (this.collection) {
 				// Setting the custom prop triggers requery in Backbone dynamically
 				this.collection.props.set('media_folder', folderId);
-				this.collection._hasMore = true;
-				delete this.collection._more;
-				if (this.collection.mirroring) {
-					this.collection.mirroring._hasMore = true;
-					delete this.collection.mirroring._more;
-					this.collection.mirroring.fetch({ reset: true });
-				} else if (typeof this.collection.fetch === 'function') {
-					this.collection.fetch({ reset: true });
-				}
-				if (wp.Uploader && wp.Uploader.queue) {
-					this.collection.observe(wp.Uploader.queue);
-				}
 			}
 		},
 
-		loadFolderTree: function(callback) {
+		loadFolderTree: function () {
 			var self = this;
 			$.ajax({
 				url: tkaMediaFolders.ajaxUrl,
@@ -441,49 +364,36 @@
 					nonce: tkaMediaFolders.nonce
 				},
 				dataType: 'json',
-				success: function(response) {
+				success: function (response) {
 					if (response.success) {
-						var activeId = self.getActiveFolderId() || localStorage.getItem('tka_media_folders_active_folder') || '';
 						self.renderTree(response.data);
-						if (activeId !== '') {
-							var $activeItem = self.foldersSidebar.find('.tka-folder-item[data-id="' + activeId + '"]');
-							if ($activeItem.length) {
-								self.foldersSidebar.find('.tka-folder-item').removeClass('active');
-								$activeItem.addClass('active');
-								$activeItem.parents('.tka-folder-node').addClass('expanded');
-								$activeItem.parents('ul').show();
-							}
-						}
-						if (typeof callback === 'function') {
-							callback(response.data);
-						}
 					}
 				}
 			});
 		},
 
-		renderTree: function(data) {
+		renderTree: function (data) {
 			var $container = this.foldersSidebar.find('.tka-dynamic-folders-container');
 			$container.empty();
-			
+
 			var html = this.buildTreeHtml(data);
 			$container.append(html);
 		},
 
-		buildTreeHtml: function(nodes) {
+		buildTreeHtml: function (nodes) {
 			if (!nodes || nodes.length === 0) {
 				return '';
 			}
 			var self = this;
 			var html = '<ul>';
-			
-			nodes.forEach(function(node) {
+
+			nodes.forEach(function (node) {
 				var hasChildren = node.children && node.children.length > 0;
 				var expanderIcon = hasChildren ? 'dashicons-arrow-right-alt2' : 'dashicons-arrow-right-alt2';
-				
+
 				html += '<li class="tka-folder-node" data-id="' + node.id + '">';
 				html += '<div class="tka-folder-item" data-id="' + node.id + '">';
-				
+
 				// Expander carat
 				if (hasChildren) {
 					html += '<span class="folder-expander"><span class="dashicons ' + expanderIcon + '"></span></span>';
@@ -494,7 +404,7 @@
 				html += '<span class="dashicons dashicons-portfolio"></span>';
 				html += '<span class="folder-name">' + node.name + '</span>';
 				html += '<span class="folder-count">' + node.count + '</span>';
-				
+
 				// Edit/Delete hover action buttons
 				html += '<div class="folder-actions">';
 				html += '<button class="folder-action-btn rename" data-id="' + node.id + '" title="' + tkaMediaFolders.i18n.renameFolder + '"><span class="dashicons dashicons-edit"></span></button>';
@@ -509,12 +419,12 @@
 
 				html += '</li>';
 			});
-			
+
 			html += '</ul>';
 			return html;
 		},
 
-		createFolder: function(name, parentId) {
+		createFolder: function (name, parentId) {
 			var self = this;
 			$.ajax({
 				url: tkaMediaFolders.ajaxUrl,
@@ -526,20 +436,17 @@
 					parent: parentId
 				},
 				dataType: 'json',
-				success: function(response) {
-					if (response.success && response.data && response.data.id) {
-						var newFolderId = String(response.data.id);
-						self.loadFolderTree(function() {
-							self.selectFolder(newFolderId);
-						});
+				success: function (response) {
+					if (response.success) {
+						self.loadFolderTree();
 					} else {
-						alert(response.data ? response.data.message : 'Failed to create folder.');
+						alert(response.data.message);
 					}
 				}
 			});
 		},
 
-		renameFolder: function(id, name, $nameEl) {
+		renameFolder: function (id, name, $nameEl) {
 			var self = this;
 			$.ajax({
 				url: tkaMediaFolders.ajaxUrl,
@@ -551,7 +458,7 @@
 					name: name
 				},
 				dataType: 'json',
-				success: function(response) {
+				success: function (response) {
 					if (response.success) {
 						$nameEl.text(name);
 					} else {
@@ -561,7 +468,7 @@
 			});
 		},
 
-		deleteFolder: function(id) {
+		deleteFolder: function (id) {
 			var self = this;
 			$.ajax({
 				url: tkaMediaFolders.ajaxUrl,
@@ -572,7 +479,7 @@
 					id: id
 				},
 				dataType: 'json',
-				success: function(response) {
+				success: function (response) {
 					if (response.success) {
 						self.loadFolderTree();
 					} else {
@@ -582,7 +489,7 @@
 			});
 		},
 
-		moveAttachmentsToFolder: function(ids, folderId) {
+		moveAttachmentsToFolder: function (ids, folderId) {
 			var self = this;
 			$.ajax({
 				url: tkaMediaFolders.ajaxUrl,
@@ -594,16 +501,16 @@
 					folder_id: folderId
 				},
 				dataType: 'json',
-				success: function(response) {
+				success: function (response) {
 					if (response.success) {
 						// Reload folder tree to refresh counts
 						self.loadFolderTree();
-						
+
 						// If we are currently filtered by a folder and that folder is NOT the one we dropped onto,
 						// remove the items dynamically from the current Backbone collection so they disappear.
-						var activeFolder = self.getActiveFolderId();
+						var activeFolder = self.foldersSidebar.find('.tka-folder-item.active').attr('data-id');
 						if (activeFolder !== '' && activeFolder !== folderId) {
-							ids.forEach(function(id) {
+							ids.forEach(function (id) {
 								var model = self.collection.get(id);
 								if (model) {
 									self.collection.remove(model);
@@ -617,145 +524,287 @@
 			});
 		},
 
-		hookUploader: function() {
-			var self = this;
+		getPluploadInstance: function () {
+			var uploaderObj = null;
 
-			var attachPlupload = function(plup) {
-				if (!plup || plup._tkaHooked) {
+			if (this.controller && this.controller.uploader) {
+				uploaderObj = this.controller.uploader;
+			} else if (wp.media.frame && wp.media.frame.uploader) {
+				uploaderObj = wp.media.frame.uploader;
+			}
+
+			if (uploaderObj) {
+				if (uploaderObj.uploader && uploaderObj.uploader.uploader) {
+					return uploaderObj.uploader.uploader;
+				} else if (uploaderObj.uploader) {
+					return uploaderObj.uploader;
+				}
+			}
+			return null;
+		},
+
+		hookUploader: function () {
+			var self = this;
+			var plObj = this.getPluploadInstance();
+
+			if (plObj) {
+				// Prevent registering Plupload events multiple times on the same uploader object
+				if (!plObj._tkaProgressHooked) {
+					plObj._tkaProgressHooked = true;
+
+					plObj.bind('FilesAdded', function (up, files) {
+						var activeFolder = self.foldersSidebar.find('.tka-folder-item.active').attr('data-id');
+						if (activeFolder && activeFolder !== 'unassigned') {
+							// Show progress modal
+							self.showUploadProgressModal(files.length);
+						}
+					});
+
+					plObj.bind('UploadProgress', function (up, file) {
+						var activeFolder = self.foldersSidebar.find('.tka-folder-item.active').attr('data-id');
+						if (activeFolder && activeFolder !== 'unassigned') {
+							// Calculate overall progress across files
+							var uploadedCount = up.files.length - up.total.queued;
+							var totalFiles = up.files.length;
+							var statusMsg = 'Uploading file ' + Math.min(uploadedCount + 1, totalFiles) + ' of ' + totalFiles + ' (' + file.name + ')...';
+							self.updateUploadProgress(up.total.percent, statusMsg);
+						}
+					});
+
+					plObj.bind('FileUploaded', function (up, file, info) {
+						try {
+							var response = JSON.parse(info.response);
+							var attachmentId = null;
+							if (response) {
+								if (response.data && response.data.id) {
+									attachmentId = response.data.id;
+								} else if (response.id) {
+									attachmentId = response.id;
+								} else if (response.data) {
+									attachmentId = response.data;
+								}
+							}
+
+							var targetFolder = file._tkaTargetFolder;
+							if (!targetFolder) {
+								targetFolder = self.foldersSidebar.find('.tka-folder-item.active').attr('data-id');
+							}
+
+							if (targetFolder && targetFolder !== 'unassigned' && attachmentId) {
+								self.moveAttachmentsToFolder([attachmentId], targetFolder);
+
+								// Also auto-select the attachment in select/gallery frame controllers (e.g. ACF)
+								if (self.controller && self.controller.state) {
+									var state = self.controller.state();
+									if (state) {
+										var selection = state.get('selection');
+										if (selection) {
+											var attachmentModel = wp.media.model.Attachment.create({ id: attachmentId });
+											attachmentModel.fetch().done(function () {
+												selection.add(attachmentModel);
+											});
+										}
+									}
+								}
+							}
+						} catch (err) {
+							console.error('Failed to parse upload response or assign folder:', err);
+						}
+					});
+
+					plObj.bind('UploadComplete', function (up, files) {
+						// Hide progress modal after a delay and refresh tree/collection
+						setTimeout(function () {
+							self.hideUploadProgressModal();
+							self.loadFolderTree();
+							if (self.collection) {
+								self.collection.props.set('tka_force_refresh', Date.now());
+							}
+						}, 1000);
+					});
+
+					plObj.bind('Error', function (up, err) {
+						console.error('Plupload error:', err);
+						alert('Upload error: ' + err.message);
+						self.hideUploadProgressModal();
+					});
+				}
+			}
+		},
+
+		showInlineCreateInput: function (parentId) {
+			var self = this;
+			var $sidebar = this.foldersSidebar;
+			var $targetUl;
+
+			if (!parentId || parentId === 'unassigned') {
+				var $container = $sidebar.find('.tka-dynamic-folders-container');
+				$targetUl = $container.children('ul');
+				if ($targetUl.length === 0) {
+					$targetUl = $('<ul></ul>');
+					$container.append($targetUl);
+				}
+			} else {
+				var $parentNode = $sidebar.find('.tka-folder-node[data-id="' + parentId + '"]');
+				if ($parentNode.length === 0) {
 					return;
 				}
-				plup._tkaHooked = true;
+				$parentNode.addClass('expanded');
+				var $expander = $parentNode.find('.folder-expander');
+				$expander.find('.dashicons').removeClass('dashicons-arrow-right-alt2').addClass('dashicons-arrow-down-alt2');
 
-				plup.bind('BeforeUpload', function(up, file) {
-					var activeFolder = self.getActiveFolderId();
-					if (activeFolder && activeFolder !== 'unassigned') {
-						up.settings.multipart_params = up.settings.multipart_params || {};
-						up.settings.multipart_params.media_folder = activeFolder;
-					} else if (up.settings.multipart_params) {
-						delete up.settings.multipart_params.media_folder;
-					}
+				$targetUl = $parentNode.children('ul');
+				if ($targetUl.length === 0) {
+					$targetUl = $('<ul></ul>');
+					$parentNode.append($targetUl);
+				}
+				$targetUl.slideDown(200);
+			}
 
-					var folderName = self.getActiveFolderName();
-					var targetText = folderName ? ' to "' + folderName + '"' : '';
-					self.showUploadNotice('Uploading file(s)' + targetText + '...');
-				});
+			if ($targetUl.find('.temp-new-node').length > 0) {
+				$targetUl.find('.temp-new-node input').focus();
+				return;
+			}
 
-				plup.bind('FileUploaded', function(up, file, response) {
-					var activeFolder = self.getActiveFolderId();
-					if (activeFolder && activeFolder !== 'unassigned') {
-						try {
-							var res = typeof response.response === 'string' ? JSON.parse(response.response) : response.response;
-							if (res && res.success && res.data && res.data.id) {
-								self.moveAttachmentsToFolder([res.data.id], activeFolder);
-							}
-						} catch (e) {
-							console.error('Error parsing upload response:', e);
-						}
-					}
-				});
+			var tempNodeHtml =
+				'<li class="tka-folder-node temp-new-node">' +
+				'<div class="tka-folder-item">' +
+				'<span class="folder-expander"></span>' +
+				'<span class="dashicons dashicons-portfolio"></span>' +
+				'<input type="text" class="tka-inline-input" placeholder="New Folder..." />' +
+				'</div>' +
+				'</li>';
 
-				plup.bind('UploadProgress', function(up, file) {
-					var folderName = self.getActiveFolderName();
-					var targetText = folderName ? ' to "' + folderName + '"' : '';
-					self.showUploadNotice('Uploading ' + up.total.percent + '%' + targetText);
-				});
+			var $tempNode = $(tempNodeHtml);
+			$targetUl.append($tempNode);
 
-				plup.bind('UploadComplete', function(up, files) {
-					self.showUploadSuccessNotice('✓ Upload completed');
-					self.refreshCurrentFolder();
-				});
+			var $input = $tempNode.find('input');
+			$input.focus();
+
+			var isSaving = false;
+			var saveCreate = function() {
+				if (isSaving) return;
+				isSaving = true;
+				var name = $input.val().trim();
+				if (name) {
+					self.createFolder(name, parentId);
+				}
+				$tempNode.remove();
 			};
 
-			// Check wp.media.uploader
-			if (wp.media.uploader && wp.media.uploader.uploader && wp.media.uploader.uploader.uploader) {
-				attachPlupload(wp.media.uploader.uploader.uploader);
-			} else if (wp.Uploader && wp.Uploader.prototype) {
-				var oldInit = wp.Uploader.prototype.init;
-				wp.Uploader.prototype.init = function() {
-					if (oldInit) {
-						oldInit.apply(this, arguments);
-					}
-					if (this.uploader) {
-						attachPlupload(this.uploader);
-					}
-				};
+			$input.on('keydown', function (e) {
+				if (e.which === 13) {
+					e.preventDefault();
+					saveCreate();
+				} else if (e.which === 27) {
+					e.preventDefault();
+					$tempNode.remove();
+				}
+			});
+
+			$input.on('blur', function () {
+				setTimeout(saveCreate, 150);
+			});
+		},
+
+		showInlineRenameInput: function (folderId, $nameEl) {
+			var self = this;
+			var oldName = $nameEl.text();
+
+			var $input = $('<input type="text" class="tka-inline-input rename" value="" />');
+			$input.val(oldName);
+			$nameEl.hide().after($input);
+			$input.focus().select();
+
+			var isSaving = false;
+			var saveRename = function() {
+				if (isSaving) return;
+				isSaving = true;
+				var newName = $input.val().trim();
+				if (newName && newName !== oldName) {
+					self.renameFolder(folderId, newName, $nameEl);
+				} else {
+					$nameEl.show();
+				}
+				$input.remove();
+			};
+
+			$input.on('keydown', function (e) {
+				if (e.which === 13) {
+					e.preventDefault();
+					saveRename();
+				} else if (e.which === 27) {
+					e.preventDefault();
+					$nameEl.show();
+					$input.remove();
+				}
+			});
+
+			$input.on('blur', function () {
+				setTimeout(saveRename, 150);
+			});
+		},
+
+		showUploadProgressModal: function (totalFiles) {
+			var modalHtml =
+				'<div class="tka-upload-progress-modal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); z-index: 99999; display: flex; align-items: center; justify-content: center; font-family: -apple-system, BlinkMacSystemFont, sans-serif;">' +
+				'<div class="tka-progress-card" style="background: #fff; width: 400px; padding: 30px; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); text-align: center;">' +
+				'<h3 style="margin: 0 0 10px 0; font-size: 18px; font-weight: 600; color: #0f172a;">Uploading Files</h3>' +
+				'<p class="tka-progress-status" style="margin: 0 0 20px 0; font-size: 14px; color: #64748b;">Preparing...</p>' +
+				'<div style="background: #e2e8f0; height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 10px;">' +
+				'<div class="tka-progress-bar" style="background: var(--folders-primary, #3b82f6); width: 0%; height: 100%; transition: width 0.2s ease;"></div>' +
+				'</div>' +
+				'<span class="tka-progress-percent" style="font-size: 14px; font-weight: 600; color: #0f172a;">0%</span>' +
+				'</div>' +
+				'</div>';
+
+			var $modal = $(modalHtml);
+			$('body').append($modal);
+			this.$progressModal = $modal;
+		},
+
+		updateUploadProgress: function (percent, statusText) {
+			if (this.$progressModal) {
+				this.$progressModal.find('.tka-progress-bar').css('width', percent + '%');
+				this.$progressModal.find('.tka-progress-percent').text(percent + '%');
+				if (statusText) {
+					this.$progressModal.find('.tka-progress-status').text(statusText);
+				}
 			}
+		},
 
-			// Backbone central wp.Uploader.queue listeners
-			if (wp.Uploader && wp.Uploader.queue) {
-				wp.Uploader.queue.on('add change:percent', function() {
-					var count = wp.Uploader.queue.length;
-					if (count > 0) {
-						var folderName = self.getActiveFolderName();
-						var targetText = folderName ? ' to "' + folderName + '"' : '';
-						var totalPercent = 0;
-						wp.Uploader.queue.each(function(m) {
-							totalPercent += (m.get('percent') || 0);
-						});
-						var avgPercent = count > 0 ? Math.round(totalPercent / count) : 0;
-						self.showUploadNotice('Uploading ' + count + ' file(s)' + targetText + ' (' + avgPercent + '%)');
-					}
-				});
-
-				wp.Uploader.queue.on('change:attachment', function(model) {
-					var activeFolder = self.getActiveFolderId();
-					if (activeFolder && activeFolder !== 'unassigned') {
-						var att = model ? model.get('attachment') : null;
-						if (att && att.id && !att._tkaMoved) {
-							att._tkaMoved = true;
-							if (typeof att.set === 'function') {
-								att.set('media_folder', [parseInt(activeFolder, 10)]);
-							}
-							self.moveAttachmentsToFolder([att.id], activeFolder);
-						}
-					}
-				});
-
-				wp.Uploader.queue.on('reset remove', function() {
-					if (wp.Uploader.queue.length === 0) {
-						self.showUploadSuccessNotice('✓ Upload completed');
-						self.refreshCurrentFolder();
-					}
-				});
+		hideUploadProgressModal: function () {
+			if (this.$progressModal) {
+				this.$progressModal.remove();
+				this.$progressModal = null;
 			}
+		},
 
-			// Backbone framework uploader listeners
-			if (wp.media.frame && wp.media.frame.uploader) {
-				wp.media.frame.uploader.on('uploader:start', function() {
-					var folderName = self.getActiveFolderName();
-					var targetText = folderName ? ' to "' + folderName + '"' : '';
-					self.showUploadNotice('Uploading file(s)' + targetText + '...');
-				});
 
-				wp.media.frame.uploader.on('uploader:success', function(attachment) {
-					var activeFolder = self.getActiveFolderId();
-					if (activeFolder && activeFolder !== 'unassigned') {
-						if (attachment && typeof attachment.set === 'function') {
-							attachment.set('media_folder', [parseInt(activeFolder, 10)]);
-						}
-						self.moveAttachmentsToFolder([attachment.id], activeFolder);
-					}
-				});
-
-				wp.media.frame.uploader.on('uploader:end', function() {
-					self.showUploadSuccessNotice('✓ Upload completed');
-					self.refreshCurrentFolder();
-				});
-			}
-		}
 	});
 
 	// --- Draggable Attachment Event Delegation ---
-	
+
 	// Pre-condition: Make attachment grids draggable when mouse enters
-	$(document).on('mouseenter', '.attachments-browser .attachment', function() {
-		if (!$(this).attr('draggable')) {
-			$(this).attr('draggable', 'true');
+	$(document).on('mouseenter', '.attachments-browser .attachment', function () {
+		var isSelectMode = $(this).closest('.media-frame').hasClass('mode-select') || $(this).closest('.attachments-browser').hasClass('fixed');
+		if (isSelectMode) {
+			$(this).removeAttr('draggable');
+		} else {
+			if (!$(this).attr('draggable')) {
+				$(this).attr('draggable', 'true');
+			}
 		}
 	});
 
 	// Handle DragStart event
-	$(document).on('dragstart', '.attachments-browser .attachment', function(e) {
+	$(document).on('dragstart', '.attachments-browser .attachment', function (e) {
+		var isSelectMode = $(this).closest('.media-frame').hasClass('mode-select') || $(this).closest('.attachments-browser').hasClass('fixed');
+		if (isSelectMode) {
+			e.preventDefault();
+			return;
+		}
+
 		var draggedId = parseInt($(this).attr('data-id'), 10);
 		if (!draggedId) {
 			return;
@@ -770,7 +819,7 @@
 		if (activeFrame && activeFrame.state()) {
 			var selection = activeFrame.state().get('selection');
 			if (selection && selection.length > 0) {
-				selection.each(function(attachment) {
+				selection.each(function (attachment) {
 					selectedIds.push(attachment.id);
 				});
 			}
@@ -787,15 +836,83 @@
 
 		e.originalEvent.dataTransfer.setData('text/plain', JSON.stringify(dragData));
 		e.originalEvent.dataTransfer.effectAllowed = 'move';
-		
+
 		// Style feedback during dragging
 		$(this).css('opacity', '0.4');
 	});
 
 	// Clear drag styling on end
-	$(document).on('dragend', '.attachments-browser .attachment', function() {
+	$(document).on('dragend', '.attachments-browser .attachment', function () {
 		$('body').removeClass('tka-dragging-attachment');
 		$(this).css('opacity', '');
 	});
+
+	// Prevent mousedown/mouseup on delete buttons in the capture phase to stop focus changes
+	document.addEventListener('mousedown', function (e) {
+		if (e.target && e.target.closest && e.target.closest('.delete-selected-button, .button-link-delete, .delete-attachment')) {
+			e.stopPropagation();
+			e.preventDefault();
+		}
+	}, true);
+
+	document.addEventListener('mouseup', function (e) {
+		if (e.target && e.target.closest && e.target.closest('.delete-selected-button, .button-link-delete, .delete-attachment')) {
+			e.stopPropagation();
+			e.preventDefault();
+		}
+	}, true);
+
+	// Intercept click on delete buttons in the capture phase to replace window.confirm
+	document.addEventListener('click', function (e) {
+		var target = e.target && e.target.closest && e.target.closest('.delete-selected-button, .button-link-delete, .delete-attachment');
+		if (target) {
+			e.stopPropagation();
+			e.preventDefault();
+
+			if (target.classList.contains('delete-attachment')) {
+				var activeFrame = wp.media.frames.edit || wp.media.frame;
+				var model = null;
+				if (activeFrame) {
+					if (activeFrame.model) {
+						model = activeFrame.model;
+					} else if (activeFrame.state && activeFrame.state()) {
+						var selection = activeFrame.state().get('selection');
+						if (selection && selection.length > 0) {
+							model = selection.single();
+						}
+					}
+				}
+				if (model) {
+					var message = 'Are you sure you want to permanently delete this item?';
+					if (wp.media.view.l10n && wp.media.view.l10n.warnDelete) {
+						message = wp.media.view.l10n.warnDelete;
+					}
+					showCustomConfirm(message, function () {
+						model.destroy();
+					});
+				}
+			} else {
+				var activeFrame = wp.media.frame;
+				if (activeFrame && activeFrame.state()) {
+					var selection = activeFrame.state().get('selection');
+					if (selection && selection.length > 0) {
+						var message = 'Are you sure you want to permanently delete these items?';
+						if (wp.media.view.l10n && wp.media.view.l10n.warnBulkDelete) {
+							message = wp.media.view.l10n.warnBulkDelete;
+						}
+						showCustomConfirm(message, function () {
+							var removed = [];
+							selection.each(function (model) {
+								model.destroy({ wait: true });
+								removed.push(model);
+							});
+							selection.remove(removed);
+							activeFrame.trigger('selection:action:done');
+						});
+					}
+				}
+			}
+		}
+	}, true);
 
 })(jQuery);

@@ -62,6 +62,10 @@ class ImageOptimizer
 		add_action('wp_ajax_tka_site_utilities_bulk_get_images', [$this, 'ajaxBulkGetImages']);
 		add_action('wp_ajax_tka_site_utilities_bulk_optimize_image', [$this, 'ajaxBulkOptimizeImage']);
 		add_action('wp_ajax_tka_site_utilities_bulk_get_image_list', [$this, 'ajaxBulkGetImageList']);
+
+		// Media Library row actions & attachment edit fields for UI regeneration
+		add_filter('media_row_actions', [$this, 'addMediaRowActions'], 10, 2);
+		add_filter('attachment_fields_to_edit', [$this, 'addAttachmentRegenerateField'], 10, 2);
 	}
 
 	/**
@@ -87,6 +91,58 @@ class ImageOptimizer
 	public function setImageEditorQuality(int $quality, string $mime_type): int
 	{
 		return $this->setImageQuality($quality);
+	}
+
+	/**
+	 * Adds a "Regenerate WebP" row action link in the Media Library list view (upload.php).
+	 *
+	 * @param array    $actions Action links.
+	 * @param \WP_Post $post    Attachment post object.
+	 * @return array Modified action links.
+	 */
+	public function addMediaRowActions(array $actions, \WP_Post $post): array
+	{
+		if (wp_attachment_is_image($post)) {
+			$nonce = wp_create_nonce('tka_site_utilities_bulk_optimize');
+			$actions['tka_regenerate'] = sprintf(
+				'<a href="#" class="tka-regenerate-single-btn" data-id="%d" data-nonce="%s">%s</a>',
+				$post->ID,
+				esc_attr($nonce),
+				esc_html__('Regenerate WebP', 'tka-site-utilities')
+			);
+		}
+		return $actions;
+	}
+
+	/**
+	 * Adds a "Regenerate WebP Image" button field in the Media Modal / Edit Attachment panel.
+	 *
+	 * @param array    $form_fields Form fields.
+	 * @param \WP_Post $post        Attachment post object.
+	 * @return array Modified form fields.
+	 */
+	public function addAttachmentRegenerateField(array $form_fields, \WP_Post $post): array
+	{
+		if (wp_attachment_is_image($post)) {
+			$nonce = wp_create_nonce('tka_site_utilities_bulk_optimize');
+			$btn_html = sprintf(
+				'<div class="tka-regenerate-field-wrapper" style="margin-top: 5px;">' .
+				'<button type="button" class="button button-secondary tka-regenerate-single-btn" data-id="%d" data-nonce="%s">%s</button>' .
+				'<span class="tka-regenerate-status" id="tka-regen-status-%d" style="margin-left: 8px; font-size: 12px; vertical-align: middle;"></span>' .
+				'</div>',
+				$post->ID,
+				esc_attr($nonce),
+				esc_html__('Regenerate WebP Image', 'tka-site-utilities'),
+				$post->ID
+			);
+
+			$form_fields['tka_regenerate_image'] = [
+				'label' => __('Regenerate WebP', 'tka-site-utilities'),
+				'input' => 'html',
+				'html'  => $btn_html,
+			];
+		}
+		return $form_fields;
 	}
 
 	/**
@@ -299,7 +355,9 @@ class ImageOptimizer
 	 */
 	public function ajaxBulkGetImages(): void
 	{
-		check_ajax_referer('tka_site_utilities_bulk_optimize', 'nonce');
+		if (!check_ajax_referer('tka_site_utilities_bulk_optimize', 'nonce', false)) {
+			wp_send_json_error(['message' => __('Invalid security token. Please refresh the page.', 'tka-site-utilities')]);
+		}
 		if (!current_user_can('manage_options')) {
 			wp_send_json_error(['message' => __('Insufficient permissions.', 'tka-site-utilities')]);
 		}
@@ -334,7 +392,9 @@ class ImageOptimizer
 	 */
 	public function ajaxBulkGetImageList(): void
 	{
-		check_ajax_referer('tka_site_utilities_bulk_optimize', 'nonce');
+		if (!check_ajax_referer('tka_site_utilities_bulk_optimize', 'nonce', false)) {
+			wp_send_json_error(['message' => __('Invalid security token. Please refresh the page.', 'tka-site-utilities')]);
+		}
 		if (!current_user_can('manage_options')) {
 			wp_send_json_error(['message' => __('Insufficient permissions.', 'tka-site-utilities')]);
 		}
@@ -428,6 +488,9 @@ class ImageOptimizer
 			}
 
 			$has_original = ($this->getOriginalFilePath($att_id) !== null);
+			$current_hash = $this->getSettingsHash();
+			$opt_hash = get_post_meta($att_id, '_tka_optimized_hash', true);
+			$is_up_to_date = ($is_optimized && $opt_hash === $current_hash);
 
 			$rows[] = [
 				'id'            => $att_id,
@@ -439,6 +502,7 @@ class ImageOptimizer
 				'status_class'  => $status_class,
 				'status_label'  => $status_label,
 				'is_optimized'  => $is_optimized,
+				'is_up_to_date'  => $is_up_to_date,
 				'has_original'  => $has_original,
 				'savings_text'  => $savings_text,
 				'sizes'         => $sizes,
@@ -458,7 +522,9 @@ class ImageOptimizer
 	 */
 	public function ajaxBulkOptimizeImage(): void
 	{
-		check_ajax_referer('tka_site_utilities_bulk_optimize', 'nonce');
+		if (!check_ajax_referer('tka_site_utilities_bulk_optimize', 'nonce', false)) {
+			wp_send_json_error(['message' => __('Invalid security token. Please refresh the page.', 'tka-site-utilities')]);
+		}
 		if (!current_user_can('manage_options')) {
 			wp_send_json_error(['message' => __('Insufficient permissions.', 'tka-site-utilities')]);
 		}
@@ -552,8 +618,9 @@ class ImageOptimizer
 
 		$bytes_saved = max(0, $old_size - $new_size);
 
-		// Save the exact storage savings in attachment post meta
+		// Save the exact storage savings and settings hash in attachment post meta
 		update_post_meta($attachment_id, '_tka_image_savings', $bytes_saved);
+		update_post_meta($attachment_id, '_tka_optimized_hash', $this->getSettingsHash());
 
 		// Purge page caches so the optimized image URL is reflected
 		\TKA\WPUtils\Core\Plugin::purgePageCaches();
@@ -563,9 +630,22 @@ class ImageOptimizer
 			'bytes_saved'    => $bytes_saved,
 			'mime_type'      => $optimized['type'],
 			'affected_sizes' => $affected_sizes,
+			'settings_hash'  => $this->getSettingsHash(),
 			/* translators: %s: name of the optimized file */
 			'message'        => sprintf(__('Successfully optimized %s.', 'tka-site-utilities'), basename($optimized['file'])),
 		]);
+	}
+
+	/**
+	 * Compute MD5 hash of current image optimizer settings.
+	 */
+	public function getSettingsHash(): string
+	{
+		$quality = isset($this->options['image_compression_quality']) ? intval($this->options['image_compression_quality']) : 82;
+		$convert_webp = !empty($this->options['webp_conversion_enabled']);
+		$compress_original = !empty($this->options['compress_original_images']);
+		$keep_original = !empty($this->options['webp_keep_original']);
+		return md5($quality . '_' . ($convert_webp ? '1' : '0') . '_' . ($compress_original ? '1' : '0') . '_' . ($keep_original ? '1' : '0'));
 	}
 }
 

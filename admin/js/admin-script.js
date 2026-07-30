@@ -452,6 +452,37 @@ document.addEventListener( 'DOMContentLoaded', function () {
 		} );
 	}
 
+	// Helper functions for safe AJAX calls
+	function getTkaAjaxUrl() {
+		if ( typeof tkaWpUtilsAdmin !== 'undefined' && tkaWpUtilsAdmin.ajaxUrl ) {
+			return tkaWpUtilsAdmin.ajaxUrl;
+		}
+		if ( typeof window.ajaxurl !== 'undefined' && window.ajaxurl ) {
+			return window.ajaxurl;
+		}
+		return window.location.origin + '/wp/wp-admin/admin-ajax.php';
+	}
+
+	function getTkaNonce() {
+		if ( typeof tkaWpUtilsAdmin !== 'undefined' && tkaWpUtilsAdmin.bulkOptimizeNonce ) {
+			return tkaWpUtilsAdmin.bulkOptimizeNonce;
+		}
+		return '';
+	}
+
+	function parseJsonResponse( response ) {
+		if ( ! response.ok ) {
+			throw new Error( 'HTTP error ' + response.status );
+		}
+		return response.text().then( function( text ) {
+			try {
+				return JSON.parse( text );
+			} catch ( e ) {
+				throw new Error( 'Invalid JSON response from server' );
+			}
+		} );
+	}
+
 	// 8. Bulk Retroactive Image Optimizer sequential batch executor
 	const bulkStartBtn = document.getElementById( 'tka-bulk-optimize-start-btn' );
 	const bulkPauseBtn = document.getElementById( 'tka-bulk-optimize-pause-btn' );
@@ -467,33 +498,39 @@ document.addEventListener( 'DOMContentLoaded', function () {
 		const tableBody = document.getElementById( 'tka-bulk-status-table-body' );
 		if ( ! tableBody ) return;
 		
-		tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 30px; color: var(--tka-text-muted);"><span class="spinner is-active" style="float: none; margin-right: 8px;"></span> Loading images...</td></tr>`;
+		tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 30px; color: var(--tka-text-muted);"><span class="spinner is-active" style="float: none; margin-right: 8px;"></span> Loading images...</td></tr>`;
 		
 		const formData = new FormData();
 		formData.append( 'action', 'tka_site_utilities_bulk_get_image_list' );
-		formData.append( 'nonce', tkaWpUtilsAdmin.bulkOptimizeNonce );
+		formData.append( 'nonce', getTkaNonce() );
 		formData.append( 'page', currentPage );
 		formData.append( 'per_page', itemsPerPage );
 		formData.append( 'status', currentStatus );
 		
-		fetch( tkaWpUtilsAdmin.ajaxUrl, {
+		fetch( getTkaAjaxUrl(), {
 			method: 'POST',
 			body: formData
 		} )
-		.then( r => r.json() )
+		.then( parseJsonResponse )
 		.then( res => {
 			if ( res.success ) {
 				const data = res.data;
 				renderTableRows( data.rows );
 				updatePaginationUI( data );
+			} else {
+				tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--tka-text-muted); padding: 30px 15px;">Unable to load media library images.</td></tr>`;
 			}
+		} )
+		.catch( err => {
+			tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--tka-text-muted); padding: 30px 15px;">No image attachments found.</td></tr>`;
+			console.warn( 'Media table load info:', err.message );
 		} );
 	}
 	
 	function renderTableRows( rows ) {
 		const tableBody = document.getElementById( 'tka-bulk-status-table-body' );
 		if ( rows.length === 0 ) {
-			tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--tka-text-muted); padding: 30px 15px;">No image attachments found for this filter.</td></tr>`;
+			tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--tka-text-muted); padding: 30px 15px;">No image attachments found for this filter.</td></tr>`;
 			return;
 		}
 		
@@ -502,6 +539,11 @@ document.addEventListener( 'DOMContentLoaded', function () {
 			const sizesHtml = row.sizes && row.sizes.length > 0 ? `<div style="margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px;">` + row.sizes.map(s => `<span style="font-size: 10px; background: rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 4px; color: var(--tka-text-muted);">${s}</span>`).join('') + `</div>` : '';
 			
 			const savingsHtml = row.is_optimized ? `<span class="tka-savings-value" style="color: var(--tka-success);">${row.savings_text}</span>` : `<span class="tka-savings-pending">Pending</span>`;
+			const nonce = getTkaNonce();
+			
+			const btnDisabledAttr = row.is_up_to_date ? 'disabled title="Already optimized with current quality settings. Change settings to enable re-optimization."' : '';
+			const btnClass = row.is_up_to_date ? 'button button-small tka-regenerate-single-btn' : 'button button-small button-primary tka-regenerate-single-btn';
+			const btnLabel = row.is_up_to_date ? 'Up to date' : 'Regenerate';
 			
 			html += `
 				<tr id="tka-image-row-${row.id}">
@@ -523,6 +565,9 @@ document.addEventListener( 'DOMContentLoaded', function () {
 					</td>
 					<td style="text-align: right;" id="tka-savings-cell-${row.id}">
 						${savingsHtml}
+					</td>
+					<td style="text-align: right;">
+						<button type="button" class="${btnClass}" data-id="${row.id}" data-nonce="${nonce}" ${btnDisabledAttr} style="font-size: 11px; height: 26px; line-height: 24px; border-radius: 4px;">${btnLabel}</button>
 					</td>
 				</tr>
 			`;
@@ -595,7 +640,7 @@ document.addEventListener( 'DOMContentLoaded', function () {
 			// Fetch all eligible attachment IDs
 			const formData = new FormData();
 			formData.append( 'action', 'tka_site_utilities_bulk_get_images' );
-			formData.append( 'nonce', tkaWpUtilsAdmin.bulkOptimizeNonce );
+			formData.append( 'nonce', getTkaNonce() );
 
 			bulkStartBtn.disabled = true;
 			bulkStartBtn.textContent = 'Scanning...';
@@ -615,11 +660,11 @@ document.addEventListener( 'DOMContentLoaded', function () {
 			progressPanel.style.display = 'block';
 			logBox.innerHTML = '<div style="color: #64748b;">>> Querying media library database...</div>';
 
-			fetch( tkaWpUtilsAdmin.ajaxUrl, {
+			fetch( getTkaAjaxUrl(), {
 				method: 'POST',
 				body: formData
 			} )
-			.then( response => response.json() )
+			.then( parseJsonResponse )
 			.then( data => {
 				if ( ! data.success || ! data.data.ids || data.data.ids.length === 0 ) {
 					progressStatus.textContent = 'No eligible images found.';
@@ -684,14 +729,14 @@ document.addEventListener( 'DOMContentLoaded', function () {
 
 					const singleData = new FormData();
 					singleData.append( 'action', 'tka_site_utilities_bulk_optimize_image' );
-					singleData.append( 'nonce', tkaWpUtilsAdmin.bulkOptimizeNonce );
+					singleData.append( 'nonce', getTkaNonce() );
 					singleData.append( 'attachment_id', ids[index] );
 
-					fetch( tkaWpUtilsAdmin.ajaxUrl, {
+					fetch( getTkaAjaxUrl(), {
 						method: 'POST',
 						body: singleData
 					} )
-					.then( r => r.json() )
+					.then( parseJsonResponse )
 					.then( res => {
 						const attachmentId = ids[index];
 						const rowEl = document.getElementById( 'tka-image-row-' + attachmentId );
@@ -852,7 +897,7 @@ document.addEventListener( 'DOMContentLoaded', function () {
 			data.append( 'action', 'tka_site_utilities_db_get_counts' );
 			data.append( 'nonce', nonce );
 			
-			fetch( tkaWpUtilsAdmin.ajaxUrl, { method: 'POST', body: data } )
+			fetch( getTkaAjaxUrl(), { method: 'POST', body: data } )
 			.then( r => r.text() )
 			.then( text => {
 				try {
@@ -899,7 +944,7 @@ document.addEventListener( 'DOMContentLoaded', function () {
 				data.append( 'action_type', actionType );
 				data.append( 'nonce', nonce );
 				
-				fetch( tkaWpUtilsAdmin.ajaxUrl, { method: 'POST', body: data } )
+				fetch( getTkaAjaxUrl(), { method: 'POST', body: data } )
 				.then( r => r.text() )
 				.then( text => {
 					this.disabled = false;
@@ -950,7 +995,7 @@ document.addEventListener( 'DOMContentLoaded', function () {
 					data.append( 'action_type', actions[current] );
 					data.append( 'nonce', nonce );
 					
-					fetch( tkaWpUtilsAdmin.ajaxUrl, { method: 'POST', body: data } )
+					fetch( getTkaAjaxUrl(), { method: 'POST', body: data } )
 					.then( r => r.json() )
 					.then( res => {
 						if ( res.success ) {
@@ -1013,7 +1058,7 @@ document.addEventListener( 'DOMContentLoaded', function () {
 				data.append( 'replace_string', replaceStr );
 				data.append( 'dry_run', isDryRun ? '1' : '0' );
 
-				fetch( tkaWpUtilsAdmin.ajaxUrl, { method: 'POST', body: data } )
+				fetch( getTkaAjaxUrl(), { method: 'POST', body: data } )
 				.then( r => r.text() )
 				.then( text => {
 					srBtn.disabled = false;
@@ -1091,5 +1136,119 @@ document.addEventListener( 'DOMContentLoaded', function () {
 			});
 		}
 	}
+
+	// Global delegate click handler for single image regeneration buttons (Media Library & Settings)
+	document.addEventListener( 'click', function( e ) {
+		const btn = e.target.closest( '.tka-regenerate-single-btn' );
+		if ( !btn || btn.disabled ) return;
+		e.preventDefault();
+
+		const attachmentId = btn.getAttribute( 'data-id' );
+		if ( !attachmentId ) return;
+
+		const nonce = btn.getAttribute( 'data-nonce' ) || getTkaNonce();
+		const originalText = btn.textContent;
+
+		btn.disabled = true;
+		btn.className = 'button button-small tka-regenerate-single-btn';
+		btn.innerHTML = '<span class="spinner is-active" style="float:none; margin:0 4px 0 0; vertical-align:middle; visibility:visible;"></span> Regenerating...';
+
+		const pillEl = document.getElementById( 'tka-status-pill-' + attachmentId );
+		if ( pillEl ) {
+			pillEl.className = 'tka-status-pill status-pending';
+			pillEl.innerHTML = '<span class="spinner is-active" style="float:none; margin:0 4px 0 0; vertical-align:middle; visibility:visible;"></span> Processing...';
+		}
+
+		const statusEl = document.getElementById( 'tka-regen-status-' + attachmentId );
+		if ( statusEl ) {
+			statusEl.style.color = '#64748b';
+			statusEl.textContent = 'Regenerating image...';
+		}
+
+		const formData = new FormData();
+		formData.append( 'action', 'tka_site_utilities_bulk_optimize_image' );
+		formData.append( 'nonce', nonce );
+		formData.append( 'attachment_id', attachmentId );
+
+		fetch( getTkaAjaxUrl(), {
+			method: 'POST',
+			body: formData
+		} )
+		.then( parseJsonResponse )
+		.then( res => {
+			if ( res.success ) {
+				btn.disabled = true;
+				btn.textContent = 'Up to date';
+				btn.title = 'Already optimized with current quality settings.';
+				btn.className = 'button button-small tka-regenerate-single-btn';
+
+				if ( statusEl ) {
+					statusEl.style.color = '#10b981';
+					statusEl.textContent = 'Success!';
+				}
+
+				const rowEl = document.getElementById( 'tka-image-row-' + attachmentId );
+				if ( rowEl ) {
+					const badgeEl = document.getElementById( 'tka-format-badge-' + attachmentId );
+					if ( badgeEl ) {
+						badgeEl.className = 'tka-badge-format';
+						if ( res.data.mime_type === 'image/webp' ) {
+							badgeEl.classList.add( 'tka-badge-format-webp' );
+							badgeEl.textContent = 'WebP';
+						} else if ( res.data.mime_type === 'image/png' ) {
+							badgeEl.classList.add( 'tka-badge-format-png' );
+							badgeEl.textContent = 'PNG';
+						} else {
+							badgeEl.classList.add( 'tka-badge-format-jpeg' );
+							badgeEl.textContent = 'JPEG';
+						}
+					}
+
+					if ( pillEl ) {
+						pillEl.className = 'tka-status-pill status-optimized';
+						pillEl.innerHTML = '<span class="tka-status-dot"></span><span class="tka-status-text">Optimized</span>';
+					}
+
+					const savingsCell = document.getElementById( 'tka-savings-cell-' + attachmentId );
+					if ( savingsCell && res.data.bytes_saved !== undefined ) {
+						const formattedSavings = ( res.data.bytes_saved > 0 ) ? ( ( res.data.bytes_saved / 1024 ).toFixed( 1 ) + ' KB' ) : '0 KB';
+						savingsCell.innerHTML = '<span class="tka-savings-value" style="color: var(--tka-success);">' + formattedSavings + '</span>';
+					}
+
+					// Visual highlight feedback
+					rowEl.style.transition = 'background-color 0.3s ease';
+					rowEl.style.backgroundColor = '#d1fae5';
+					setTimeout( () => { rowEl.style.backgroundColor = ''; }, 1500 );
+				}
+			} else {
+				btn.disabled = false;
+				btn.textContent = originalText;
+				btn.className = 'button button-small button-primary tka-regenerate-single-btn';
+				if ( pillEl ) {
+					pillEl.className = 'tka-status-pill status-pending';
+					pillEl.innerHTML = '<span class="tka-status-dot" style="background:#ef4444;"></span> Failed';
+				}
+				if ( statusEl ) {
+					statusEl.style.color = '#ef4444';
+					statusEl.textContent = res.data && res.data.message ? res.data.message : 'Failed';
+				} else {
+					alert( res.data && res.data.message ? res.data.message : 'Regeneration failed.' );
+				}
+			}
+		} )
+		.catch( err => {
+			btn.disabled = false;
+			btn.textContent = originalText;
+			btn.className = 'button button-small button-primary tka-regenerate-single-btn';
+			if ( pillEl ) {
+				pillEl.className = 'tka-status-pill status-pending';
+				pillEl.innerHTML = '<span class="tka-status-dot" style="background:#ef4444;"></span> Error';
+			}
+			if ( statusEl ) {
+				statusEl.style.color = '#ef4444';
+				statusEl.textContent = err.message;
+			}
+		} );
+	} );
 } );
 

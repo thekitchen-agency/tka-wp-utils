@@ -90,29 +90,33 @@
 	padding-left: 68px !important;
 }
 
-/* Shift absolute elements to make room for the left folder sidebar while preserving WP Core's right sidebar positioning */
+/* Ensure default children flow inside the padded content area and don't overflow (left: 266px shifts absolute elements, ignored for static elements) */
+.wp-core-ui .media-frame .attachments-browser.tka-has-folders .media-toolbar,
 .wp-core-ui .media-frame .attachments-browser.tka-has-folders .uploader-inline,
 .wp-core-ui .media-frame .attachments-browser.tka-has-folders .attachments,
 .wp-core-ui .media-frame .attachments-browser.tka-has-folders .attachments-wrapper {
-	left: 266px !important;
+	right: 0 !important;
 	width: auto !important;
 	transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.wp-core-ui .media-frame .attachments-browser.tka-has-folders.tka-folders-collapsed .media-toolbar,
 .wp-core-ui .media-frame .attachments-browser.tka-has-folders.tka-folders-collapsed .uploader-inline,
 .wp-core-ui .media-frame .attachments-browser.tka-has-folders.tka-folders-collapsed .attachments,
-.wp-core-ui .media-frame .attachments-browser.tka-has-folders.tka-folders-collapsed .attachments-wrapper {
-	left: 68px !important;
-}
+.wp-core-ui .media-frame .attachments-browser.tka-has-folders.tka-folders-collapsed .attachments-wrapper {}
 
-/* Shift absolute media-toolbar specifically inside media modals without double-offsetting relative wp-filter toolbars on standard admin media pages */
-.media-modal .attachments-browser.tka-has-folders .media-toolbar {
+/* Shift absolute elements specifically inside the media modal to prevent overlaying the sidebar */
+.media-modal .attachments-browser.tka-has-folders .media-toolbar,
+.media-modal .attachments-browser.tka-has-folders .uploader-inline,
+.media-modal .attachments-browser.tka-has-folders .attachments,
+.media-modal .attachments-browser.tka-has-folders .attachments-wrapper {
 	left: 266px !important;
-	width: auto !important;
-	transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.media-modal .attachments-browser.tka-has-folders.tka-folders-collapsed .media-toolbar {
+.media-modal .attachments-browser.tka-has-folders.tka-folders-collapsed .media-toolbar,
+.media-modal .attachments-browser.tka-has-folders.tka-folders-collapsed .uploader-inline,
+.media-modal .attachments-browser.tka-has-folders.tka-folders-collapsed .attachments,
+.media-modal .attachments-browser.tka-has-folders.tka-folders-collapsed .attachments-wrapper {
 	left: 68px !important;
 }
 
@@ -222,8 +226,12 @@
 }
 
 /* Prevent child elements from blocking HTML5 drag and drop hover states */
-.tka-folder-item>*:not(.folder-actions):not(.folder-expander) {
+.tka-folder-item>*:not(.folder-actions):not(.folder-expander):not(.folder-delete-confirm) {
 	pointer-events: none;
+}
+
+.folder-delete-confirm {
+	pointer-events: auto !important;
 }
 
 .tka-folder-item:hover {
@@ -390,43 +398,130 @@
 	background: rgba(148, 163, 184, 0.8);
 }
 
-/* Hide WordPress default drag-to-upload screen when dragging internal attachments */
-body.tka-dragging-attachment .uploader-window {
+/* Hide WordPress default drag-to-upload screen completely */
+.uploader-window {
 	display: none !important;
 	visibility: hidden !important;
 	opacity: 0 !important;
 	pointer-events: none !important;
 }
 
-/* Upload Notification Notice Banner */
-.tka-folder-upload-notice {
-	margin-bottom: 12px;
-	padding: 8px 10px;
-	background: var(--folders-active-bg);
+/* Inline input fields for folder creation/rename */
+.tka-inline-input {
+	width: 100%;
+	height: 24px;
+	padding: 2px 6px;
 	border: 1px solid var(--folders-primary);
-	border-radius: var(--folders-radius);
-	font-size: 12px;
-	color: var(--folders-primary-hover);
+	border-radius: 4px;
+	font-size: 13px;
+	font-family: inherit;
+	box-sizing: border-box;
+	background: #fff;
+	color: var(--folders-text);
+}
+.tka-inline-input:focus {
+	outline: none;
+	border-color: var(--folders-primary);
+	box-shadow: 0 0 0 2px var(--folders-primary-glow);
+}
+
+/* Dragover highlight for grid area */
+.attachments-browser.tka-grid-dragover {
+	background-color: var(--folders-drag-over-bg) !important;
+	box-shadow: inset 0 0 0 2px var(--folders-primary) !important;
+}
+
+/* Restore default cursor and behavior in Bulk Select mode */
+.media-frame.mode-select .attachments-browser .attachment,
+.attachments-browser.fixed .attachment {
+	cursor: default !important;
+}
+
+/* Premium Custom Confirm Modal */
+.tka-confirm-modal-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100vw;
+	height: 100vh;
+	background: rgba(15, 23, 42, 0.6);
+	backdrop-filter: blur(4px);
 	display: flex;
 	align-items: center;
-	gap: 6px;
-	box-shadow: 0 2px 6px var(--folders-primary-glow);
-	transition: opacity 0.3s ease, transform 0.3s ease;
+	justify-content: center;
+	z-index: 9999999;
+	opacity: 0;
+	transition: opacity 0.2s ease;
 }
-
-.tka-folder-upload-notice .spinner {
-	float: none;
+.tka-confirm-modal-overlay.active {
+	opacity: 1;
+}
+.tka-confirm-modal-box {
+	background: #fff;
+	border-radius: 12px;
+	width: 440px;
+	max-width: 90%;
+	box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+	overflow: hidden;
+	transform: scale(0.95);
+	transition: transform 0.2s ease;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+}
+.tka-confirm-modal-overlay.active .tka-confirm-modal-box {
+	transform: scale(1);
+}
+.tka-confirm-modal-header {
+	padding: 24px 24px 12px;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+.tka-confirm-modal-header h3 {
 	margin: 0;
-	visibility: visible;
+	font-size: 18px;
+	font-weight: 600;
+	color: #0f172a;
 }
-
-.tka-folder-upload-notice.success {
-	background: hsl(142, 76%, 97%);
-	border-color: hsl(142, 76%, 36%);
-	color: hsl(142, 76%, 26%);
-	box-shadow: 0 2px 6px rgba(34, 197, 94, 0.15);
+.tka-confirm-modal-body {
+	padding: 0 24px 24px;
 }
-
-.tka-media-folders-sidebar.collapsed .tka-folder-upload-notice span:not(.spinner) {
-	display: none !important;
+.tka-confirm-modal-body p {
+	margin: 0;
+	font-size: 14px;
+	line-height: 1.5;
+	color: #475569;
+}
+.tka-confirm-modal-footer {
+	padding: 16px 24px;
+	background: #f8fafc;
+	display: flex;
+	justify-content: flex-end;
+	gap: 12px;
+	border-top: 1px solid #e2e8f0;
+}
+.tka-confirm-modal-btn {
+	padding: 8px 16px;
+	border-radius: 6px;
+	font-size: 14px;
+	font-weight: 500;
+	cursor: pointer;
+	border: 1px solid transparent;
+	transition: all 0.15s ease;
+	line-height: 1.4;
+}
+.tka-confirm-modal-btn.cancel {
+	background: #fff;
+	border-color: #cbd5e1;
+	color: #475569;
+}
+.tka-confirm-modal-btn.cancel:hover {
+	background: #f1f5f9;
+	color: #0f172a;
+}
+.tka-confirm-modal-btn.confirm {
+	background: #ef4444;
+	color: #fff;
+}
+.tka-confirm-modal-btn.confirm:hover {
+	background: #dc2626;
 }

@@ -3,7 +3,7 @@ Contributors: thekitchen-agency
 Tags: classic editor, svg upload, admin columns, hardening, image optimization
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 1.15.1
+Stable tag: 1.16.0
 Requires PHP: 8.3
 License: MIT
 License URI: https://opensource.org/licenses/MIT
@@ -58,6 +58,27 @@ Our plugin uses a database-first approach: it converts physical files to WebP an
 Since images are permanently converted to WebP in the database, deactivating the plugin leaves WebP files active in your media library. If you want to keep original JPEGs/PNGs for safe backup, make sure the "Keep Original Images" setting is toggled on before running bulk optimization.
 
 == Changelog ==
+
+= 1.16.0 =
+*   Feature: Added new ACF Dynamic Table field type, featuring locked rows/columns, prepopulated data, multi-level headers, file selectors, and custom styling options.
+*   Feature: Enhanced ACF SVG Picker layout and styles, supporting search padding, custom card sizes, dark background options, and hover highlights.
+*   Feature: Refactored Virtual Media Folders to use dedicated custom database tables for improved query performance and avoiding term pollution.
+*   Feature: Added premium Custom Confirmation Modal overlay to replace browser native confirm() when permanently deleting media library assets.
+*   Feature: Added WebP / Image single regeneration action buttons inside Media List view and Attachment Edit screens, tracked via settings-hash validation.
+*   Improvement: Tightened security checks and returned proper JSON errors on Image Optimizer AJAX endpoints.
+*   Tweak: Simplified WooCommerce tab display checks in settings.
+
+= 1.15.1 =
+*   Feature: Introduced SVG Picker Field.
+
+= 1.15.0 =
+*   Feature: Added ACF Flexible Content Layout Location Rules extension.
+*   Feature: Allows restricting flexible content layouts (blocks) based on Post Type, Page Template, Page Parent, Post ID, and User Role.
+*   Feature: Includes an interactive AND/OR rules builder directly within layout settings in the Field Group editor.
+*   Feature: Hides restricted layout blocks dynamically from both standard ACF layout selection lists and custom layout selection modals.
+
+= 1.14.0 =
+*   Improvement: Improved Field Group editor settings styling and asset enqueues.
 
 = 1.13.0 =
 *   Feature: Integrated a Gravity Forms Core Web Vitals Optimizer to automatically delay GF JS execution until user interaction and load GF CSS asynchronously, preventing render-blocking warnings and massive JS payloads on page load.
@@ -146,15 +167,6 @@ Since images are permanently converted to WebP in the database, deactivating the
 *   Added compatibility check to disable conflicting plugin layout features when Advanced Custom Fields Extended (ACFE) is active.
 *   Fixed CPT duplication where fields were copied as empty by switching from add_post_meta to direct database inserts ($wpdb->insert) and clearing cache.
 *   Removed conflicting theme-level duplicate post actions from the functions.php file.
-
-= 1.15.0 =
-*   Added ACF Flexible Content Layout Location Rules extension.
-*   Allows restricting flexible content layouts (blocks) based on Post Type, Page Template, Page Parent, Post ID, and User Role.
-*   Includes an interactive AND/OR rules builder directly within layout settings in the Field Group editor.
-*   Hides restricted layout blocks dynamically from both standard ACF layout selection lists and custom layout selection modals.
-
-= 1.14.0 =
-*   Improved Field Group editor settings styling and asset enqueues.
 
 = 1.5.0 =
 *   Added Premium Maintenance Mode feature allowing custom titles, messages, logo, and background images.
