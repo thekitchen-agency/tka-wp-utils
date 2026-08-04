@@ -862,6 +862,7 @@ class Settings
 		$public_taxonomies = get_taxonomies(['show_ui' => true], 'objects');
 		?>
 				<div class="wrap tka-site-utilities-wrap">
+					<h2 class="screen-reader-text"></h2>
 					<div class="tka-dashboard">
 						<!-- Header Section -->
 						<header class="tka-dashboard-header">
@@ -3374,6 +3375,7 @@ class Settings
 	{
 		?>
 		<div class="wrap tka-site-utilities-wrap">
+			<h2 class="screen-reader-text"></h2>
 			<div class="tka-dashboard">
 				<header class="tka-dashboard-header">
 					<div class="tka-header-brand">
@@ -3413,6 +3415,7 @@ class Settings
 		$available_keys = self::getAvailableMetaKeys();
 		?>
 				<div class="wrap tka-site-utilities-wrap">
+					<h2 class="screen-reader-text"></h2>
 					<div class="tka-dashboard">
 						<!-- Header Section -->
 						<header class="tka-dashboard-header">
@@ -3619,6 +3622,7 @@ class Settings
 		$options = get_option('tka_site_utilities_options');
 		?>
 				<div class="wrap tka-site-utilities-wrap">
+					<h2 class="screen-reader-text"></h2>
 					<div class="tka-dashboard">
 						<!-- Header Section -->
 						<header class="tka-dashboard-header">
@@ -3833,6 +3837,7 @@ class Settings
 		}
 		?>
 				<div class="wrap tka-site-utilities-wrap">
+					<h2 class="screen-reader-text"></h2>
 					<div class="tka-dashboard">
 						<!-- Header Section -->
 						<header class="tka-dashboard-header">
@@ -4041,6 +4046,7 @@ class Settings
 		$redirects = get_option('tka_site_utilities_redirects', []);
 		?>
 		<div class="wrap tka-site-utilities-wrap">
+			<h2 class="screen-reader-text"></h2>
 			<div class="tka-dashboard">
 				<!-- Header Section -->
 				<header class="tka-dashboard-header">
@@ -4244,6 +4250,7 @@ class Settings
 		$error_message = $status['error_message'] ?? '';
 		?>
 		<div class="wrap tka-site-utilities-wrap">
+			<h2 class="screen-reader-text"></h2>
 			<div class="tka-dashboard">
 				<!-- Header Section -->
 				<header class="tka-dashboard-header">
