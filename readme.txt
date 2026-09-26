@@ -3,7 +3,7 @@ Contributors: thekitchen-agency
 Tags: classic editor, svg upload, admin columns, hardening, image optimization
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 1.16.0
+Stable tag: 1.16.1
 Requires PHP: 8.3
 License: MIT
 License URI: https://opensource.org/licenses/MIT
@@ -58,6 +58,13 @@ Our plugin uses a database-first approach: it converts physical files to WebP an
 Since images are permanently converted to WebP in the database, deactivating the plugin leaves WebP files active in your media library. If you want to keep original JPEGs/PNGs for safe backup, make sure the "Keep Original Images" setting is toggled on before running bulk optimization.
 
 == Changelog ==
+
+= 1.16.1 =
+*   Fix: Fixed Virtual Media Folders multi-file batch upload so all files in the batch are assigned directly to the selected folder on the server and displayed immediately.
+*   Fix: Enabled multi-item drag and drop organization into and out of folders in standard and bulk select views.
+*   Fix: Fixed media deletion issues after navigating to "All Files", supporting proper library re-queries, media trash, and real-time sidebar count updates.
+*   Fix: Resolved Admin Columns ACF gallery and image thumbnail preview rendering.
+*   Fix: Fixed SMTP From Email and From Name header and envelope filters.
 
 = 1.16.0 =
 *   Feature: Added new ACF Dynamic Table field type, featuring locked rows/columns, prepopulated data, multi-level headers, file selectors, and custom styling options.

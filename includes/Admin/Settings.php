@@ -165,6 +165,7 @@ class Settings
 					'login_custom_css' => '',
 					'remove_footer_text' => 0,
 					'hide_acf_menu' => 0,
+					'acf_allow_videos' => 0,
 					'acf_video_poster' => 0,
 					'disable_acf_shortcode' => 0,
 					'acf_custom_json_path' => 0,
@@ -239,6 +240,8 @@ class Settings
 					'smtp_username' => '',
 					'smtp_password' => '',
 					'smtp_encryption' => 'none',
+					'smtp_from_email' => '',
+					'smtp_from_name' => '',
 					'link_prefetch' => 0,
 				],
 			]
@@ -345,6 +348,7 @@ class Settings
 			'login_custom_css' => '',
 			'remove_footer_text' => 0,
 			'hide_acf_menu' => 0,
+			'acf_allow_videos' => 0,
 			'acf_video_poster' => 0,
 			'disable_acf_shortcode' => 0,
 			'acf_custom_json_path' => 0,
@@ -416,6 +420,8 @@ class Settings
 			'smtp_username' => '',
 			'smtp_password' => '',
 			'smtp_encryption' => 'none',
+			'smtp_from_email' => '',
+			'smtp_from_name' => '',
 			'link_prefetch' => 0,
 		];
 
@@ -557,6 +563,7 @@ class Settings
 			// ACF Integration (conditional)
 			if (class_exists('ACF')) {
 				$sanitized['hide_acf_menu'] = isset($input['hide_acf_menu']) ? 1 : 0;
+				$sanitized['acf_allow_videos'] = isset($input['acf_allow_videos']) ? 1 : 0;
 				$sanitized['acf_video_poster'] = isset($input['acf_video_poster']) ? 1 : 0;
 				$sanitized['disable_acf_shortcode'] = isset($input['disable_acf_shortcode']) ? 1 : 0;
 				$sanitized['acf_custom_json_path'] = isset($input['acf_custom_json_path']) ? 1 : 0;
@@ -702,6 +709,8 @@ class Settings
 			
 			$allowed_encryption = ['none', 'ssl', 'tls'];
 			$sanitized['smtp_encryption'] = (isset($input['smtp_encryption']) && in_array($input['smtp_encryption'], $allowed_encryption, true)) ? $input['smtp_encryption'] : 'none';
+			$sanitized['smtp_from_email'] = isset($input['smtp_from_email']) ? sanitize_email($input['smtp_from_email']) : '';
+			$sanitized['smtp_from_name'] = isset($input['smtp_from_name']) ? sanitize_text_field($input['smtp_from_name']) : '';
 		}
 
 		return $sanitized;
@@ -770,6 +779,20 @@ class Settings
 		]);
 
 		if ('tka-site-utilities_page_tka-site-utilities-columns' === $hook) {
+			$public_post_types = get_post_types(['show_ui' => true], 'objects');
+			$post_type_taxonomies = [];
+			foreach ($public_post_types as $pt) {
+				$taxes = get_object_taxonomies($pt->name, 'objects');
+				$tax_list = [];
+				foreach ($taxes as $tax) {
+					$tax_list[] = [
+						'name'  => $tax->name,
+						'label' => $tax->labels->name,
+					];
+				}
+				$post_type_taxonomies[$pt->name] = $tax_list;
+			}
+
 			wp_enqueue_script(
 				'tka-site-utilities-columns-js',
 				TKA_SITE_UTILITIES_URL . 'admin/js/admin-columns.js',
@@ -778,14 +801,20 @@ class Settings
 				true
 			);
 			wp_localize_script('tka-site-utilities-columns-js', 'tkaWpUtilsColumns', [
-				'metaKeys' => self::getAvailableMetaKeys(),
-				'i18n' => [
-					'selectField' => __('— Select a Field —', 'tka-site-utilities'),
-					'enterCustomKey' => __('— Enter Custom Key —', 'tka-site-utilities'),
-					'customKeyPlaceholder' => __('Enter Custom Meta Key', 'tka-site-utilities'),
-					'plainText' => __('Plain Text / Value', 'tka-site-utilities'),
-					'relatedPost' => __('Related Post ID or Object (Linked & Filterable)', 'tka-site-utilities'),
-					'relatedTerm' => __('Related Taxonomy Term (Linked & Filterable)', 'tka-site-utilities'),
+				'metaKeys'   => self::getAvailableMetaKeys(),
+				'taxonomies' => $post_type_taxonomies,
+				'i18n'       => [
+					'selectField'          => __('— Select a Field or Taxonomy —', 'tka-site-utilities'),
+					'taxonomiesGroup'      => __('Taxonomies', 'tka-site-utilities'),
+					'customFieldsGroup'    => __('Custom Fields (Post Meta)', 'tka-site-utilities'),
+					'enterCustomKey'       => __('— Enter Custom Key —', 'tka-site-utilities'),
+					'customKeyPlaceholder' => __('Enter Custom Meta Key or Taxonomy Slug', 'tka-site-utilities'),
+					'plainText'            => __('Plain Text / Value', 'tka-site-utilities'),
+					'taxonomy'             => __('Taxonomy Terms (Linked & Filterable)', 'tka-site-utilities'),
+					'image'                => __('Image / Thumbnail (Single)', 'tka-site-utilities'),
+					'gallery'              => __('Gallery (First Image Preview + Count)', 'tka-site-utilities'),
+					'relatedPost'          => __('Related Post ID or Object (Linked & Filterable)', 'tka-site-utilities'),
+					'relatedTerm'          => __('Related Taxonomy Term (Linked & Filterable)', 'tka-site-utilities'),
 				],
 			]);
 		}
@@ -2071,6 +2100,21 @@ class Settings
  
 													<div class="tka-setting-row">
 														<div class="tka-setting-label">
+															<strong><?php esc_html_e('Allow Videos in ACF Gallery & Image Fields', 'tka-site-utilities'); ?></strong>
+															<p><?php esc_html_e('Allows uploading and selecting video files (MP4, WebM, MOV) in ACF Gallery and Image fields without encountering "valid image" validation errors in the WordPress media modal or post save.', 'tka-site-utilities'); ?>
+															</p>
+														</div>
+														<div class="tka-setting-control">
+															<label class="tka-switch">
+																<input type="checkbox" name="tka_site_utilities_options[acf_allow_videos]"
+																	value="1" <?php checked(1, $options['acf_allow_videos'] ?? 0); ?>>
+																<span class="tka-slider"></span>
+															</label>
+														</div>
+													</div>
+
+													<div class="tka-setting-row">
+														<div class="tka-setting-label">
 															<strong><?php esc_html_e('Auto-Inject Video Poster Field', 'tka-site-utilities'); ?></strong>
 															<p><?php esc_html_e('Automatically registers a "Video Poster Image" ACF field to all video attachments in the Media Library, allowing you to easily assign fallback cover images to MP4 uploads.', 'tka-site-utilities'); ?>
 																<br><span style="color: var(--tka-primary); font-weight: 600;"><?php esc_html_e('Field Name:', 'tka-site-utilities'); ?> <code>video_poster_image</code></span>
@@ -3351,6 +3395,30 @@ class Settings
 												</div>
 											</div>
 
+											<div class="tka-setting-row">
+												<div class="tka-setting-label">
+													<strong><?php esc_html_e('From Email', 'tka-site-utilities'); ?></strong>
+													<p class="description"><?php esc_html_e('Sender address used for outgoing emails. For Hostpoint, this must match your mailbox username or an authorized domain alias.', 'tka-site-utilities'); ?></p>
+												</div>
+												<div class="tka-setting-control">
+													<input type="email" name="tka_site_utilities_options[smtp_from_email]"
+														value="<?php echo esc_attr($options['smtp_from_email'] ?? ''); ?>"
+														placeholder="noreply@example.com" class="regular-text">
+												</div>
+											</div>
+
+											<div class="tka-setting-row">
+												<div class="tka-setting-label">
+													<strong><?php esc_html_e('From Name', 'tka-site-utilities'); ?></strong>
+													<p class="description"><?php esc_html_e('Display name used as the sender. If empty, the site title is used.', 'tka-site-utilities'); ?></p>
+												</div>
+												<div class="tka-setting-control">
+													<input type="text" name="tka_site_utilities_options[smtp_from_name]"
+														value="<?php echo esc_attr($options['smtp_from_name'] ?? ''); ?>"
+														placeholder="<?php echo esc_attr(get_bloginfo('name')); ?>" class="regular-text">
+												</div>
+											</div>
+
 										</div>
 									</section>
 
@@ -3475,7 +3543,9 @@ class Settings
 											<!-- Twin container panels dynamically shown via JS selector -->
 											<div class="tka-columns-manager-panels-wrap" style="width: 100%; margin-top: 15px;">
 												<?php foreach ($public_post_types as $post_type):
-													$post_type_cols = $columns[$post_type->name] ?? [];
+													$post_type_cols   = $columns[$post_type->name] ?? [];
+													$post_taxonomies  = get_object_taxonomies($post_type->name, 'objects');
+													$post_tax_names   = array_keys($post_taxonomies);
 													?>
 														<div class="tka-columns-post-type-panel"
 															id="tka-columns-panel-<?php echo esc_attr($post_type->name); ?>"
@@ -3488,7 +3558,7 @@ class Settings
 																<div class="tka-col-hdr tka-hdr-label">
 																	<?php esc_html_e('Column Header Label', 'tka-site-utilities'); ?></div>
 																<div class="tka-col-hdr tka-hdr-key">
-																	<?php esc_html_e('Database Meta Field Key', 'tka-site-utilities'); ?></div>
+																	<?php esc_html_e('Database Meta / Taxonomy Key', 'tka-site-utilities'); ?></div>
 																<div class="tka-col-hdr tka-hdr-type">
 																	<?php esc_html_e('Field Type & Linkage', 'tka-site-utilities'); ?></div>
 																<div class="tka-col-hdr tka-hdr-actions" style="width: 50px;"></div>
@@ -3498,8 +3568,8 @@ class Settings
 																style="display: flex; flex-direction: column; gap: 10px; width: 100%;">
 																<?php if (!empty($post_type_cols)):
 																	foreach ($post_type_cols as $index => $col):
-																		$meta_val = $col['meta_key'] ?? '';
-																		$is_custom = !empty($meta_val) && !in_array($meta_val, $available_keys, true);
+																		$meta_val  = $col['meta_key'] ?? '';
+																		$is_custom = !empty($meta_val) && !in_array($meta_val, $available_keys, true) && !in_array($meta_val, $post_tax_names, true);
 																		?>
 																				<div class="tka-column-row-item">
 																					<!-- Drag Handle -->
@@ -3524,12 +3594,26 @@ class Settings
 																							<div class="tka-meta-key-selector-wrap">
 																								<select class="tka-meta-key-select">
 																									<option value="">
-																										<?php esc_html_e('— Select a Field —', 'tka-site-utilities'); ?>
+																										<?php esc_html_e('— Select a Field or Taxonomy —', 'tka-site-utilities'); ?>
 																									</option>
-																									<?php foreach ($available_keys as $key): ?>
-																											<option value="<?php echo esc_attr($key); ?>" <?php selected($meta_val, $key); ?>>
-																												<?php echo esc_html($key); ?></option>
-																									<?php endforeach; ?>
+																									<?php if (!empty($post_taxonomies)): ?>
+																										<optgroup label="<?php esc_attr_e('Taxonomies', 'tka-site-utilities'); ?>">
+																											<?php foreach ($post_taxonomies as $tax): ?>
+																												<option value="<?php echo esc_attr($tax->name); ?>" data-is-taxonomy="1" data-label="<?php echo esc_attr($tax->labels->name); ?>" <?php selected($meta_val, $tax->name); ?>>
+																													<?php echo esc_html($tax->labels->name . ' (' . $tax->name . ')'); ?>
+																												</option>
+																											<?php endforeach; ?>
+																										</optgroup>
+																									<?php endif; ?>
+																									<?php if (!empty($available_keys)): ?>
+																										<optgroup label="<?php esc_attr_e('Custom Fields (Post Meta)', 'tka-site-utilities'); ?>">
+																											<?php foreach ($available_keys as $key): ?>
+																												<option value="<?php echo esc_attr($key); ?>" <?php selected($meta_val, $key); ?>>
+																													<?php echo esc_html($key); ?>
+																												</option>
+																											<?php endforeach; ?>
+																										</optgroup>
+																									<?php endif; ?>
 																									<option value="__custom__" <?php selected($is_custom); ?>>
 																										<?php esc_html_e('— Enter Custom Key —', 'tka-site-utilities'); ?>
 																									</option>
@@ -3537,7 +3621,7 @@ class Settings
 																								<input type="text" class="tka-meta-key-input"
 																									name="tka_site_utilities_columns[<?php echo esc_attr($post_type->name); ?>][<?php echo intval($index); ?>][meta_key]"
 																									value="<?php echo esc_attr($meta_val); ?>"
-																									placeholder="<?php esc_attr_e('Enter Custom Meta Key', 'tka-site-utilities'); ?>"
+																									placeholder="<?php esc_attr_e('Enter Custom Meta Key or Taxonomy Slug', 'tka-site-utilities'); ?>"
 																									style="font-family: monospace; <?php echo $is_custom ? 'display: block;' : 'display: none;'; ?>">
 																							</div>
 																						</div>
@@ -3550,11 +3634,20 @@ class Settings
 																								<option value="text" <?php selected($col['field_type'] ?? 'text', 'text'); ?>>
 																									<?php esc_html_e('Plain Text / Value', 'tka-site-utilities'); ?>
 																								</option>
+																								<option value="taxonomy" <?php selected($col['field_type'] ?? 'text', 'taxonomy'); ?>>
+																									<?php esc_html_e('Taxonomy Terms (Linked & Filterable)', 'tka-site-utilities'); ?>
+																								</option>
+																								<option value="image" <?php selected($col['field_type'] ?? 'text', 'image'); ?>>
+																									<?php esc_html_e('Image / Thumbnail (Single)', 'tka-site-utilities'); ?>
+																								</option>
+																								<option value="gallery" <?php selected($col['field_type'] ?? 'text', 'gallery'); ?>>
+																									<?php esc_html_e('Gallery (First Image Preview + Count)', 'tka-site-utilities'); ?>
+																								</option>
 																								<option value="post_relation" <?php selected($col['field_type'] ?? 'text', 'post_relation'); ?>>
 																									<?php esc_html_e('Related Post ID or Object (Linked & Filterable)', 'tka-site-utilities'); ?>
 																								</option>
 																								<option value="term_relation" <?php selected($col['field_type'] ?? 'text', 'term_relation'); ?>>
-																									<?php esc_html_e('Related Taxonomy Term (Linked & Filterable)', 'tka-site-utilities'); ?>
+																									<?php esc_html_e('Related Taxonomy Term Field (Linked & Filterable)', 'tka-site-utilities'); ?>
 																								</option>
 																							</select>
 																						</div>
@@ -4205,9 +4298,9 @@ class Settings
 			}
 		}
 
-		if ($request_method === 'POST' && isset($_POST['tka_license_nonce']) && wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['tka_license_nonce'])), 'tka_license_action')) {
-			$action = isset($_POST['tka_license_action_type']) ? sanitize_text_field(wp_unslash($_POST['tka_license_action_type'])) : '';
-			$license_key = isset($_POST['tka_license_key']) ? sanitize_text_field(wp_unslash($_POST['tka_license_key'])) : '';
+		if ($request_method === 'POST' && isset($_POST['tka_site_utilities_license_nonce']) && wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['tka_site_utilities_license_nonce'])), 'tka_site_utilities_license_action')) {
+			$action = isset($_POST['tka_site_utilities_license_action_type']) ? sanitize_text_field(wp_unslash($_POST['tka_site_utilities_license_action_type'])) : '';
+			$license_key = isset($_POST['tka_site_utilities_license_key']) ? sanitize_text_field(wp_unslash($_POST['tka_site_utilities_license_key'])) : '';
 
 			$server_url = 'https://plugins.thekitchen.agency';
 
@@ -4312,13 +4405,13 @@ class Settings
 							<?php endif; ?>
 
 							<form action="" method="post">
-								<?php wp_nonce_field('tka_license_action', 'tka_license_nonce'); ?>
+								<?php wp_nonce_field('tka_site_utilities_license_action', 'tka_site_utilities_license_nonce'); ?>
 								
 								<table class="form-table" style="margin-bottom: 20px;">
 									<tr>
-										<th scope="row"><label for="tka_license_key"><?php esc_html_e('License Key', 'tka-site-utilities'); ?></label></th>
+										<th scope="row"><label for="tka_site_utilities_license_key"><?php esc_html_e('License Key', 'tka-site-utilities'); ?></label></th>
 										<td>
-											<input type="text" id="tka_license_key" name="tka_license_key" value="<?php echo esc_attr($current_key); ?>" class="regular-text tka-input" style="width: 100%; max-width: 400px;" <?php echo $is_really_active ? 'readonly' : ''; ?> />
+											<input type="text" id="tka_site_utilities_license_key" name="tka_site_utilities_license_key" value="<?php echo esc_attr($current_key); ?>" class="regular-text tka-input" style="width: 100%; max-width: 400px;" <?php echo $is_really_active ? 'readonly' : ''; ?> />
 											<p class="description" style="color: var(--tka-text-muted); margin-top: 5px;"><?php esc_html_e('Enter your license key provided by TKA Systems.', 'tka-site-utilities'); ?></p>
 										</td>
 									</tr>
@@ -4326,10 +4419,10 @@ class Settings
 								
 								<p class="submit" style="margin: 0; padding: 0;">
 									<?php if ($is_really_active): ?>
-										<input type="hidden" name="tka_license_action_type" value="deactivate">
+										<input type="hidden" name="tka_site_utilities_license_action_type" value="deactivate">
 										<button type="submit" class="tka-btn tka-btn-danger"><?php esc_html_e('Deactivate License', 'tka-site-utilities'); ?></button>
 									<?php else: ?>
-										<input type="hidden" name="tka_license_action_type" value="activate">
+										<input type="hidden" name="tka_site_utilities_license_action_type" value="activate">
 										<button type="submit" class="tka-btn tka-btn-primary"><?php esc_html_e('Activate License', 'tka-site-utilities'); ?></button>
 									<?php endif; ?>
 								</p>

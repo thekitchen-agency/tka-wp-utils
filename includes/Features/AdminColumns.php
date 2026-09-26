@@ -64,7 +64,30 @@ class AdminColumns {
 
 					$meta_key   = $col['meta_key'];
 					$label      = $col['label'] ?? $meta_key;
-					$field_type = $col['field_type'];
+					$field_type = $col['field_type'] ?? 'text';
+
+					// Handle direct Taxonomy Terms filter
+					if ( 'taxonomy' === $field_type || ( 'text' === $field_type && taxonomy_exists( $meta_key ) ) ) {
+						$terms = get_terms( [
+							'taxonomy'   => $meta_key,
+							'hide_empty' => false,
+						] );
+						if ( empty( $terms ) || is_wp_error( $terms ) ) {
+							continue;
+						}
+
+						// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+						$selected_slug = isset( $_GET[ 'tka_tax_' . $meta_key ] ) ? sanitize_text_field( wp_unslash( $_GET[ 'tka_tax_' . $meta_key ] ) ) : '';
+
+						echo '<select name="' . esc_attr( 'tka_tax_' . $meta_key ) . '" id="' . esc_attr( 'tka_tax_' . $meta_key ) . '" style="max-width: 200px;">';
+						/* translators: %s: Column label */
+						echo '<option value="">' . esc_html( sprintf( __( 'All %s', 'tka-site-utilities' ), $label ) ) . '</option>';
+						foreach ( $terms as $term ) {
+							echo '<option value="' . esc_attr( $term->slug ) . '"' . selected( $selected_slug, $term->slug, false ) . '>' . esc_html( $term->name ) . ' (' . intval( $term->count ) . ')</option>';
+						}
+						echo '</select>';
+						continue;
+					}
 
 					$cache_key   = 'tka_distinct_meta_' . md5( $meta_key );
 					$cache_group = 'tka-site-utilities';
@@ -167,11 +190,38 @@ class AdminColumns {
 				$added_to_meta_query = false;
 
 				foreach ( $custom_cols as $col ) {
-					if ( empty( $col['meta_key'] ) || empty( $col['field_type'] ) || ( 'post_relation' !== $col['field_type'] && 'term_relation' !== $col['field_type'] ) ) {
+					if ( empty( $col['meta_key'] ) ) {
 						continue;
 					}
 
-					$meta_key     = $col['meta_key'];
+					$meta_key   = $col['meta_key'];
+					$field_type = $col['field_type'] ?? 'text';
+
+					// Handle taxonomy filtering in query
+					if ( 'taxonomy' === $field_type || ( 'text' === $field_type && taxonomy_exists( $meta_key ) ) ) {
+						$tax_param = 'tka_tax_' . $meta_key;
+						// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+						if ( ! empty( $_GET[ $tax_param ] ) ) {
+							// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+							$slug = sanitize_text_field( wp_unslash( $_GET[ $tax_param ] ) );
+							$tax_query = $query->get( 'tax_query' );
+							if ( ! is_array( $tax_query ) ) {
+								$tax_query = [];
+							}
+							$tax_query[] = [
+								'taxonomy' => $meta_key,
+								'field'    => 'slug',
+								'terms'    => $slug,
+							];
+							$query->set( 'tax_query', $tax_query );
+						}
+						continue;
+					}
+
+					if ( 'post_relation' !== $field_type && 'term_relation' !== $field_type ) {
+						continue;
+					}
+
 					$filter_param = 'tka_filter_' . $meta_key;
 
 					// phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -249,7 +299,24 @@ class AdminColumns {
 		$value      = get_post_meta( $post_id, $meta_key, true );
 		$field_type = $col_config['field_type'] ?? 'text';
 
-		if ( 'post_relation' === $field_type ) {
+		if ( 'taxonomy' === $field_type || ( 'text' === $field_type && taxonomy_exists( $meta_key ) ) ) {
+			$terms = get_the_terms( $post_id, $meta_key );
+			if ( empty( $terms ) || is_wp_error( $terms ) ) {
+				echo '<span class="tka-column-empty">—</span>';
+				return;
+			}
+
+			$links = [];
+			foreach ( $terms as $term ) {
+				$term_link = get_edit_term_link( $term->term_id, $term->taxonomy );
+				if ( $term_link && current_user_can( 'edit_term', $term->term_id ) ) {
+					$links[] = '<a href="' . esc_url( $term_link ) . '" class="tka-related-post-link"><strong>' . esc_html( $term->name ) . '</strong></a>';
+				} else {
+					$links[] = esc_html( $term->name );
+				}
+			}
+			echo wp_kses_post( implode( ', ', $links ) );
+		} elseif ( 'post_relation' === $field_type ) {
 			$related_ids = [];
 			if ( is_numeric( $value ) ) {
 				$related_ids[] = intval( $value );
@@ -368,7 +435,90 @@ class AdminColumns {
 					$links[] = esc_html( $title );
 				}
 			}
-			echo wp_kses_post( implode( ', ', $links ) );
+		} elseif ( 'image' === $field_type || 'gallery' === $field_type ) {
+			$image_id  = 0;
+			$image_url = '';
+			$count     = 0;
+
+			// Check ACF formatted value first if available, otherwise raw post meta
+			$raw = function_exists( 'get_field' ) ? get_field( $meta_key, $post_id ) : null;
+			if ( empty( $raw ) ) {
+				$raw = $value;
+			}
+
+			if ( 'gallery' === $field_type ) {
+				$gallery_items = [];
+				if ( is_array( $raw ) ) {
+					$gallery_items = $raw;
+				} elseif ( is_string( $raw ) && is_serialized( $raw ) ) {
+					$unserialized = maybe_unserialize( $raw );
+					if ( is_array( $unserialized ) ) {
+						$gallery_items = $unserialized;
+					}
+				} elseif ( is_string( $raw ) && ! empty( $raw ) ) {
+					$gallery_items = array_filter( array_map( 'trim', explode( ',', $raw ) ) );
+				}
+
+				$count = count( $gallery_items );
+				if ( $count > 0 ) {
+					$first = reset( $gallery_items );
+					if ( is_numeric( $first ) ) {
+						$image_id = intval( $first );
+					} elseif ( is_array( $first ) && isset( $first['ID'] ) ) {
+						$image_id = intval( $first['ID'] );
+					} elseif ( is_object( $first ) && isset( $first->ID ) ) {
+						$image_id = intval( $first->ID );
+					} elseif ( is_string( $first ) && filter_var( $first, FILTER_VALIDATE_URL ) ) {
+						$image_url = $first;
+					}
+				}
+			} else {
+				if ( is_numeric( $raw ) ) {
+					$image_id = intval( $raw );
+				} elseif ( is_array( $raw ) && isset( $raw['ID'] ) ) {
+					$image_id = intval( $raw['ID'] );
+				} elseif ( is_object( $raw ) && isset( $raw->ID ) ) {
+					$image_id = intval( $raw->ID );
+				} elseif ( is_string( $raw ) && is_serialized( $raw ) ) {
+					$unserialized = maybe_unserialize( $raw );
+					if ( is_numeric( $unserialized ) ) {
+						$image_id = intval( $unserialized );
+					} elseif ( is_array( $unserialized ) && isset( $unserialized['ID'] ) ) {
+						$image_id = intval( $unserialized['ID'] );
+					}
+				} elseif ( is_string( $raw ) && filter_var( $raw, FILTER_VALIDATE_URL ) ) {
+					$image_url = $raw;
+				}
+			}
+
+			if ( ! empty( $image_id ) ) {
+				$thumb = wp_get_attachment_image_url( $image_id, 'thumbnail' );
+				if ( ! empty( $thumb ) ) {
+					$image_url = $thumb;
+				}
+			}
+
+			if ( empty( $image_url ) ) {
+				echo '<span class="tka-column-empty">—</span>';
+				return;
+			}
+
+			$edit_url   = ! empty( $image_id ) ? get_edit_post_link( $image_id ) : '';
+			$badge_html = ( 'gallery' === $field_type && $count > 1 ) ? '<span class="tka-column-gallery-badge">+' . ( $count - 1 ) . '</span>' : '';
+
+			echo '<div class="tka-column-thumb-wrap">';
+			if ( $edit_url && current_user_can( 'edit_post', $image_id ) ) {
+				echo '<a href="' . esc_url( $edit_url ) . '" class="tka-column-thumb-link" title="' . esc_attr__( 'View / Edit media attachment', 'tka-site-utilities' ) . '">';
+				echo '<img src="' . esc_url( $image_url ) . '" alt="" class="tka-column-thumb-img">';
+				echo $badge_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo '</a>';
+			} else {
+				echo '<span class="tka-column-thumb-link">';
+				echo '<img src="' . esc_url( $image_url ) . '" alt="" class="tka-column-thumb-img">';
+				echo $badge_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				echo '</span>';
+			}
+			echo '</div>';
 		} else {
 			if ( is_array( $value ) ) {
 				echo esc_html( implode( ', ', $value ) );

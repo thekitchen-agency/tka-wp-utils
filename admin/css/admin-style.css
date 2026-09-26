@@ -958,6 +958,53 @@
 	color: var(--tka-text-muted);
 }
 
+/* Post list custom image & gallery thumbnails */
+.tka-column-thumb-wrap {
+	display: inline-flex;
+	position: relative;
+	vertical-align: middle;
+}
+
+.tka-column-thumb-link {
+	display: inline-block;
+	position: relative;
+	line-height: 0;
+	border-radius: 6px;
+	overflow: hidden;
+	background: #f1f5f9;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.06);
+	transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+a.tka-column-thumb-link:hover {
+	transform: scale(1.08);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18), 0 0 0 1.5px var(--tka-primary);
+	z-index: 2;
+}
+
+.tka-column-thumb-img {
+	width: 44px;
+	height: 44px;
+	object-fit: cover;
+	display: block;
+}
+
+.tka-column-gallery-badge {
+	position: absolute;
+	bottom: 2px;
+	right: 2px;
+	background: rgba(15, 23, 42, 0.85);
+	backdrop-filter: blur(4px);
+	color: #ffffff;
+	font-size: 10px;
+	font-weight: 700;
+	padding: 1px 4px;
+	border-radius: 4px;
+	line-height: 1.2;
+	pointer-events: none;
+	letter-spacing: 0.2px;
+}
+
 /* Bulk Optimizer Table & Badges */
 .tka-table {
 	width: 100%;

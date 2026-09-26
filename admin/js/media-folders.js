@@ -67,7 +67,30 @@
 		return;
 	}
 
-	// Plupload event bindings handle uploader integration natively.
+	// Globally hook wp.Uploader to ensure any uploader instances automatically pass the active folder
+	if (wp.Uploader) {
+		var origUploaderInit = wp.Uploader.prototype.init;
+		wp.Uploader.prototype.init = function () {
+			var res = origUploaderInit.apply(this, arguments);
+			if (this.uploader) {
+				this.uploader.bind('BeforeUpload', function (up, file) {
+					var $active = $('.tka-media-folders-sidebar .tka-folder-item.active');
+					var activeFolder = $active.length ? $active.attr('data-id') : null;
+					var targetFolder = file._tkaTargetFolder || activeFolder;
+
+					if (targetFolder && targetFolder !== 'unassigned' && targetFolder !== '') {
+						up.settings.multipart_params = up.settings.multipart_params || {};
+						up.settings.multipart_params.tka_folder_id = targetFolder;
+						up.settings.multipart_params.media_folder = targetFolder;
+					} else if (up.settings.multipart_params) {
+						delete up.settings.multipart_params.tka_folder_id;
+						delete up.settings.multipart_params.media_folder;
+					}
+				});
+			}
+			return res;
+		};
+	}
 
 	var AttachmentsBrowser = wp.media.view.AttachmentsBrowser;
 
@@ -78,7 +101,9 @@
 			AttachmentsBrowser.prototype.initialize.apply(this, arguments);
 			this.foldersSidebar = null;
 
-			// Listen to collection changes to reload folder tree counts
+			// Listen to custom refresh event or collection changes to reload folder tree counts
+			window.addEventListener('tka_refresh_folders', _.debounce(_.bind(this.loadFolderTree, this), 100));
+
 			if (this.collection) {
 				this.listenTo(this.collection, 'remove destroy', _.debounce(_.bind(this.loadFolderTree, this), 100));
 			}
@@ -511,11 +536,25 @@
 						var activeFolder = self.foldersSidebar.find('.tka-folder-item.active').attr('data-id');
 						if (activeFolder !== '' && activeFolder !== folderId) {
 							ids.forEach(function (id) {
-								var model = self.collection.get(id);
+								var model = self.collection.get(id) || self.collection.get(parseInt(id, 10));
 								if (model) {
 									self.collection.remove(model);
 								}
 							});
+
+							// Also sync selection in frame controller
+							var activeFrame = (self.controller && self.controller.state) ? self.controller : wp.media.frame;
+							if (activeFrame && activeFrame.state && activeFrame.state()) {
+								var selection = activeFrame.state().get('selection');
+								if (selection) {
+									ids.forEach(function (id) {
+										var selModel = selection.get(id) || selection.get(parseInt(id, 10));
+										if (selModel) {
+											selection.remove(selModel);
+										}
+									});
+								}
+							}
 						}
 					} else {
 						alert(response.data.message);
@@ -552,8 +591,22 @@
 				if (!plObj._tkaProgressHooked) {
 					plObj._tkaProgressHooked = true;
 
+					plObj.bind('BeforeUpload', function (up, file) {
+						var activeFolder = self.foldersSidebar ? self.foldersSidebar.find('.tka-folder-item.active').attr('data-id') : null;
+						var targetFolder = file._tkaTargetFolder || activeFolder;
+
+						if (targetFolder && targetFolder !== 'unassigned' && targetFolder !== '') {
+							up.settings.multipart_params = up.settings.multipart_params || {};
+							up.settings.multipart_params.tka_folder_id = targetFolder;
+							up.settings.multipart_params.media_folder = targetFolder;
+						} else if (up.settings.multipart_params) {
+							delete up.settings.multipart_params.tka_folder_id;
+							delete up.settings.multipart_params.media_folder;
+						}
+					});
+
 					plObj.bind('FilesAdded', function (up, files) {
-						var activeFolder = self.foldersSidebar.find('.tka-folder-item.active').attr('data-id');
+						var activeFolder = self.foldersSidebar ? self.foldersSidebar.find('.tka-folder-item.active').attr('data-id') : null;
 						if (activeFolder && activeFolder !== 'unassigned') {
 							// Show progress modal
 							self.showUploadProgressModal(files.length);
@@ -561,7 +614,7 @@
 					});
 
 					plObj.bind('UploadProgress', function (up, file) {
-						var activeFolder = self.foldersSidebar.find('.tka-folder-item.active').attr('data-id');
+						var activeFolder = self.foldersSidebar ? self.foldersSidebar.find('.tka-folder-item.active').attr('data-id') : null;
 						if (activeFolder && activeFolder !== 'unassigned') {
 							// Calculate overall progress across files
 							var uploadedCount = up.files.length - up.total.queued;
@@ -573,36 +626,47 @@
 
 					plObj.bind('FileUploaded', function (up, file, info) {
 						try {
-							var response = JSON.parse(info.response);
-							var attachmentId = null;
+							var response = (typeof info.response === 'string') ? JSON.parse(info.response) : info.response;
+							var attachmentData = null;
 							if (response) {
 								if (response.data && response.data.id) {
-									attachmentId = response.data.id;
+									attachmentData = response.data;
 								} else if (response.id) {
-									attachmentId = response.id;
+									attachmentData = response;
 								} else if (response.data) {
-									attachmentId = response.data;
+									attachmentData = response.data;
 								}
 							}
 
-							var targetFolder = file._tkaTargetFolder;
-							if (!targetFolder) {
-								targetFolder = self.foldersSidebar.find('.tka-folder-item.active').attr('data-id');
-							}
+							if (attachmentData) {
+								var activeFolder = self.foldersSidebar ? self.foldersSidebar.find('.tka-folder-item.active').attr('data-id') : null;
+								var targetFolder = file._tkaTargetFolder || activeFolder;
 
-							if (targetFolder && targetFolder !== 'unassigned' && attachmentId) {
-								self.moveAttachmentsToFolder([attachmentId], targetFolder);
+								// Fallback: in case server-side did not assign folder, trigger move AJAX
+								if (targetFolder && targetFolder !== 'unassigned' && targetFolder !== '' && (!attachmentData.media_folder || String(attachmentData.media_folder) !== String(targetFolder))) {
+									self.moveAttachmentsToFolder([attachmentData.id], targetFolder);
+								}
 
-								// Also auto-select the attachment in select/gallery frame controllers (e.g. ACF)
+								// Immediately add model to the active collection so it displays in the grid
+								if (self.collection) {
+									var existingModel = self.collection.get(attachmentData.id);
+									if (!existingModel) {
+										var shouldAdd = (activeFolder === '') || (targetFolder && String(activeFolder) === String(targetFolder));
+										if (shouldAdd) {
+											var attachmentModel = wp.media.model.Attachment.create(attachmentData);
+											self.collection.add(attachmentModel, { at: 0 });
+										}
+									}
+								}
+
+								// Auto-select the attachment in select/gallery frame controllers (e.g. ACF)
 								if (self.controller && self.controller.state) {
 									var state = self.controller.state();
 									if (state) {
 										var selection = state.get('selection');
 										if (selection) {
-											var attachmentModel = wp.media.model.Attachment.create({ id: attachmentId });
-											attachmentModel.fetch().done(function () {
-												selection.add(attachmentModel);
-											});
+											var selModel = wp.media.model.Attachment.create(attachmentData);
+											selection.add(selModel);
 										}
 									}
 								}
@@ -613,14 +677,11 @@
 					});
 
 					plObj.bind('UploadComplete', function (up, files) {
-						// Hide progress modal after a delay and refresh tree/collection
+						// Hide progress modal after a delay and refresh folder tree counts
 						setTimeout(function () {
 							self.hideUploadProgressModal();
 							self.loadFolderTree();
-							if (self.collection) {
-								self.collection.props.set('tka_force_refresh', Date.now());
-							}
-						}, 1000);
+						}, 500);
 					});
 
 					plObj.bind('Error', function (up, err) {
@@ -785,26 +846,15 @@
 
 	// --- Draggable Attachment Event Delegation ---
 
-	// Pre-condition: Make attachment grids draggable when mouse enters
+	// Pre-condition: Make attachment items draggable
 	$(document).on('mouseenter', '.attachments-browser .attachment', function () {
-		var isSelectMode = $(this).closest('.media-frame').hasClass('mode-select') || $(this).closest('.attachments-browser').hasClass('fixed');
-		if (isSelectMode) {
-			$(this).removeAttr('draggable');
-		} else {
-			if (!$(this).attr('draggable')) {
-				$(this).attr('draggable', 'true');
-			}
+		if (!$(this).attr('draggable')) {
+			$(this).attr('draggable', 'true');
 		}
 	});
 
 	// Handle DragStart event
 	$(document).on('dragstart', '.attachments-browser .attachment', function (e) {
-		var isSelectMode = $(this).closest('.media-frame').hasClass('mode-select') || $(this).closest('.attachments-browser').hasClass('fixed');
-		if (isSelectMode) {
-			e.preventDefault();
-			return;
-		}
-
 		var draggedId = parseInt($(this).attr('data-id'), 10);
 		if (!draggedId) {
 			return;
@@ -816,16 +866,28 @@
 		var selectedIds = [];
 		var activeFrame = wp.media.frame;
 
-		if (activeFrame && activeFrame.state()) {
+		if (activeFrame && activeFrame.state && activeFrame.state()) {
 			var selection = activeFrame.state().get('selection');
 			if (selection && selection.length > 0) {
 				selection.each(function (attachment) {
-					selectedIds.push(attachment.id);
+					var id = attachment.id || (attachment.get && attachment.get('id'));
+					if (id && selectedIds.indexOf(id) === -1) {
+						selectedIds.push(id);
+					}
 				});
 			}
 		}
 
-		// If dragged item is not in selection, default to just dragging the dragged item
+		// Also check DOM for any selected attachments
+		var $browser = $(this).closest('.attachments-browser');
+		$browser.find('.attachments .attachment.selected, .attachments .attachment.details').each(function () {
+			var id = parseInt($(this).attr('data-id'), 10);
+			if (id && selectedIds.indexOf(id) === -1) {
+				selectedIds.push(id);
+			}
+		});
+
+		// If dragged item is not part of the multi-selection, default to just dragging the dragged item
 		if (selectedIds.indexOf(draggedId) === -1) {
 			selectedIds = [draggedId];
 		}
@@ -837,26 +899,32 @@
 		e.originalEvent.dataTransfer.setData('text/plain', JSON.stringify(dragData));
 		e.originalEvent.dataTransfer.effectAllowed = 'move';
 
-		// Style feedback during dragging
-		$(this).css('opacity', '0.4');
+		// Style feedback during dragging for all dragged items
+		if (selectedIds.length > 1) {
+			selectedIds.forEach(function (id) {
+				$('.attachments-browser .attachment[data-id="' + id + '"]').css('opacity', '0.4');
+			});
+		} else {
+			$(this).css('opacity', '0.4');
+		}
 	});
 
 	// Clear drag styling on end
 	$(document).on('dragend', '.attachments-browser .attachment', function () {
 		$('body').removeClass('tka-dragging-attachment');
-		$(this).css('opacity', '');
+		$('.attachments-browser .attachment').css('opacity', '');
 	});
 
 	// Prevent mousedown/mouseup on delete buttons in the capture phase to stop focus changes
 	document.addEventListener('mousedown', function (e) {
-		if (e.target && e.target.closest && e.target.closest('.delete-selected-button, .button-link-delete, .delete-attachment')) {
+		if (e.target && e.target.closest && e.target.closest('.delete-selected-button, .delete-selected-permanently-button, .button-link-delete, .delete-attachment')) {
 			e.stopPropagation();
 			e.preventDefault();
 		}
 	}, true);
 
 	document.addEventListener('mouseup', function (e) {
-		if (e.target && e.target.closest && e.target.closest('.delete-selected-button, .button-link-delete, .delete-attachment')) {
+		if (e.target && e.target.closest && e.target.closest('.delete-selected-button, .delete-selected-permanently-button, .button-link-delete, .delete-attachment')) {
 			e.stopPropagation();
 			e.preventDefault();
 		}
@@ -864,13 +932,19 @@
 
 	// Intercept click on delete buttons in the capture phase to replace window.confirm
 	document.addEventListener('click', function (e) {
-		var target = e.target && e.target.closest && e.target.closest('.delete-selected-button, .button-link-delete, .delete-attachment');
+		var target = e.target && e.target.closest && e.target.closest('.delete-selected-button, .delete-selected-permanently-button, .button-link-delete, .delete-attachment');
 		if (target) {
 			e.stopPropagation();
 			e.preventDefault();
 
-			if (target.classList.contains('delete-attachment')) {
-				var activeFrame = wp.media.frames.edit || wp.media.frame;
+			var l10n = (wp.media.view && wp.media.view.l10n) ? wp.media.view.l10n : {};
+			var mediaTrash = (wp.media.view.settings && wp.media.view.settings.mediaTrash);
+
+			// Check if single attachment delete (modal or sidebar details view)
+			var isSingleDelete = target.classList.contains('delete-attachment') || target.classList.contains('button-link-delete');
+
+			if (isSingleDelete) {
+				var activeFrame = wp.media.frames.edit || wp.media.frames.browse || wp.media.frame;
 				var model = null;
 				if (activeFrame) {
 					if (activeFrame.model) {
@@ -878,36 +952,98 @@
 					} else if (activeFrame.state && activeFrame.state()) {
 						var selection = activeFrame.state().get('selection');
 						if (selection && selection.length > 0) {
-							model = selection.single();
+							model = selection.single ? selection.single() : selection.at(0);
 						}
 					}
 				}
+
 				if (model) {
-					var message = 'Are you sure you want to permanently delete this item?';
-					if (wp.media.view.l10n && wp.media.view.l10n.warnDelete) {
-						message = wp.media.view.l10n.warnDelete;
+					var message = l10n.warnDelete || 'Are you sure you want to permanently delete this item?';
+					if (mediaTrash && model.get('status') !== 'trash') {
+						message = l10n.warnTrash || 'Are you sure you want to move this item to the trash?';
 					}
+
 					showCustomConfirm(message, function () {
-						model.destroy();
+						var id = model.id;
+						var isTrash = mediaTrash && model.get('status') !== 'trash';
+						var p;
+
+						if (isTrash) {
+							model.set('status', 'trash');
+							p = model.save();
+						} else {
+							p = model.destroy({ wait: true });
+						}
+
+						$.when(p).always(function () {
+							if (activeFrame && activeFrame.state && activeFrame.state()) {
+								var library = activeFrame.state().get('library');
+								if (library) {
+									if (typeof library._requery === 'function') {
+										library._requery(true);
+									}
+									var m = library.get(id);
+									if (m) {
+										library.remove(m);
+									}
+								}
+							}
+							if (wp.media.frames.edit) {
+								wp.media.frames.edit.close();
+							}
+							window.dispatchEvent(new CustomEvent('tka_refresh_folders'));
+						});
 					});
 				}
 			} else {
-				var activeFrame = wp.media.frame;
-				if (activeFrame && activeFrame.state()) {
+				// Bulk delete
+				var activeFrame = wp.media.frames.browse || wp.media.frame;
+				if (activeFrame && activeFrame.state && activeFrame.state()) {
 					var selection = activeFrame.state().get('selection');
+					var library = activeFrame.state().get('library');
+
 					if (selection && selection.length > 0) {
-						var message = 'Are you sure you want to permanently delete these items?';
-						if (wp.media.view.l10n && wp.media.view.l10n.warnBulkDelete) {
-							message = wp.media.view.l10n.warnBulkDelete;
+						var models = selection.toArray();
+						var isTrash = mediaTrash && models[0] && models[0].get('status') !== 'trash';
+						var message = l10n.warnBulkDelete || 'Are you sure you want to permanently delete these items?';
+						if (isTrash) {
+							message = l10n.warnBulkTrash || 'Are you sure you want to move these items to the trash?';
 						}
+
 						showCustomConfirm(message, function () {
+							var changed = [];
 							var removed = [];
-							selection.each(function (model) {
-								model.destroy({ wait: true });
-								removed.push(model);
+
+							models.forEach(function (m) {
+								if (isTrash) {
+									m.set('status', 'trash');
+									changed.push(m.save());
+									removed.push(m);
+								} else {
+									changed.push(m.destroy({ wait: true }));
+									removed.push(m);
+								}
 							});
-							selection.remove(removed);
-							activeFrame.trigger('selection:action:done');
+
+							$.when.apply($, changed).always(function () {
+								selection.remove(removed);
+								if (library) {
+									if (typeof library._requery === 'function') {
+										library._requery(true);
+									}
+									removed.forEach(function (m) {
+										var libModel = library.get(m.id);
+										if (libModel) {
+											library.remove(libModel);
+										}
+									});
+								}
+								activeFrame.trigger('selection:action:done');
+								if (activeFrame.deactivateMode) {
+									activeFrame.deactivateMode('select').activateMode('edit');
+								}
+								window.dispatchEvent(new CustomEvent('tka_refresh_folders'));
+							});
 						});
 					}
 				}

@@ -45,6 +45,10 @@ class AcfManager
 			add_action('acf/init', [$this, 'registerVideoPosterFieldGroup']);
 		}
 
+		if (!empty($this->options['acf_allow_videos'])) {
+			$this->enableVideoSupport();
+		}
+
 		if (!$acfe_active) {
 			if (!empty($this->options['acf_copy_paste'])) {
 				add_action('admin_enqueue_scripts', [$this, 'enqueueCopyPasteAssets']);
@@ -534,5 +538,208 @@ class AcfManager
 				'show_in_rest' => 1,
 			));
 		}
+	}
+
+	/**
+	 * Enable MP4/WebM/MOV video uploads and selection in ACF Gallery and Image fields.
+	 */
+	public function enableVideoSupport(): void
+	{
+		add_filter('upload_mimes', [$this, 'filterUploadMimes']);
+		add_filter('wp_check_filetype_and_ext', [$this, 'filterCheckFiletypeAndExt'], 10, 4);
+		add_filter('ajax_query_attachments_args', [$this, 'filterAjaxQueryAttachmentsArgs']);
+		add_filter('acf/load_field/type=gallery', [$this, 'filterLoadGalleryField']);
+
+		add_action('acf/init', [$this, 'removeGalleryImageValidation'], 20);
+		add_action('init', [$this, 'removeGalleryImageValidation'], 20);
+
+		add_filter('acf/validate_is_image_attachment', [$this, 'filterValidateIsImageAttachment'], 10, 5);
+		add_filter('acf/validate_attachment', [$this, 'filterValidateAttachment'], 20, 5);
+		add_filter('acf/upload_prefilter', [$this, 'filterUploadPrefilter'], 99, 3);
+		add_filter('wp_prepare_attachment_for_js', [$this, 'filterPrepareAttachmentForJs'], 99, 3);
+		add_filter('wp_handle_upload_prefilter', [$this, 'filterHandleUploadPrefilter'], 99);
+
+		add_filter('acf/validate_value', [$this, 'filterValidateValue'], 99, 4);
+		add_filter('acf/validate_rest_value/type=gallery', [$this, 'filterValidateRestValue'], 99, 3);
+		add_filter('acf/validate_rest_value/type=image', [$this, 'filterValidateRestValue'], 99, 3);
+	}
+
+	public function filterUploadMimes(array $mimes): array
+	{
+		$mimes['webm'] = 'video/webm';
+		$mimes['mp4']  = 'video/mp4';
+		$mimes['mov']  = 'video/quicktime';
+		return $mimes;
+	}
+
+	public function filterCheckFiletypeAndExt(array $data, $file, string $filename, $mimes): array
+	{
+		$ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+		if ('webm' === $ext) {
+			$data['ext']  = 'webm';
+			$data['type'] = 'video/webm';
+		} elseif ('mp4' === $ext) {
+			$data['ext']  = 'mp4';
+			$data['type'] = 'video/mp4';
+		} elseif ('mov' === $ext) {
+			$data['ext']  = 'mov';
+			$data['type'] = 'video/quicktime';
+		}
+		return $data;
+	}
+
+	public function filterAjaxQueryAttachmentsArgs(array $query): array
+	{
+		if (isset($_POST['query']['_acfuploader']) || isset($_REQUEST['_acfuploader'])) {
+			$field_key = $_POST['query']['_acfuploader'] ?? $_REQUEST['_acfuploader'];
+			$field     = acf_get_field($field_key);
+
+			if ($field) {
+				if (in_array($field['type'], ['gallery', 'file', 'image'], true)) {
+					$query['post_mime_type'] = ['image', 'video'];
+				}
+			} else {
+				$query['post_mime_type'] = ['image', 'video'];
+			}
+		}
+		return $query;
+	}
+
+	public function filterLoadGalleryField(array $field): array
+	{
+		$field['mime_types'] = '';
+		return $field;
+	}
+
+	public function removeGalleryImageValidation(): void
+	{
+		remove_filter('acf/validate_attachment/type=gallery', 'acf_validate_is_image_attachment', 10);
+	}
+
+	public function filterValidateIsImageAttachment(array $errors, $file, $attachment, $field, $context): array
+	{
+		if (isset($field['type']) && $field['type'] === 'gallery') {
+			unset($errors['invalid_image']);
+			return $errors;
+		}
+
+		$mime     = $attachment['mime'] ?? $attachment['type'] ?? '';
+		$filename = $file['name'] ?? $attachment['filename'] ?? $attachment['url'] ?? '';
+		$ext      = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+
+		if (str_starts_with($mime, 'video/') || in_array($ext, ['mp4', 'webm', 'mov', 'ogg', 'ogv'], true)) {
+			unset($errors['invalid_image']);
+		}
+
+		return $errors;
+	}
+
+	public function filterValidateAttachment(array $errors, $file, $attachment, $field, $context): array
+	{
+		if (isset($field['type']) && $field['type'] === 'gallery') {
+			unset($errors['invalid_image']);
+		}
+
+		$mime     = $attachment['mime'] ?? $attachment['type'] ?? '';
+		$filename = $file['name'] ?? $attachment['filename'] ?? $attachment['url'] ?? '';
+		$ext      = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+
+		if (str_starts_with($mime, 'video/') || in_array($ext, ['mp4', 'webm', 'mov', 'ogg', 'ogv'], true)) {
+			unset($errors['invalid_image']);
+			unset($errors['mime_types']);
+		}
+
+		return $errors;
+	}
+
+	public function filterUploadPrefilter(array $errors, array $file, array $field): array
+	{
+		$ext = strtolower(pathinfo($file['name'] ?? '', PATHINFO_EXTENSION));
+		if (in_array($ext, ['webm', 'mp4', 'mov', 'ogg', 'ogv'], true)) {
+			unset($errors['invalid_image']);
+			unset($errors['mime_types']);
+		}
+		return $errors;
+	}
+
+	public function filterPrepareAttachmentForJs(array $response, $attachment, $meta): array
+	{
+		$mime     = $response['mime'] ?? $response['type'] ?? ($attachment->post_mime_type ?? '');
+		$filename = $response['filename'] ?? (isset($response['url']) ? basename($response['url']) : '');
+		$ext      = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+
+		if (str_starts_with($mime, 'video/') || in_array($ext, ['webm', 'mp4', 'mov', 'ogg', 'ogv'], true)) {
+			$response['acf_errors'] = false;
+		}
+		return $response;
+	}
+
+	public function filterHandleUploadPrefilter(array $file): array
+	{
+		$ext = strtolower(pathinfo($file['name'] ?? '', PATHINFO_EXTENSION));
+		if (in_array($ext, ['webm', 'mp4', 'mov', 'ogg', 'ogv'], true) && isset($file['error'])) {
+			if (str_contains(strtolower($file['error']), 'image') || str_contains(strtolower($file['error']), 'type')) {
+				unset($file['error']);
+			}
+		}
+		return $file;
+	}
+
+	public function filterValidateValue($valid, $value, array $field, string $input)
+	{
+		if ($valid !== true && !empty($value)) {
+			$attachment_ids = is_array($value) ? $value : [$value];
+			$all_valid = true;
+
+			foreach ($attachment_ids as $id) {
+				if (is_numeric($id)) {
+					$is_image = wp_attachment_is_image((int) $id);
+					$mime     = (string) get_post_mime_type((int) $id);
+					$is_video = str_starts_with($mime, 'video/');
+
+					if (!$is_image && !$is_video) {
+						$all_valid = false;
+						break;
+					}
+				} else {
+					$all_valid = false;
+					break;
+				}
+			}
+
+			if ($all_valid && !empty($attachment_ids)) {
+				return true;
+			}
+		}
+		return $valid;
+	}
+
+	public function filterValidateRestValue($valid, $value, array $field)
+	{
+		if ($valid !== true && !empty($value)) {
+			$attachment_ids = is_array($value) ? $value : [$value];
+			$all_valid = true;
+
+			foreach ($attachment_ids as $id) {
+				if (is_numeric($id)) {
+					$is_image = wp_attachment_is_image((int) $id);
+					$mime     = (string) get_post_mime_type((int) $id);
+					$is_video = str_starts_with($mime, 'video/');
+
+					if (!$is_image && !$is_video) {
+						$all_valid = false;
+						break;
+					}
+				} else {
+					$all_valid = false;
+					break;
+				}
+			}
+
+			if ($all_valid && !empty($attachment_ids)) {
+				return true;
+			}
+		}
+		return $valid;
 	}
 }

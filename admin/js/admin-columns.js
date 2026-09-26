@@ -40,11 +40,25 @@ jQuery(document).ready(function($) {
 		const $select = $(this);
 		const $wrap = $select.closest('.tka-meta-key-selector-wrap');
 		const $input = $wrap.find('.tka-meta-key-input');
+		const $row = $select.closest('.tka-column-row-item');
+		const $labelInput = $row.find('.tka-col-input-field');
+		const $typeSelect = $row.find('.tka-field-type-select');
+		const $selectedOption = $select.find('option:selected');
 		
 		if ($select.val() === '__custom__') {
 			$input.slideDown(150).val('').focus();
 		} else {
 			$input.slideUp(100).val($select.val());
+
+			// If selecting a taxonomy, auto-select taxonomy type and auto-fill label if empty
+			if ($selectedOption.data('is-taxonomy')) {
+				if ($typeSelect.length) {
+					$typeSelect.val('taxonomy');
+				}
+				if ($labelInput.length && !$labelInput.val().trim()) {
+					$labelInput.val($selectedOption.data('label') || $select.val());
+				}
+			}
 		}
 	});
 
@@ -61,11 +75,25 @@ jQuery(document).ready(function($) {
 
 		// Get localized keys and strings
 		let metaOptions = `<option value="">${tkaWpUtilsColumns.i18n.selectField}</option>`;
-		if (tkaWpUtilsColumns && tkaWpUtilsColumns.metaKeys) {
+
+		// Add Taxonomies Optgroup if available for this post type
+		if (tkaWpUtilsColumns && tkaWpUtilsColumns.taxonomies && tkaWpUtilsColumns.taxonomies[postType] && tkaWpUtilsColumns.taxonomies[postType].length) {
+			metaOptions += `<optgroup label="${tkaWpUtilsColumns.i18n.taxonomiesGroup || 'Taxonomies'}">`;
+			tkaWpUtilsColumns.taxonomies[postType].forEach(function(tax) {
+				metaOptions += `<option value="${tax.name}" data-is-taxonomy="1" data-label="${tax.label}">${tax.label} (${tax.name})</option>`;
+			});
+			metaOptions += `</optgroup>`;
+		}
+
+		// Add Post Meta Optgroup
+		if (tkaWpUtilsColumns && tkaWpUtilsColumns.metaKeys && tkaWpUtilsColumns.metaKeys.length) {
+			metaOptions += `<optgroup label="${tkaWpUtilsColumns.i18n.customFieldsGroup || 'Custom Fields (Post Meta)'}">`;
 			tkaWpUtilsColumns.metaKeys.forEach(function(key) {
 				metaOptions += `<option value="${key}">${key}</option>`;
 			});
+			metaOptions += `</optgroup>`;
 		}
+
 		metaOptions += `<option value="__custom__">${tkaWpUtilsColumns.i18n.enterCustomKey}</option>`;
 
 		const html = `
@@ -96,6 +124,9 @@ jQuery(document).ready(function($) {
 					<div>
 						<select name="tka_site_utilities_columns[${postType}][${index}][field_type]" class="tka-field-type-select">
 							<option value="text">${tkaWpUtilsColumns.i18n.plainText}</option>
+							<option value="taxonomy">${tkaWpUtilsColumns.i18n.taxonomy || 'Taxonomy Terms (Linked & Filterable)'}</option>
+							<option value="image">${tkaWpUtilsColumns.i18n.image || 'Image / Thumbnail (Single)'}</option>
+							<option value="gallery">${tkaWpUtilsColumns.i18n.gallery || 'Gallery (First Image Preview + Count)'}</option>
 							<option value="post_relation">${tkaWpUtilsColumns.i18n.relatedPost}</option>
 							<option value="term_relation">${tkaWpUtilsColumns.i18n.relatedTerm}</option>
 						</select>

@@ -25,6 +25,27 @@ class SmtpManager
 		}
 
 		add_action('phpmailer_init', [$this, 'configureSmtp'], 999);
+
+		if (!empty($this->options['smtp_from_email']) && is_email($this->options['smtp_from_email'])) {
+			add_filter('wp_mail_from', [$this, 'filterFromEmail'], 999);
+		}
+		if (!empty($this->options['smtp_from_name'])) {
+			add_filter('wp_mail_from_name', [$this, 'filterFromName'], 999);
+		}
+	}
+
+	public function filterFromEmail($original_email): string
+	{
+		return (!empty($this->options['smtp_from_email']) && is_email($this->options['smtp_from_email']))
+			? $this->options['smtp_from_email']
+			: $original_email;
+	}
+
+	public function filterFromName($original_name): string
+	{
+		return !empty($this->options['smtp_from_name'])
+			? $this->options['smtp_from_name']
+			: $original_name;
 	}
 
 	/**
@@ -35,6 +56,13 @@ class SmtpManager
 	public function configureSmtp($phpmailer): void
 	{
 		$phpmailer->isSMTP();
+
+		// Configure From email, From name, and Sender envelope if provided
+		if (!empty($this->options['smtp_from_email']) && is_email($this->options['smtp_from_email'])) {
+			$from_name = !empty($this->options['smtp_from_name']) ? $this->options['smtp_from_name'] : get_bloginfo('name');
+			$phpmailer->setFrom($this->options['smtp_from_email'], $from_name, true);
+			$phpmailer->Sender = $this->options['smtp_from_email'];
+		}
 
 		// Check if we are in development and "Local Mailpit for Development" is enabled
 		$is_dev_mode = wp_get_environment_type() === 'development' || (defined('WP_ENV') && WP_ENV === 'development');

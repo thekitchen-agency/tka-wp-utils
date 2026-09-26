@@ -24,6 +24,8 @@ class MediaFolders
 		add_filter('ajax_query_attachments_args', [$this, 'filterAttachmentsQuery']);
 		add_filter('posts_clauses', [$this, 'filterPostsClauses'], 10, 2);
 		add_action('delete_attachment', [$this, 'deleteAttachmentRelations']);
+		add_action('add_attachment', [$this, 'onAddAttachment']);
+		add_filter('wp_prepare_attachment_for_js', [$this, 'prepareAttachmentForJs'], 10, 3);
 
 		// AJAX Endpoints
 		add_action('wp_ajax_tka_media_folders_get_tree', [$this, 'ajaxGetTree']);
@@ -120,10 +122,10 @@ class MediaFolders
 	{
 		$requested_folder = null;
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		if (!empty($_REQUEST['query'][self::TAXONOMY])) {
+		if (isset($_REQUEST['query'][self::TAXONOMY]) && $_REQUEST['query'][self::TAXONOMY] !== '') {
 			// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 			$requested_folder = sanitize_text_field(wp_unslash($_REQUEST['query'][self::TAXONOMY]));
-		} elseif (!empty($query[self::TAXONOMY])) {
+		} elseif (isset($query[self::TAXONOMY]) && $query[self::TAXONOMY] !== '') {
 			$requested_folder = $query[self::TAXONOMY];
 		}
 
@@ -449,5 +451,50 @@ class MediaFolders
 		global $wpdb;
 		$posts_table = $wpdb->prefix . 'tka_media_folder_posts';
 		$wpdb->delete($posts_table, ['attachment_id' => $post_id], ['%d']);
+	}
+
+	/**
+	 * Automatically assign folder on upload when tka_folder_id or media_folder is present in request.
+	 */
+	public function onAddAttachment(int $attachment_id): void
+	{
+		$folder_id = null;
+		if (isset($_REQUEST['tka_folder_id'])) {
+			$folder_id = sanitize_text_field(wp_unslash($_REQUEST['tka_folder_id']));
+		} elseif (isset($_REQUEST['media_folder'])) {
+			$folder_id = sanitize_text_field(wp_unslash($_REQUEST['media_folder']));
+		}
+
+		if ($folder_id !== null && $folder_id !== '' && $folder_id !== 'unassigned' && intval($folder_id) > 0) {
+			global $wpdb;
+			$posts_table = $wpdb->prefix . 'tka_media_folder_posts';
+			$wpdb->query(
+				$wpdb->prepare(
+					"INSERT INTO {$posts_table} (attachment_id, folder_id) VALUES (%d, %d)
+					ON DUPLICATE KEY UPDATE folder_id = %d",
+					$attachment_id,
+					intval($folder_id),
+					intval($folder_id)
+				)
+			);
+		}
+	}
+
+	/**
+	 * Attach folder metadata to attachment object for media JavaScript views.
+	 */
+	public function prepareAttachmentForJs(array $response, \WP_Post $post, $meta): array
+	{
+		global $wpdb;
+		$posts_table = $wpdb->prefix . 'tka_media_folder_posts';
+		$folder_id = $wpdb->get_var($wpdb->prepare(
+			"SELECT folder_id FROM {$posts_table} WHERE attachment_id = %d",
+			$post->ID
+		));
+
+		$response['media_folder'] = $folder_id ? (string) $folder_id : '';
+		$response['tka_folder_id'] = $folder_id ? intval($folder_id) : 0;
+
+		return $response;
 	}
 }
