@@ -5,6 +5,15 @@ All notable changes to the **TKA Site Utilities** WordPress plugin will be docum
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.18.1] - 2026-10-08
+
+### Fixed
+- **Virtual Media Folders & Media Grid Layout**:
+  - Fixed images being hidden under the right attachment details sidebar by preserving WordPress Core's right sidebar boundary (`right: 300px`) and properly offsetting left margins.
+  - Fixed "+ Add Folder" button displaying as a truncated circular button in the minimized/collapsed sidebar; now correctly hidden in collapsed state.
+  - Prevented native browser image drag (`-webkit-user-drag: none`) from interfering with HTML5 media folder drag-and-drop.
+  - Added robust dragover/drop event delegation and instant visual navigation when moving media files between folders.
+
 ## [1.18.0] - 2026-10-08
 
 ### Added & Enhanced

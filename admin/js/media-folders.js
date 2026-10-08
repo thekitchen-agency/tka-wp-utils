@@ -92,6 +92,194 @@
 		};
 	}
 
+	var activeDragAttachmentIds = null;
+	var activeDragTimeout = null;
+	var currentActiveFolderId = '';
+	var lastHoveredFolderId = null;
+
+	function getGlobalPluploadInstance() {
+		var activeFrame = wp.media.frame || (wp.media.frames && wp.media.frames.browse);
+		if (activeFrame && activeFrame.uploader) {
+			var uploaderObj = activeFrame.uploader;
+			if (uploaderObj.uploader && uploaderObj.uploader.uploader) {
+				return uploaderObj.uploader.uploader;
+			} else if (uploaderObj.uploader) {
+				return uploaderObj.uploader;
+			}
+		}
+		if (wp.Uploader && wp.Uploader.queue && wp.Uploader.queue.uploader) {
+			return wp.Uploader.queue.uploader;
+		}
+		return null;
+	}
+
+	function clearMediaSelection() {
+		var frames = [];
+		if (wp.media.frame) {
+			frames.push(wp.media.frame);
+		}
+		if (wp.media.frames) {
+			_.each(wp.media.frames, function (f) {
+				if (f && frames.indexOf(f) === -1) {
+					frames.push(f);
+				}
+			});
+		}
+
+		frames.forEach(function (frame) {
+			if (frame.state && typeof frame.state === 'function' && frame.state()) {
+				var selection = frame.state().get('selection');
+				if (selection) {
+					if (typeof selection.reset === 'function') {
+						selection.reset();
+					} else if (typeof selection.clear === 'function') {
+						selection.clear();
+					}
+				}
+			}
+			if (typeof frame.trigger === 'function') {
+				frame.trigger('selection:action:done');
+			}
+			if (typeof frame.deactivateMode === 'function') {
+				frame.deactivateMode('select');
+				if (typeof frame.activateMode === 'function') {
+					frame.activateMode('edit');
+				}
+			}
+		});
+
+		$('.attachments-browser .media-toolbar').removeClass('media-toolbar-mode-select');
+		$('.attachments-browser .media-toolbar .delete-selected-button').addClass('hidden');
+		$('.attachments-browser .attachment').removeClass('selected details').css('opacity', '');
+		$('.attachments-browser .attachment .check').attr('aria-checked', 'false');
+		$('body').removeClass('tka-dragging-attachment');
+	}
+
+	function filterByFolder(folderId) {
+		folderId = (folderId === undefined || folderId === null) ? '' : String(folderId);
+		currentActiveFolderId = folderId;
+
+		var collections = [];
+
+		// 1. Visible attachments-browser views
+		$('.attachments-browser').each(function () {
+			var view = $(this).data('tkaBrowserView');
+			if (view && view.collection && collections.indexOf(view.collection) === -1) {
+				collections.push(view.collection);
+			}
+		});
+
+		// 2. Active frames (wp.media.frame, wp.media.frames.browse, etc.)
+		var frames = [];
+		if (wp.media.frame) {
+			frames.push(wp.media.frame);
+		}
+		if (wp.media.frames) {
+			_.each(wp.media.frames, function (f) {
+				if (f && frames.indexOf(f) === -1) {
+					frames.push(f);
+				}
+			});
+		}
+
+		frames.forEach(function (frame) {
+			if (frame.content && typeof frame.content.get === 'function') {
+				var content = frame.content.get();
+				if (content && content.collection && collections.indexOf(content.collection) === -1) {
+					collections.push(content.collection);
+				}
+			}
+			if (frame.state && typeof frame.state === 'function' && frame.state()) {
+				var lib = frame.state().get('library');
+				if (lib && collections.indexOf(lib) === -1) {
+					collections.push(lib);
+				}
+			}
+		});
+
+		collections.forEach(function (col) {
+			if (col && col.props) {
+				col.props.set('media_folder', folderId);
+				col._hasMore = true;
+				delete col._more;
+
+				if (typeof col._requery === 'function') {
+					col._requery(true);
+				}
+				if (typeof col.more === 'function') {
+					col.more();
+				}
+			}
+		});
+	}
+
+	function navigateToFolder(folderId) {
+		folderId = (folderId === undefined || folderId === null) ? '' : String(folderId);
+		currentActiveFolderId = folderId;
+
+		// Update active and expanded states in all sidebars
+		$('.tka-media-folders-sidebar').each(function () {
+			var $sb = $(this);
+			$sb.find('.tka-folder-item').removeClass('active');
+			var $targetItem = $sb.find('.tka-folder-item[data-id="' + folderId + '"]');
+			if ($targetItem.length) {
+				$targetItem.addClass('active');
+				$targetItem.parents('.tka-folder-node').each(function () {
+					var $node = $(this);
+					$node.addClass('expanded');
+					$node.children('ul').show();
+					$node.find('> .tka-folder-item > .folder-expander .dashicons')
+						.removeClass('dashicons-arrow-right-alt2')
+						.addClass('dashicons-arrow-down-alt2');
+				});
+			} else if (folderId === '') {
+				$sb.find('.tka-folder-item[data-id=""]').addClass('active');
+			}
+		});
+
+		filterByFolder(folderId);
+	}
+
+	function moveAttachmentsToFolder(ids, folderId, options) {
+		options = options || {};
+		var shouldNavigate = options.navigate !== false;
+		var shouldClearSelection = options.clearSelection !== false;
+
+		// Immediately navigate and clear selection so the view jumps instantly without waiting for network roundtrip
+		if (shouldClearSelection) {
+			clearMediaSelection();
+		}
+		if (shouldNavigate) {
+			navigateToFolder(folderId);
+		}
+
+		$.ajax({
+			url: tkaMediaFolders.ajaxUrl,
+			type: 'POST',
+			data: {
+				action: 'tka_media_folders_move',
+				nonce: tkaMediaFolders.nonce,
+				attachment_ids: ids,
+				folder_id: folderId
+			},
+			dataType: 'json',
+			success: function (response) {
+				if (response.success) {
+					// Requery to ensure newly moved items are included in destination view
+					filterByFolder(folderId);
+
+					// Reload folder tree to refresh counts across sidebars
+					window.dispatchEvent(new CustomEvent('tka_refresh_folders'));
+				} else {
+					alert((response.data && response.data.message) ? response.data.message : 'Error moving attachments.');
+				}
+			},
+			error: function (xhr, status, err) {
+				console.error('AJAX error moving attachments:', err);
+			}
+		});
+	}
+
 	var AttachmentsBrowser = wp.media.view.AttachmentsBrowser;
 
 	// Extend the AttachmentsBrowser to inject our folders sidebar
@@ -100,6 +288,7 @@
 			// Call the parent initialize method
 			AttachmentsBrowser.prototype.initialize.apply(this, arguments);
 			this.foldersSidebar = null;
+			this.$el.data('tkaBrowserView', this);
 
 			// Listen to custom refresh event or collection changes to reload folder tree counts
 			window.addEventListener('tka_refresh_folders', _.debounce(_.bind(this.loadFolderTree, this), 100));
@@ -117,6 +306,7 @@
 		ready: function () {
 			// Call the parent ready method
 			AttachmentsBrowser.prototype.ready.apply(this, arguments);
+			this.$el.data('tkaBrowserView', this);
 
 			// Inject our premium folders sidebar
 			this.injectFoldersSidebar();
@@ -128,6 +318,7 @@
 
 			// Add parent indicator class to AttachmentsBrowser container
 			container.addClass('tka-has-folders');
+			container.data('tkaBrowserView', this);
 
 			// Restore collapsed state from localStorage
 			var isCollapsed = localStorage.getItem('tka_media_folders_collapsed') === 'true';
@@ -146,6 +337,9 @@
 					$existingSidebar.removeClass('collapsed');
 				}
 				this.foldersSidebar = $existingSidebar;
+				if ($existingSidebar.find('.tka-dynamic-folders-container').children().length === 0) {
+					this.loadFolderTree();
+				}
 				return;
 			}
 
@@ -223,11 +417,7 @@
 				}
 
 				var folderId = $(this).attr('data-id');
-				$sidebar.find('.tka-folder-item').removeClass('active');
-				$(this).addClass('active');
-
-				// Filter the Backbone grid collection
-				self.filterByFolder(folderId);
+				self.navigateToFolder(folderId);
 			});
 
 			// Expand/Collapse folder tree node
@@ -319,67 +509,17 @@
 				$confirmContainer.append($yesBtn).append($noBtn);
 				$item.append($confirmContainer);
 			});
-
-			// HTML5 Dragover target folders
-			$sidebar.on('dragover', '.tka-folder-item', function (e) {
-				e.preventDefault();
-				$(this).addClass('drag-over');
-			});
-
-			// HTML5 Dragleave target folders
-			$sidebar.on('dragleave', '.tka-folder-item', function (e) {
-				$(this).removeClass('drag-over');
-			});
-
-			// HTML5 Drop on folders
-			$sidebar.on('drop', '.tka-folder-item', function (e) {
-				e.preventDefault();
-				$(this).removeClass('drag-over');
-
-				var folderId = $(this).attr('data-id');
-
-				// Check if files are dropped
-				var files = e.originalEvent.dataTransfer.files;
-				if (files && files.length > 0) {
-					e.stopPropagation();
-					var plObj = self.getPluploadInstance();
-					if (plObj) {
-						Array.prototype.forEach.call(files, function (file) {
-							var plFile = plObj.addFile(file);
-							if (plFile) {
-								plFile._tkaTargetFolder = folderId;
-							}
-						});
-						if (plObj.state !== plupload.STARTED) {
-							plObj.start();
-						}
-					}
-					return;
-				}
-
-				var rawData = e.originalEvent.dataTransfer.getData('text/plain');
-
-				try {
-					if (rawData) {
-						var dragData = JSON.parse(rawData);
-						if (dragData && dragData.ids) {
-							self.moveAttachmentsToFolder(dragData.ids, folderId);
-						}
-					}
-				} catch (err) {
-					console.error('Failed to parse drag data:', err);
-				}
-			});
 		},
 
 		filterByFolder: function (folderId) {
-			if (this.collection) {
-				// Setting the custom prop triggers requery in Backbone dynamically
-				this.collection.props.set('media_folder', folderId);
-			}
+			filterByFolder(folderId);
 		},
 
-		loadFolderTree: function () {
+		navigateToFolder: function (folderId) {
+			navigateToFolder(folderId);
+		},
+
+		loadFolderTree: function (callback) {
 			var self = this;
 			$.ajax({
 				url: tkaMediaFolders.ajaxUrl,
@@ -392,17 +532,71 @@
 				success: function (response) {
 					if (response.success) {
 						self.renderTree(response.data);
+						if (typeof callback === 'function') {
+							callback(response.data);
+						}
 					}
 				}
 			});
 		},
 
 		renderTree: function (data) {
-			var $container = this.foldersSidebar.find('.tka-dynamic-folders-container');
-			$container.empty();
+			var self = this;
+			var $sidebars = $('.tka-media-folders-sidebar');
+			if ($sidebars.length === 0 && this.foldersSidebar) {
+				$sidebars = this.foldersSidebar;
+			}
+			if (!$sidebars || $sidebars.length === 0) {
+				return;
+			}
 
-			var html = this.buildTreeHtml(data);
-			$container.append(html);
+			$sidebars.each(function () {
+				var $sidebar = $(this);
+				// Preserve active folder and expanded nodes across tree reloads
+				var activeId = (currentActiveFolderId !== null && currentActiveFolderId !== undefined && currentActiveFolderId !== '')
+					? currentActiveFolderId
+					: ($sidebar.find('.tka-folder-item.active').attr('data-id') || '');
+				var expandedIds = [];
+				$sidebar.find('.tka-folder-node.expanded').each(function () {
+					var id = $(this).attr('data-id');
+					if (id) {
+						expandedIds.push(id);
+					}
+				});
+
+				var $container = $sidebar.find('.tka-dynamic-folders-container');
+				$container.empty();
+
+				var html = self.buildTreeHtml(data);
+				$container.append(html);
+
+				// Restore expanded nodes
+				expandedIds.forEach(function (id) {
+					var $node = $container.find('.tka-folder-node[data-id="' + id + '"]');
+					$node.addClass('expanded');
+					$node.children('ul').show();
+					$node.find('> .tka-folder-item > .folder-expander .dashicons')
+						.removeClass('dashicons-arrow-right-alt2')
+						.addClass('dashicons-arrow-down-alt2');
+				});
+
+				// Restore active item
+				$sidebar.find('.tka-folder-item').removeClass('active');
+				var $targetItem = $sidebar.find('.tka-folder-item[data-id="' + activeId + '"]');
+				if ($targetItem.length) {
+					$targetItem.addClass('active');
+					$targetItem.parents('.tka-folder-node').each(function () {
+						var $node = $(this);
+						$node.addClass('expanded');
+						$node.children('ul').show();
+						$node.find('> .tka-folder-item > .folder-expander .dashicons')
+							.removeClass('dashicons-arrow-right-alt2')
+							.addClass('dashicons-arrow-down-alt2');
+					});
+				} else {
+					$sidebar.find('.tka-folder-item[data-id=""]').addClass('active');
+				}
+			});
 		},
 
 		buildTreeHtml: function (nodes) {
@@ -514,53 +708,8 @@
 			});
 		},
 
-		moveAttachmentsToFolder: function (ids, folderId) {
-			var self = this;
-			$.ajax({
-				url: tkaMediaFolders.ajaxUrl,
-				type: 'POST',
-				data: {
-					action: 'tka_media_folders_move',
-					nonce: tkaMediaFolders.nonce,
-					attachment_ids: ids,
-					folder_id: folderId
-				},
-				dataType: 'json',
-				success: function (response) {
-					if (response.success) {
-						// Reload folder tree to refresh counts
-						self.loadFolderTree();
-
-						// If we are currently filtered by a folder and that folder is NOT the one we dropped onto,
-						// remove the items dynamically from the current Backbone collection so they disappear.
-						var activeFolder = self.foldersSidebar.find('.tka-folder-item.active').attr('data-id');
-						if (activeFolder !== '' && activeFolder !== folderId) {
-							ids.forEach(function (id) {
-								var model = self.collection.get(id) || self.collection.get(parseInt(id, 10));
-								if (model) {
-									self.collection.remove(model);
-								}
-							});
-
-							// Also sync selection in frame controller
-							var activeFrame = (self.controller && self.controller.state) ? self.controller : wp.media.frame;
-							if (activeFrame && activeFrame.state && activeFrame.state()) {
-								var selection = activeFrame.state().get('selection');
-								if (selection) {
-									ids.forEach(function (id) {
-										var selModel = selection.get(id) || selection.get(parseInt(id, 10));
-										if (selModel) {
-											selection.remove(selModel);
-										}
-									});
-								}
-							}
-						}
-					} else {
-						alert(response.data.message);
-					}
-				}
-			});
+		moveAttachmentsToFolder: function (ids, folderId, options) {
+			moveAttachmentsToFolder(ids, folderId, options);
 		},
 
 		getPluploadInstance: function () {
@@ -644,7 +793,7 @@
 
 								// Fallback: in case server-side did not assign folder, trigger move AJAX
 								if (targetFolder && targetFolder !== 'unassigned' && targetFolder !== '' && (!attachmentData.media_folder || String(attachmentData.media_folder) !== String(targetFolder))) {
-									self.moveAttachmentsToFolder([attachmentData.id], targetFolder);
+									self.moveAttachmentsToFolder([attachmentData.id], targetFolder, { navigate: false, clearSelection: false });
 								}
 
 								// Immediately add model to the active collection so it displays in the grid
@@ -846,10 +995,14 @@
 
 	// --- Draggable Attachment Event Delegation ---
 
-	// Pre-condition: Make attachment items draggable
-	$(document).on('mouseenter', '.attachments-browser .attachment', function () {
+	// Pre-condition: Make attachment items draggable on enter or pointerdown
+	$(document).on('mouseenter mousedown pointerdown', '.attachments-browser .attachment', function () {
 		if (!$(this).attr('draggable')) {
 			$(this).attr('draggable', 'true');
+		}
+		var $img = $(this).find('img');
+		if ($img.length && $img.attr('draggable') !== 'false') {
+			$img.attr('draggable', 'false');
 		}
 	});
 
@@ -860,11 +1013,16 @@
 			return;
 		}
 
+		if (activeDragTimeout) {
+			clearTimeout(activeDragTimeout);
+			activeDragTimeout = null;
+		}
+
 		// Add body class to hide global upload overlay
 		$('body').addClass('tka-dragging-attachment');
 
 		var selectedIds = [];
-		var activeFrame = wp.media.frame;
+		var activeFrame = wp.media.frame || (wp.media.frames && wp.media.frames.browse);
 
 		if (activeFrame && activeFrame.state && activeFrame.state()) {
 			var selection = activeFrame.state().get('selection');
@@ -892,12 +1050,19 @@
 			selectedIds = [draggedId];
 		}
 
+		activeDragAttachmentIds = selectedIds;
+		window._tkaActiveDragAttachmentIds = selectedIds;
+
 		var dragData = {
 			ids: selectedIds
 		};
 
-		e.originalEvent.dataTransfer.setData('text/plain', JSON.stringify(dragData));
-		e.originalEvent.dataTransfer.effectAllowed = 'move';
+		if (e.originalEvent && e.originalEvent.dataTransfer) {
+			try {
+				e.originalEvent.dataTransfer.setData('text/plain', JSON.stringify(dragData));
+			} catch (err) {}
+			e.originalEvent.dataTransfer.effectAllowed = 'move';
+		}
 
 		// Style feedback during dragging for all dragged items
 		if (selectedIds.length > 1) {
@@ -913,6 +1078,163 @@
 	$(document).on('dragend', '.attachments-browser .attachment', function () {
 		$('body').removeClass('tka-dragging-attachment');
 		$('.attachments-browser .attachment').css('opacity', '');
+		$('.tka-media-folders-sidebar .tka-folder-item').removeClass('drag-over');
+
+		if (activeDragTimeout) {
+			clearTimeout(activeDragTimeout);
+		}
+		activeDragTimeout = setTimeout(function () {
+			activeDragAttachmentIds = null;
+			window._tkaActiveDragAttachmentIds = null;
+			activeDragTimeout = null;
+			lastHoveredFolderId = null;
+		}, 800);
+	});
+
+	// HTML5 Dragover sidebar and folders
+	$(document).on('dragover', '.tka-media-folders-sidebar', function (e) {
+		e.preventDefault();
+		if (e.originalEvent && e.originalEvent.dataTransfer) {
+			e.originalEvent.dataTransfer.dropEffect = 'move';
+		}
+
+		var clientX = e.originalEvent ? e.originalEvent.clientX : null;
+		var clientY = e.originalEvent ? e.originalEvent.clientY : null;
+		var el = (clientX !== null && clientY !== null) ? document.elementFromPoint(clientX, clientY) : null;
+
+		var $item = $(e.target).closest('.tka-folder-item');
+		if (!$item.length) {
+			$item = $(e.target).closest('.tka-folder-node').find('> .tka-folder-item');
+		}
+		if (!$item.length && el) {
+			$item = $(el).closest('.tka-folder-item');
+		}
+		if (!$item.length && el) {
+			$item = $(el).closest('.tka-folder-node').find('> .tka-folder-item');
+		}
+
+		if ($item.length) {
+			var fId = $item.attr('data-id');
+			if (fId !== undefined && fId !== null) {
+				lastHoveredFolderId = String(fId);
+			}
+		}
+
+		$('.tka-media-folders-sidebar .tka-folder-item.drag-over').not($item).removeClass('drag-over');
+		if ($item.length && !$item.hasClass('drag-over')) {
+			$item.addClass('drag-over');
+		}
+	});
+
+	// HTML5 Dragleave sidebar
+	$(document).on('dragleave', '.tka-media-folders-sidebar', function (e) {
+		var related = e.originalEvent && e.originalEvent.relatedTarget;
+		var sidebar = $(this)[0];
+		if (!related || (sidebar && !sidebar.contains(related))) {
+			$('.tka-media-folders-sidebar .tka-folder-item').removeClass('drag-over');
+		}
+	});
+
+	// HTML5 Drop on folders
+	$(document).on('drop', '.tka-media-folders-sidebar', function (e) {
+		e.preventDefault();
+		e.stopPropagation();
+
+		var clientX = e.originalEvent ? e.originalEvent.clientX : null;
+		var clientY = e.originalEvent ? e.originalEvent.clientY : null;
+		var el = (clientX !== null && clientY !== null) ? document.elementFromPoint(clientX, clientY) : null;
+
+		var $targetItem = $(e.target).closest('.tka-folder-item');
+		if (!$targetItem.length) {
+			$targetItem = $(e.target).closest('.tka-folder-node').find('> .tka-folder-item');
+		}
+		if (!$targetItem.length && el) {
+			$targetItem = $(el).closest('.tka-folder-item');
+		}
+		if (!$targetItem.length && el) {
+			$targetItem = $(el).closest('.tka-folder-node').find('> .tka-folder-item');
+		}
+		if (!$targetItem.length) {
+			$targetItem = $('.tka-media-folders-sidebar .tka-folder-item.drag-over').first();
+		}
+		if (!$targetItem.length && lastHoveredFolderId !== null) {
+			$targetItem = $('.tka-media-folders-sidebar .tka-folder-item[data-id="' + lastHoveredFolderId + '"]');
+		}
+
+		$('.tka-media-folders-sidebar .tka-folder-item').removeClass('drag-over');
+
+		if (!$targetItem.length) {
+			// Dropped on empty sidebar space with no target folder
+			return;
+		}
+
+		var folderId = $targetItem.attr('data-id');
+		if (folderId === undefined || folderId === null) {
+			folderId = $targetItem.closest('.tka-folder-node').attr('data-id');
+		}
+		if (folderId === undefined || folderId === null) {
+			folderId = lastHoveredFolderId;
+		}
+
+		if (folderId === undefined || folderId === null) {
+			return;
+		}
+		folderId = String(folderId);
+
+		// Resolve attachment IDs from in-memory cache first
+		var moveIds = (activeDragAttachmentIds && activeDragAttachmentIds.length > 0) ? activeDragAttachmentIds : window._tkaActiveDragAttachmentIds;
+
+		if (!moveIds || moveIds.length === 0) {
+			if (e.originalEvent && e.originalEvent.dataTransfer) {
+				var rawData = e.originalEvent.dataTransfer.getData('text/plain');
+				if (rawData) {
+					try {
+						var parsed = JSON.parse(rawData);
+						if (parsed && parsed.ids && parsed.ids.length > 0) {
+							moveIds = parsed.ids;
+						}
+					} catch (err) {}
+				}
+			}
+		}
+
+		if (!moveIds || moveIds.length === 0) {
+			var fallbackIds = [];
+			$('.attachments-browser .attachment.selected').each(function () {
+				var id = parseInt($(this).attr('data-id'), 10);
+				if (id && fallbackIds.indexOf(id) === -1) {
+					fallbackIds.push(id);
+				}
+			});
+			if (fallbackIds.length > 0) {
+				moveIds = fallbackIds;
+			}
+		}
+
+		if (moveIds && moveIds.length > 0) {
+			moveAttachmentsToFolder(moveIds, folderId);
+			activeDragAttachmentIds = null;
+			window._tkaActiveDragAttachmentIds = null;
+			lastHoveredFolderId = null;
+			return;
+		}
+
+		// Check if external OS files were dropped for upload
+		var files = e.originalEvent && e.originalEvent.dataTransfer && e.originalEvent.dataTransfer.files;
+		if (files && files.length > 0) {
+			var plObj = getGlobalPluploadInstance();
+			if (plObj) {
+				Array.prototype.forEach.call(files, function (file) {
+					var plFile = plObj.addFile(file);
+					if (plFile) {
+						plFile._tkaTargetFolder = folderId;
+					}
+				});
+				if (plObj.state !== plupload.STARTED) {
+					plObj.start();
+				}
+			}
+		}
 	});
 
 	// Prevent mousedown/mouseup on delete buttons in the capture phase to stop focus changes

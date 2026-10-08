@@ -49,21 +49,12 @@
 }
 
 .tka-media-folders-sidebar.collapsed .tka-folders-header h3,
-.tka-media-folders-sidebar.collapsed .tka-folders-new-btn span,
+.tka-media-folders-sidebar.collapsed .tka-folders-new-btn,
 .tka-media-folders-sidebar.collapsed .folder-name,
 .tka-media-folders-sidebar.collapsed .folder-count,
 .tka-media-folders-sidebar.collapsed .folder-actions,
 .tka-media-folders-sidebar.collapsed .folder-expander {
 	display: none !important;
-}
-
-.tka-media-folders-sidebar.collapsed .tka-folders-new-btn {
-	padding: 8px 0;
-	justify-content: center;
-	border-radius: 50%;
-	width: 38px;
-	height: 38px;
-	margin: 0 auto 15px auto;
 }
 
 .tka-media-folders-sidebar.collapsed .tka-folder-item {
@@ -90,33 +81,35 @@
 	padding-left: 68px !important;
 }
 
-/* Ensure default children flow inside the padded content area and don't overflow (left: 266px shifts absolute elements, ignored for static elements) */
-.wp-core-ui .media-frame .attachments-browser.tka-has-folders .media-toolbar,
+/* Reset left offset for static flow in media grid page so padding handles spacing */
+.media-frame.mode-grid .attachments-browser.tka-has-folders .attachments,
+.media-frame.mode-grid .attachments-browser.tka-has-folders .attachments-wrapper {
+	left: 0 !important;
+}
+
+/* Shift absolute elements to make room for the left folder sidebar while preserving WP Core's right sidebar positioning */
 .wp-core-ui .media-frame .attachments-browser.tka-has-folders .uploader-inline,
 .wp-core-ui .media-frame .attachments-browser.tka-has-folders .attachments,
 .wp-core-ui .media-frame .attachments-browser.tka-has-folders .attachments-wrapper {
-	right: 0 !important;
+	left: 266px !important;
 	width: auto !important;
 	transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.wp-core-ui .media-frame .attachments-browser.tka-has-folders.tka-folders-collapsed .media-toolbar,
 .wp-core-ui .media-frame .attachments-browser.tka-has-folders.tka-folders-collapsed .uploader-inline,
 .wp-core-ui .media-frame .attachments-browser.tka-has-folders.tka-folders-collapsed .attachments,
-.wp-core-ui .media-frame .attachments-browser.tka-has-folders.tka-folders-collapsed .attachments-wrapper {}
-
-/* Shift absolute elements specifically inside the media modal to prevent overlaying the sidebar */
-.media-modal .attachments-browser.tka-has-folders .media-toolbar,
-.media-modal .attachments-browser.tka-has-folders .uploader-inline,
-.media-modal .attachments-browser.tka-has-folders .attachments,
-.media-modal .attachments-browser.tka-has-folders .attachments-wrapper {
-	left: 266px !important;
+.wp-core-ui .media-frame .attachments-browser.tka-has-folders.tka-folders-collapsed .attachments-wrapper {
+	left: 68px !important;
 }
 
-.media-modal .attachments-browser.tka-has-folders.tka-folders-collapsed .media-toolbar,
-.media-modal .attachments-browser.tka-has-folders.tka-folders-collapsed .uploader-inline,
-.media-modal .attachments-browser.tka-has-folders.tka-folders-collapsed .attachments,
-.media-modal .attachments-browser.tka-has-folders.tka-folders-collapsed .attachments-wrapper {
+/* Shift absolute media-toolbar specifically inside media modals without double-offsetting relative wp-filter toolbars on standard admin media pages */
+.media-modal .attachments-browser.tka-has-folders .media-toolbar {
+	left: 266px !important;
+	width: auto !important;
+	transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.media-modal .attachments-browser.tka-has-folders.tka-folders-collapsed .media-toolbar {
 	left: 68px !important;
 }
 
@@ -317,6 +310,16 @@
 	display: flex;
 }
 
+body.tka-dragging-attachment .folder-actions,
+body.tka-dragging-attachment .folder-delete-confirm {
+	display: none !important;
+	pointer-events: none !important;
+}
+
+body.tka-dragging-attachment .tka-folder-item * {
+	pointer-events: none !important;
+}
+
 .tka-folder-action-btn {
 	background: transparent;
 	border: none;
@@ -352,8 +355,7 @@
 	background-color: var(--folders-drag-over-bg) !important;
 	border-color: var(--folders-drag-over-border) !important;
 	color: var(--folders-primary) !important;
-	transform: scale(1.02);
-	box-shadow: 0 4px 12px var(--folders-primary-glow);
+	box-shadow: 0 0 0 2px var(--folders-primary), 0 4px 12px var(--folders-primary-glow) !important;
 }
 
 .tka-folder-item.drag-over .dashicons {
@@ -431,10 +433,26 @@
 	box-shadow: inset 0 0 0 2px var(--folders-primary) !important;
 }
 
-/* Restore default cursor and behavior in Bulk Select mode */
+/* Prevent native image dragging from stealing HTML5 attachment drag */
+.attachments-browser .attachment img {
+	-webkit-user-drag: none;
+	user-select: none;
+}
+
+/* Restore default cursor and behavior in Bulk Select mode, but allow grab on selected items */
 .media-frame.mode-select .attachments-browser .attachment,
 .attachments-browser.fixed .attachment {
 	cursor: default !important;
+}
+
+.media-frame.mode-select .attachments-browser .attachment.selected,
+.attachments-browser .attachment.selected {
+	cursor: grab !important;
+}
+
+.media-frame.mode-select .attachments-browser .attachment.selected:active,
+.attachments-browser .attachment.selected:active {
+	cursor: grabbing !important;
 }
 
 /* Premium Custom Confirm Modal */
