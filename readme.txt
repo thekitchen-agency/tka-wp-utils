@@ -3,7 +3,7 @@ Contributors: thekitchen-agency
 Tags: classic editor, svg upload, admin columns, hardening, image optimization
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 1.17.0
+Stable tag: 1.18.0
 Requires PHP: 8.3
 License: MIT
 License URI: https://opensource.org/licenses/MIT
@@ -59,6 +59,12 @@ Our plugin uses a database-first approach: it converts physical files to WebP an
 Since images are permanently converted to WebP in the database, deactivating the plugin leaves WebP files active in your media library. If you want to keep original JPEGs/PNGs for safe backup, make sure the "Keep Original Images" setting is toggled on before running bulk optimization.
 
 == Changelog ==
+
+= 1.18.0 =
+*   Enhancement: Improved ACF video and media content handling in ACF Gallery and Image fields.
+*   Fix: Bypasses ACF and WordPress false-positive upload errors when uploading WebM and MP4 videos through the media uploader.
+*   Fix: Added fallback support for AJAX media library queries to ensure both images and videos are selectable when field keys mismatch.
+*   Fix: Relaxed parameter type constraints on ACF validation filter callbacks to ensure complete PHP 8 compatibility.
 
 = 1.17.0 =
 *   Feature: Added interactive Media Focal Point selector to the WordPress Media Library and ACF image fields.

@@ -5,6 +5,15 @@ All notable changes to the **TKA Site Utilities** WordPress plugin will be docum
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.18.0] - 2026-10-08
+
+### Added & Enhanced
+- **ACF Media & Video Content Support**:
+  - Enhanced `AcfManager` video support to reliably permit `.mp4`, `.webm`, and `.mov` uploads and selection in ACF Gallery and Image fields.
+  - Automatically bypasses ACF and WordPress false-positive upload errors when uploading video files through the media modal.
+  - Added fallback support for AJAX media library queries (`ajax_query_attachments_args`) ensuring videos are selectable even when field key lookups miss.
+  - Relaxed parameter type constraints on ACF validation filter callbacks (`acf/validate_value`, `acf/validate_rest_value`, `acf/validate_attachment`) to ensure complete PHP 8 compatibility without fatal TypeErrors.
+
 ## [1.17.0] - 2026-10-08
 
 ### Added

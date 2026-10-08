@@ -592,10 +592,10 @@ class AcfManager
 	{
 		if (isset($_POST['query']['_acfuploader']) || isset($_REQUEST['_acfuploader'])) {
 			$field_key = $_POST['query']['_acfuploader'] ?? $_REQUEST['_acfuploader'];
-			$field     = acf_get_field($field_key);
+			$field     = function_exists('acf_get_field') ? acf_get_field($field_key) : null;
 
 			if ($field) {
-				if (in_array($field['type'], ['gallery', 'file', 'image'], true)) {
+				if (in_array($field['type'] ?? '', ['gallery', 'file', 'image'], true)) {
 					$query['post_mime_type'] = ['image', 'video'];
 				}
 			} else {
@@ -616,8 +616,9 @@ class AcfManager
 		remove_filter('acf/validate_attachment/type=gallery', 'acf_validate_is_image_attachment', 10);
 	}
 
-	public function filterValidateIsImageAttachment(array $errors, $file, $attachment, $field, $context): array
+	public function filterValidateIsImageAttachment($errors, $file, $attachment, $field = [], $context = null)
 	{
+		$errors = is_array($errors) ? $errors : [];
 		if (isset($field['type']) && $field['type'] === 'gallery') {
 			unset($errors['invalid_image']);
 			return $errors;
@@ -634,8 +635,9 @@ class AcfManager
 		return $errors;
 	}
 
-	public function filterValidateAttachment(array $errors, $file, $attachment, $field, $context): array
+	public function filterValidateAttachment($errors, $file, $attachment, $field = [], $context = null)
 	{
+		$errors = is_array($errors) ? $errors : [];
 		if (isset($field['type']) && $field['type'] === 'gallery') {
 			unset($errors['invalid_image']);
 		}
@@ -652,8 +654,9 @@ class AcfManager
 		return $errors;
 	}
 
-	public function filterUploadPrefilter(array $errors, array $file, array $field): array
+	public function filterUploadPrefilter($errors, array $file, $field = [])
 	{
+		$errors = is_array($errors) ? $errors : [];
 		$ext = strtolower(pathinfo($file['name'] ?? '', PATHINFO_EXTENSION));
 		if (in_array($ext, ['webm', 'mp4', 'mov', 'ogg', 'ogv'], true)) {
 			unset($errors['invalid_image']);
@@ -668,7 +671,7 @@ class AcfManager
 		$filename = $response['filename'] ?? (isset($response['url']) ? basename($response['url']) : '');
 		$ext      = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
 
-		if (str_starts_with($mime, 'video/') || in_array($ext, ['webm', 'mp4', 'mov', 'ogg', 'ogv'], true)) {
+		if (isset($_POST['query']['_acfuploader']) || isset($_POST['_acfuploader']) || str_starts_with($mime, 'video/') || in_array($ext, ['webm', 'mp4', 'mov', 'ogg', 'ogv'], true)) {
 			$response['acf_errors'] = false;
 		}
 		return $response;
@@ -678,14 +681,14 @@ class AcfManager
 	{
 		$ext = strtolower(pathinfo($file['name'] ?? '', PATHINFO_EXTENSION));
 		if (in_array($ext, ['webm', 'mp4', 'mov', 'ogg', 'ogv'], true) && isset($file['error'])) {
-			if (str_contains(strtolower($file['error']), 'image') || str_contains(strtolower($file['error']), 'type')) {
+			if (isset($_POST['_acfuploader']) || str_contains(strtolower($file['error']), 'image') || str_contains(strtolower($file['error']), 'type')) {
 				unset($file['error']);
 			}
 		}
 		return $file;
 	}
 
-	public function filterValidateValue($valid, $value, array $field, string $input)
+	public function filterValidateValue($valid, $value, $field = [], $input = null)
 	{
 		if ($valid !== true && !empty($value)) {
 			$attachment_ids = is_array($value) ? $value : [$value];
@@ -693,7 +696,7 @@ class AcfManager
 
 			foreach ($attachment_ids as $id) {
 				if (is_numeric($id)) {
-					$is_image = wp_attachment_is_image((int) $id);
+					$is_image = function_exists('wp_attachment_is_image') ? wp_attachment_is_image((int) $id) : false;
 					$mime     = (string) get_post_mime_type((int) $id);
 					$is_video = str_starts_with($mime, 'video/');
 
@@ -714,7 +717,7 @@ class AcfManager
 		return $valid;
 	}
 
-	public function filterValidateRestValue($valid, $value, array $field)
+	public function filterValidateRestValue($valid, $value, $field = [])
 	{
 		if ($valid !== true && !empty($value)) {
 			$attachment_ids = is_array($value) ? $value : [$value];
@@ -722,7 +725,7 @@ class AcfManager
 
 			foreach ($attachment_ids as $id) {
 				if (is_numeric($id)) {
-					$is_image = wp_attachment_is_image((int) $id);
+					$is_image = function_exists('wp_attachment_is_image') ? wp_attachment_is_image((int) $id) : false;
 					$mime     = (string) get_post_mime_type((int) $id);
 					$is_video = str_starts_with($mime, 'video/');
 

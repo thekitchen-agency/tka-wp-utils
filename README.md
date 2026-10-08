@@ -60,6 +60,7 @@ A comprehensive suite of utility tools designed for developers and agencies to s
 *   **ACF SVG Picker Extension**: Built-in SVG Picker field type featuring searchable grid layouts, custom card dimensions, dark-themed previews, and hover animations.
 *   **ACF Dynamic Table Extension**: Includes a powerful dynamic table ACF field type (`tka_dynamic_table`), allowing configuration of locked rows and columns, prepopulated data, multi-level headers, file selectors, and custom styling.
 *   **Auto-Inject Video Poster Field**: Optionally registers a "Video Poster Image" (`video_poster_image`) ACF field directly onto all video attachments in the native Media Library, making it incredibly simple to assign fallback cover images to MP4 uploads.
+*   **Allow Videos in ACF Gallery & Image Fields**: Bypasses ACF and WordPress mime-type checks to allow uploading and selecting video files (MP4, WebM, MOV) in ACF Gallery and Image fields without validation errors in the WordPress media modal or post saves.
 
 ### 🖼️ 6. Image Optimization & WebP Engine
 *   **Automatic WebP Conversion**: Converts newly uploaded JPEG and PNG images into modern WebP format, generating WebP sub-sizes automatically to ensure lightning-fast site loading.
