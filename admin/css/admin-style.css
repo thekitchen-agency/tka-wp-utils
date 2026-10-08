@@ -1127,3 +1127,10 @@ a.tka-column-thumb-link:hover {
 	color: var(--tka-text-muted);
 	font-style: italic;
 }
+
+/* Media Library Toolbar */
+.media-toolbar,
+.attachments-browser .media-toolbar {
+	height: 68px !important;
+	box-sizing: border-box !important;
+}

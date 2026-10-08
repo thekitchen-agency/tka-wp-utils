@@ -102,15 +102,23 @@
 	left: 68px !important;
 }
 
+/* Media Toolbar height and positioning */
+.attachments-browser .media-toolbar {
+	height: 68px !important;
+	box-sizing: border-box !important;
+}
+
 /* Shift absolute media-toolbar specifically inside media modals without double-offsetting relative wp-filter toolbars on standard admin media pages */
 .media-modal .attachments-browser.tka-has-folders .media-toolbar {
 	left: 266px !important;
 	width: auto !important;
+	height: 68px !important;
 	transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .media-modal .attachments-browser.tka-has-folders.tka-folders-collapsed .media-toolbar {
 	left: 68px !important;
+	height: 68px !important;
 }
 
 /* Sidebar Header & Brand */

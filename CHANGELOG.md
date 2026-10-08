@@ -5,6 +5,12 @@ All notable changes to the **TKA Site Utilities** WordPress plugin will be docum
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.18.2] - 2026-10-08
+
+### Changed
+- **Media Library Styling**:
+  - Set `.media-toolbar` and `.attachments-browser .media-toolbar` CSS height to `68px !important` across all media library modal and grid interfaces.
+
 ## [1.18.1] - 2026-10-08
 
 ### Fixed

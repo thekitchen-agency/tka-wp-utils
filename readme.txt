@@ -3,7 +3,7 @@ Contributors: thekitchen-agency
 Tags: classic editor, svg upload, admin columns, hardening, image optimization
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 1.18.1
+Stable tag: 1.18.2
 Requires PHP: 8.3
 License: MIT
 License URI: https://opensource.org/licenses/MIT
@@ -59,6 +59,9 @@ Our plugin uses a database-first approach: it converts physical files to WebP an
 Since images are permanently converted to WebP in the database, deactivating the plugin leaves WebP files active in your media library. If you want to keep original JPEGs/PNGs for safe backup, make sure the "Keep Original Images" setting is toggled on before running bulk optimization.
 
 == Changelog ==
+
+= 1.18.2 =
+*   Style: Set `.media-toolbar` CSS height to 68px across media library modal and grid interfaces.
 
 = 1.18.1 =
 *   Fix: Resolved media grid attachments being hidden under the right attachment details sidebar by preserving WordPress core's right offset.
