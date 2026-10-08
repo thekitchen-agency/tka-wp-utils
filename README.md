@@ -68,7 +68,16 @@ A comprehensive suite of utility tools designed for developers and agencies to s
 *   **Dedicated Bulk Optimizer Subpage**: Features an advanced sequential batch retroactive image optimizer page (`tka-site-utilities-bulk-optimizer`) that processes existing media assets safely to prevent gateway timeouts. Includes pagination, tabbed views, page size selectors, and pause/resume capabilities. Also available as a shortcut under the Media menu for regular administrators.
 *   **Interactive Media Library Status Table**: Displays a real-time responsive dashboard listing all JPEGs, PNGs, and WebPs in the Media Library. Shows format badges, optimized status pills, and direct database-backed all-time total size savings metadata (`_tka_image_savings`). Rows transition dynamically in real-time with visual CSS success flash highlight animations upon process completion.
 
-### 🛒 7. WooCommerce Settings & Helpers
+### 🎯 7. Interactive Media Focal Point Selector
+*   **Visual Reticle Pin**: Pin the exact focal point on images in the WordPress Media Library and ACF image fields using an interactive click-and-drag crosshair reticle.
+*   **Automatic CSS Object-Position**: Injects inline CSS `object-position: X% Y%` automatically into `wp_get_attachment_image()` tags and provides developer helpers: `get_attachment_focal_point($id)` and `get_attachment_focal_point_style($id)`.
+*   **Responsive Cover Cropping**: Guarantees that key subjects (faces, focal details) remain visible across all device breakpoints when images use `object-fit: cover`.
+*   **Quick Alignment Presets**: Instant one-click presets for common framing layouts (Center, Face / Top-Center).
+*   **ACF Image Integration**: Adds structured `focal_point` metadata directly into formatted ACF image array responses (`$image['focal_point']['x']`, `$image['focal_point']['y']`, `$image['focal_point']['style']`).
+*   **REST API Support**: Exposes focal point coordinates in the WordPress REST API under `/wp/v2/media`.
+*   **Settings Toggle**: Enable or disable the focal point picker under **Settings -> Media**.
+
+### 🛒 8. WooCommerce Settings & Helpers
 *   **Scripts & Styles Optimization**: Dequeue heavy WooCommerce scripts and styles on pages that aren't shop pages, cart, checkout, or account pages.
 *   **AJAX Cart Fragments Control**: Disable or selectively defer the resource-intensive `/?wc-ajax=get_refreshed_fragments` AJAX requests. Choose between globally disabling them, keeping them active, or disabling them on non-shop pages only.
 *   **Block Styles Suppression**: Disable WooCommerce Gutenberg blocks styling sheets (`wc-blocks-style.css`) enqueued on the frontend.
@@ -80,26 +89,26 @@ A comprehensive suite of utility tools designed for developers and agencies to s
 *   **AJAX View Cart Suppressor**: Hides AJAX-injected secondary "View Cart" links on the shop archive page.
 *   **Quantity Selector Overrides**: Plus/Minus interactive buttons around numeric inputs, or full conversion to select dropdowns (max limit 20).
 
-### 📝 8. Gravity Forms Integrations & Enhancements
+### 📝 9. Gravity Forms Integrations & Enhancements
 *   **Markup Cleanup**: Convert standard submit input tags to semantic HTML5 `<button type="submit">` tags for better flex/grid layout control.
 *   **Stylesheet Suppressor**: Disable default Gravity Forms CSS styles completely to make custom styling with frameworks (Tailwind, bootstrap) easier.
 *   **Submit Loading Feedback**: Set up custom loading/sending text feedback upon button clicks to prevent double clicks and double submissions.
 *   **Core Web Vitals Optimizer**: A toggle to aggressively delay all Gravity Forms JavaScript and jQuery until user interaction (scroll/mousemove) using a native JS polyfill, while converting all GF CSS stylesheets to non-render blocking async execution. Ensures perfect 99 Lighthouse scores even on pages with heavy forms.
 
-### 🛠️ 9. Premium Maintenance Mode
+### 🛠️ 10. Premium Maintenance Mode
 *   **Seamless Site Suspension**: Take the site offline temporarily for scheduled maintenance while serving a beautiful glassmorphic dark-themed screen.
 *   **HTTP 503 SEO Integrity**: Responds with a proper `503 Service Unavailable` status and `Retry-After` HTTP headers to protect search engine indexes.
 *   **Bypasses**: Bypasses logged-in administrators (users with `manage_options`), the login/registration pages, REST requests, and XML-RPC.
 *   **Customization**: Configurable page titles, description messages, custom logo, and full-screen background image uploads.
 
-### 🔄 10. Cross-Document Page Transitions
+### 🔄 11. Cross-Document Page Transitions
 *   **Native View Transitions API**: Leverage modern cross-document view transitions for smooth page loads with zero layout shifts.
 *   **Pre-defined Animations**: Slide, swipe, and wipe animations with CSS keyframe custom timings and standard easing functions.
 *   **Header Flash Prevention**: Automatically prevents global site headers from flashing or cross-fading during page navigations, keeping them persistent while the main content animates seamlessly.
 *   **Dynamic Rules Engine**: Select transition rules dynamically using a From/To page type mapping (e.g. Front Page to Blog Page) or custom URI patterns.
 *   **Custom CSS Stylesheet Editor**: Live stylesheet block rendered directly in the `<head>` of the page for customizing target transition animations (e.g., configuring `view-transition-name` on elements).
 
-### 📁 11. Media Library Enhancements
+### 📁 12. Media Library Enhancements
 *   **Replace Media File**: Seamlessly overwrite images and PDFs with a new upload directly from the Media Library while keeping the exact same URL and attachment ID. Includes automatic browser cache-busting.
 *   **Smart WebP Exception**: When replacing a `.webp` image, the plugin allows `.jpg` or `.png` uploads, silently converting them to WebP in the background and replacing the original file automatically.
 *   **Virtual Media Folders (High Performance)**: Organize files in the Media Library using a nested virtual folders system, fully backed by custom database tables (`wp_tka_media_folders` and `wp_tka_media_folder_posts`) for optimized performance and avoiding taxonomy/term pollution.
@@ -108,12 +117,12 @@ A comprehensive suite of utility tools designed for developers and agencies to s
 *   **Single WebP / Image Regeneration**: Action links in list table rows and media modal edit panels allow manual regeneration of WebP assets, dynamically disabling themselves when the image is up-to-date with current settings.
 *   **AJAX-Driven Operations**: Fully non-blocking AJAX actions for folder creation, renaming, deletion, and attachment reassignment.
 
-### 🚀 12. WPML Performance Optimization
+### 🚀 13. WPML Performance Optimization
 *   **Theme ID Adjustments Override**: Disable default "Adjust IDs for multilingual functionality" runtime translations programmatically. This reduces database SELECT operations on page loads.
 *   **Canonical Redirect Suppression**: Suppresses URL canonical redirection during background REST API queries and AJAX transactions.
 *   **Query Suppression**: Automatic query parameters injection (`suppress_filters => true`) on background operations to bypass language filters, speeding up retrieval operations (like Retroactive Image Optimizer and Media Folder counts).
 
-### ⚡ 13. Advanced Resource Optimizations
+### ⚡ 14. Advanced Resource Optimizations
 *   **Heartbeat API Control**: Optimize server performance by rate-limiting or completely disabling the WordPress Heartbeat API background AJAX operations (Disable Everywhere, Disable on Dashboard, or Allow only on Post Edit Screen). Customize request interval frequencies (15s to 120s).
 *   **Post Revisions & Autosave Control**: Reduce database growth and bloat by programmatically setting a cap on post revisions (Unlimited, Disabled, or 1-10 Revisions). Adjust the autosave interval frequency (60s to 300s) early in the plugin lifecycle to override WordPress defaults.
 *   **Gutenberg Stylesheet Dequeuer**: Dequeue the heavy core block editor stylesheets (`wp-block-library.css` and `wp-block-library-theme.css`) globally on the frontend when Gutenberg is disabled or block elements are not used.
@@ -121,16 +130,16 @@ A comprehensive suite of utility tools designed for developers and agencies to s
 *   **Global JS Interaction Delayer**: Specify custom script handles to delay entirely until user interaction (scroll, click, touch) using a `data-tka-src` injection logic, allowing heavy third-party scripts to completely bypass Lighthouse parsing metrics.
 *   **Asynchronous CSS Engine**: Designate specific stylesheet handles to load asynchronously via the `media="print"` trick, preventing render-blocking warnings for custom fonts or plugin CSS.
 
-### 🌐 14. .htaccess Control & Hardening
+### 🌐 15. .htaccess Control & Hardening
 *   **Root .htaccess Customizations**: Enable directory browsing block, deny direct access to `wp-config.php`, `user.ini`, and `.htaccess` files, XML-RPC block, author scans block, CORS headers, Gzip compression, and browser caching (mod_headers and mod_expires rules).
 *   **Subdirectory Protection**: Automatically places/removes a secondary `.htaccess` file inside `wp-content/uploads/` to deny execution of `.php` and similar executable scripts.
 *   **Cache-Clearing Integration**: Purges popular caching plugins (WP Super Cache, W3 Total Cache, WP Rocket, SiteGround Optimizer) when saving configuration settings or running bulk image optimizations.
 
-### 📧 15. SMTP & Email Delivery
+### 📧 16. SMTP & Email Delivery
 *   **Custom SMTP Configuration**: Configure reliable outbound email delivery by supplying custom SMTP credentials (Host, Port, Username, Password, Encryption).
 *   **Mailpit Developer Mode**: Automatically intercepts and routes all outgoing emails to a local Mailpit instance (port 1025) whenever the WordPress environment is running in development mode, preventing accidental client emails during local testing.
 
-### 🗄️ 16. Database Maintenance
+### 🗄️ 17. Database Maintenance
 *   **Database Cleanup Suite**: Clean up post revisions, auto-drafts, trashed posts, spam/trashed comments, orphaned post/comment metadata, and expired transients with real-time database counters.
 *   **Engine Optimization**: Perform native MySQL `OPTIMIZE TABLE` commands across all WordPress tables.
 *   **High-Performance Indexing**: Toggle a custom compound `idx_tka_meta_key_value` PostMeta index to dramatically speed up complex metadata queries on large sites.
@@ -168,12 +177,23 @@ tka-site-utilities/
 │       ├── admin-script.js       # Admin Sandbox and Menu Organizer handling
 │       ├── media-folders.js      # Media folders sidebar drag-and-drop controller
 │       └── page-transitions.js   # Client-side router and transition rules evaluator
+├── admin/                        # Admin presentation layer
+│   ├── css/                      # Scoped CSS styles
+│   │   ├── admin-style.css       # Core options styles & UI elements
+│   │   ├── focal-point.css       # Focal Point interactive reticle styles
+│   │   └── media-folders.css     # Virtual Media Folders styles
+│   ├── js/                       # Client controllers & components
+│   │   ├── admin-columns.js      # Columns drag-and-drop & relational editor
+│   │   ├── admin-script.js       # Options page UI controller
+│   │   ├── focal-point.js        # Interactive Focal Point reticle controller
+│   │   └── media-folders.js      # Virtual Folders sidebar & drag-and-drop controller
+│   └── views/                    # Modular view templates
 ├── includes/
 │   ├── Admin/
 │   │   └── Settings.php          # Settings coordinators, registration & markup
 │   ├── Core/
 │   │   └── Plugin.php            # Main Singleton COORDINATOR
-│   ├── Features/                 # 17 core feature classes
+│   ├── Features/                 # Core feature classes
 │   │   ├── AcfManager.php        # ACF controls & asset loader
 │   │   ├── AdminColumns.php
 │   │   ├── AdminInterface.php
@@ -186,22 +206,24 @@ tka-site-utilities/
 │   │   ├── HeartbeatRevisionManager.php     # Heartbeat API & Post Revisions optimizer class
 │   │   ├── HtaccessManager.php              # Root & uploads .htaccess manager class
 │   │   ├── ImageOptimizer.php
-│   │   ├── MediaFolders.php                     # Virtual media folders manager class
-│   │   ├── PageTransitionAnimation.php          # Value object representing a transition animation
-│   │   ├── PageTransitionAnimationRegistry.php  # Registry of predefined/custom animations
-│   │   ├── PageTransitions.php                  # Page transitions manager class
+│   │   ├── MediaFocalPoint.php              # Interactive Media Focal Point selector
+│   │   ├── MediaFolders.php                 # Virtual media folders manager class
+│   │   ├── PageTransitionAnimation.php      # Value object representing a transition animation
+│   │   ├── PageTransitionAnimationRegistry.php # Registry of predefined/custom animations
+│   │   ├── PageTransitions.php              # Page transitions manager class
 │   │   ├── SecurityManager.php
-│   │   ├── SmtpManager.php                      # Custom SMTP & Mailpit override class
+│   │   ├── SmtpManager.php                  # Custom SMTP & Mailpit override class
 │   │   ├── SvgValidator.php
 │   │   ├── MaintenanceMode.php
 │   │   ├── VariousCleaner.php
 │   │   ├── WooCommerceManager.php
-│   │   └── WpmlOptimizer.php                    # WPML performance optimization feature class
-│   └── pluggables.php            # Pluggable function overrides (WooCommerce templates)
+│   │   └── WpmlOptimizer.php                # WPML performance optimization feature class
+│   └── pluggables.php            # Pluggable helper functions (get_attachment_focal_point, etc.)
+├── CHANGELOG.md                  # Release change history
 ├── LICENSE                       # MIT License
 ├── README.md                     # GitHub Developer Guide
 ├── readme.txt                    # Official WordPress.org Readme
-└── tka-site-utilities.php              # Plugin Entry point & PSR-4 autoloader
+└── tka-site-utilities.php        # Plugin Entry point & PSR-4 autoloader
 ```
 
 ---

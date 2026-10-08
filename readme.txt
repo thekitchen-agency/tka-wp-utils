@@ -3,7 +3,7 @@ Contributors: thekitchen-agency
 Tags: classic editor, svg upload, admin columns, hardening, image optimization
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 1.16.1
+Stable tag: 1.17.0
 Requires PHP: 8.3
 License: MIT
 License URI: https://opensource.org/licenses/MIT
@@ -16,6 +16,7 @@ TKA Site Utilities is an all-in-one utility plugin designed to help developers a
 
 ### Key Features
 
+*   **Media Focal Point Selector**: Visual reticle picker for media library items and ACF image fields with automatic CSS object-position generation for responsive cover cropping.
 *   **Classic Experience Restored**: Easily revert post/page editing back to the classic rich text (TinyMCE) editor and restore the traditional widgets dashboard page.
 *   **Granular Gutenberg Editor Control**: Globally disable the Gutenberg Block Editor or selectively activate it on specific post types.
 *   **Strict SVG Upload Security**: Safely upload SVG vector graphics. The plugin runs deep XML structural analysis upon upload to block XML External Entity (XXE) and Cross-Site Scripting (XSS) injection vectors. Includes a visual Security Sandbox to test SVGs before upload.
@@ -58,6 +59,12 @@ Our plugin uses a database-first approach: it converts physical files to WebP an
 Since images are permanently converted to WebP in the database, deactivating the plugin leaves WebP files active in your media library. If you want to keep original JPEGs/PNGs for safe backup, make sure the "Keep Original Images" setting is toggled on before running bulk optimization.
 
 == Changelog ==
+
+= 1.17.0 =
+*   Feature: Added interactive Media Focal Point selector to the WordPress Media Library and ACF image fields.
+*   Feature: Automatic calculation and generation of CSS `object-position` rules for responsive cover cropping.
+*   Feature: Added global helper functions `get_attachment_focal_point()` and `get_attachment_focal_point_style()`.
+*   Feature: Added settings toggle in Settings -> Media to enable/disable the focal point picker.
 
 = 1.16.1 =
 *   Fix: Fixed Virtual Media Folders multi-file batch upload so all files in the batch are assigned directly to the selected folder on the server and displayed immediately.

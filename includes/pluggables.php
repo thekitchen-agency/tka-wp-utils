@@ -85,3 +85,31 @@ if (!function_exists('woocommerce_quantity_input')) {
 		}
 	}
 }
+
+if (!function_exists('get_attachment_focal_point')) {
+	/**
+	 * Get attachment focal point coordinates and CSS attributes.
+	 *
+	 * @param int $attachment_id
+	 * @return array{x: float, y: float, css: string, style: string, has_focal_point: bool}
+	 */
+	function get_attachment_focal_point(int $attachment_id): array
+	{
+		return \TKA\WPUtils\Features\MediaFocalPoint::getFocalPoint($attachment_id);
+	}
+}
+
+if (!function_exists('get_attachment_focal_point_style')) {
+	/**
+	 * Get CSS style string for inline object-position.
+	 *
+	 * @param int $attachment_id
+	 * @return string
+	 */
+	function get_attachment_focal_point_style(int $attachment_id): string
+	{
+		$focal = \TKA\WPUtils\Features\MediaFocalPoint::getFocalPoint($attachment_id);
+		return $focal['style'];
+	}
+}
+

@@ -31,6 +31,7 @@ use TKA\WPUtils\Features\ScriptDeferManager;
 use TKA\WPUtils\Features\DatabaseMaintenance;
 use TKA\WPUtils\Features\LinkPrefetcher;
 use TKA\WPUtils\Features\AsyncCssManager;
+use TKA\WPUtils\Features\MediaFocalPoint;
 
 /**
  * Main Plugin Coordinator class.
@@ -165,6 +166,12 @@ class Plugin
 		if (!empty($options['replace_media_enabled'])) {
 			$replace_media = new ReplaceMedia();
 			$replace_media->hook();
+		}
+
+		// Media Focal Point
+		if (!empty($options['focal_point_enabled']) || !isset($options['focal_point_enabled'])) {
+			$focal_point = new MediaFocalPoint();
+			$focal_point->hook();
 		}
 
 		// Heartbeat and Revisions manager

@@ -151,6 +151,7 @@ class Settings
 					'duplicate_enabled' => 0,
 					'duplicate_post_types' => [],
 					'replace_media_enabled' => 0,
+					'focal_point_enabled' => 1,
 					'hidden_admin_menus' => [],
 					'admin_bar_cleanup' => [],
 					'disabled_dashboard_widgets' => [],
@@ -333,6 +334,7 @@ class Settings
 			'duplicate_enabled' => 0,
 			'duplicate_post_types' => [],
 			'replace_media_enabled' => 0,
+			'focal_point_enabled' => 1,
 			'media_folders_enabled' => 0,
 			'hidden_admin_menus' => [],
 			'admin_bar_cleanup' => [],
@@ -515,6 +517,7 @@ class Settings
 			$sanitized['duplicate_enabled'] = !empty($input['duplicate_enabled']) ? 1 : 0;
 			$sanitized['duplicate_post_types'] = isset($input['duplicate_post_types']) && is_array($input['duplicate_post_types']) ? array_map('sanitize_text_field', $input['duplicate_post_types']) : [];
 			$sanitized['replace_media_enabled'] = isset($input['replace_media_enabled']) ? 1 : 0;
+			$sanitized['focal_point_enabled'] = isset($input['focal_point_enabled']) ? 1 : 0;
 			$sanitized['media_folders_enabled'] = isset($input['media_folders_enabled']) ? 1 : 0;
 
 			$sanitized['obfuscate_author_urls'] = isset($input['obfuscate_author_urls']) ? 1 : 0;
@@ -1667,8 +1670,26 @@ class Settings
 													</label>
 												</div>
 											</div>
+
+											<hr style="border: 0; border-top: 1px solid var(--tka-border); margin: 20px 0;">
+
+											<!-- Focal Point toggle -->
+											<div class="tka-setting-row">
+												<div class="tka-setting-label">
+													<strong><?php esc_html_e('Enable Media Focal Point', 'tka-site-utilities'); ?></strong>
+													<p><?php esc_html_e('Adds an interactive visual focal point selector to the WordPress Media Library and ACF image fields, enabling responsive cover cropping with automatic CSS object-position output.', 'tka-site-utilities'); ?>
+													</p>
+												</div>
+												<div class="tka-setting-control">
+													<label class="tka-switch">
+														<input type="checkbox" name="tka_site_utilities_options[focal_point_enabled]" value="1" <?php checked(1, $options['focal_point_enabled'] ?? 1); ?>>
+														<span class="tka-slider"></span>
+													</label>
+												</div>
+											</div>
 										</div>
 									</section>
+
 
 									<!-- DATABASE PANEL -->
 									<section id="panel-database" class="tka-tab-panel">
