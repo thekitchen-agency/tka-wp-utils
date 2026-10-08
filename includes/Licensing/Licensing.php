@@ -429,11 +429,14 @@ class Licensing
 		$data = json_decode(wp_remote_retrieve_body($response));
 
 		if ($data && isset($data->success) && $data->success && !empty($data->new_version)) {
+			$new_ver_clean = ltrim((string) $data->new_version, 'vV');
+			$cur_ver_clean = ltrim((string) $current_version, 'vV');
+
 			$obj = new \stdClass();
 			$obj->id           = $plugin_file;
 			$obj->slug         = $data->slug ?? 'tka-site-utilities';
 			$obj->plugin       = $plugin_file;
-			$obj->new_version  = $data->new_version;
+			$obj->new_version  = $new_ver_clean;
 			$obj->url          = $data->url ?? 'https://github.com/thekitchen-agency/tka-site-utilities';
 			$obj->package      = $data->package ?? '';
 			$obj->icons        = (array) ($data->icons ?? []);
@@ -443,7 +446,7 @@ class Licensing
 			$obj->tested       = $data->tested ?? '6.7';
 			$obj->requires_php = $data->requires_php ?? '8.3';
 
-			if (!empty($data->package) && version_compare($current_version, $data->new_version, '<')) {
+			if (!empty($data->package) && version_compare($cur_ver_clean, $new_ver_clean, '<')) {
 				$transient->response[$plugin_file] = $obj;
 				if (isset($transient->no_update[$plugin_file])) {
 					unset($transient->no_update[$plugin_file]);
@@ -515,8 +518,11 @@ class Licensing
 			wp_update_plugins();
 		}
 
+		$new_ver_clean = ltrim((string) ($data['new_version'] ?? ''), 'vV');
+		$cur_ver_clean = ltrim((string) $current_version, 'vV');
+
 		$data['current_version'] = $current_version;
-		$data['has_update']      = !empty($data['new_version']) && version_compare($current_version, $data['new_version'], '<');
+		$data['has_update']      = !empty($new_ver_clean) && version_compare($cur_ver_clean, $new_ver_clean, '<');
 
 		return $data;
 	}
@@ -557,10 +563,11 @@ class Licensing
 		if (!is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200) {
 			$data = json_decode(wp_remote_retrieve_body($response));
 			if ($data && isset($data->success) && $data->success) {
+				$new_ver_clean = ltrim((string) ($data->new_version ?? '0.0.0'), 'vV');
 				$res = new \stdClass();
 				$res->name           = $data->name ?? 'TKA Site Utilities';
 				$res->slug           = $data->slug ?? 'tka-site-utilities';
-				$res->version        = $data->new_version ?? '0.0.0';
+				$res->version        = $new_ver_clean;
 				$res->package        = $data->package ?? '';
 				$res->download_link  = $data->package ?? ''; // Required by WordPress core modal!
 				$res->trunk          = $data->package ?? '';
