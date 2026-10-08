@@ -460,6 +460,68 @@ class Licensing
 	}
 
 	/**
+	 * Force an immediate check for updates from the licensing server and refresh WordPress transients.
+	 */
+	public static function forceCheckUpdate(): array
+	{
+		delete_site_transient('update_plugins');
+
+		$key            = self::getActiveLicenseKey();
+		$saved          = get_option(self::$option_key, []);
+		$is_whitelisted = !empty($saved['is_whitelisted']);
+
+		if (empty($key) && !$is_whitelisted) {
+			return [
+				'success' => false,
+				'error'   => __('No license key entered and domain is not whitelisted.', 'tka-site-utilities'),
+			];
+		}
+
+		$plugin_file     = self::getPluginFile();
+		$current_version = defined('TKA_SITE_UTILITIES_VERSION') ? TKA_SITE_UTILITIES_VERSION : '0.0.0';
+
+		$response = wp_remote_post(self::getServerUrl() . '/api/license/update-check', [
+			'headers' => [
+				'Content-Type' => 'application/json',
+				'Accept'       => 'application/json',
+			],
+			'body' => json_encode([
+				'license_key' => $key,
+				'domain'      => LicenseManager::determineDomain(),
+				'product_ref' => 'tka-site-utilities',
+				'version'     => $current_version,
+			]),
+			'timeout' => 15,
+		]);
+
+		if (is_wp_error($response)) {
+			return [
+				'success' => false,
+				'error'   => $response->get_error_message(),
+			];
+		}
+
+		$body = wp_remote_retrieve_body($response);
+		$data = json_decode($body, true);
+
+		if (!is_array($data)) {
+			return [
+				'success' => false,
+				'error'   => __('Invalid response from licensing server.', 'tka-site-utilities'),
+			];
+		}
+
+		if (function_exists('wp_update_plugins')) {
+			wp_update_plugins();
+		}
+
+		$data['current_version'] = $current_version;
+		$data['has_update']      = !empty($data['new_version']) && version_compare($current_version, $data['new_version'], '<');
+
+		return $data;
+	}
+
+	/**
 	 * Retrieve plugin information for the update details modal.
 	 */
 	public static function plugin_info($res, $action, $args)

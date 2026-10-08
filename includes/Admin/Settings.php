@@ -4356,6 +4356,28 @@ class Settings
 
 				$message = __('License deactivated locally.', 'tka-site-utilities');
 				$message_type = 'updated';
+			} elseif ($action === 'check_updates') {
+				$result = \TKA\WPUtils\Licensing\Licensing::forceCheckUpdate();
+				if (!empty($result['success'])) {
+					if (!empty($result['has_update'])) {
+						$message = sprintf(
+							esc_html__('Update available! Version %s is available (currently installed: %s).', 'tka-site-utilities'),
+							esc_html($result['new_version']),
+							esc_html($result['current_version'])
+						);
+						$message_type = 'updated';
+					} else {
+						$message = sprintf(
+							esc_html__('Plugin is up to date! Installed version: %s (latest on server: %s).', 'tka-site-utilities'),
+							esc_html($result['current_version']),
+							esc_html($result['new_version'] ?? $result['current_version'])
+						);
+						$message_type = 'updated';
+					}
+				} else {
+					$message = $result['error'] ?? __('Update check failed.', 'tka-site-utilities');
+					$message_type = 'error';
+				}
 			}
 		} else {
 			// On GET page load, ensure .env key is validated or domain whitelist is checked
@@ -4506,6 +4528,11 @@ class Settings
 									<button type="submit" name="tka_site_utilities_license_action_type" value="check_whitelist" class="tka-btn tka-btn-secondary">
 										<span class="dashicons dashicons-update" style="vertical-align: middle; font-size: 16px;"></span>
 										<?php esc_html_e('Check Whitelist Status', 'tka-site-utilities'); ?>
+									</button>
+
+									<button type="submit" name="tka_site_utilities_license_action_type" value="check_updates" class="tka-btn tka-btn-secondary">
+										<span class="dashicons dashicons-cloud" style="vertical-align: middle; font-size: 16px;"></span>
+										<?php esc_html_e('Check for Updates Now', 'tka-site-utilities'); ?>
 									</button>
 								</div>
 							</form>
