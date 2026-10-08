@@ -299,7 +299,7 @@ class AdminColumns {
 		$value      = get_post_meta( $post_id, $meta_key, true );
 		$field_type = $col_config['field_type'] ?? 'text';
 
-		if ( 'taxonomy' === $field_type || ( 'text' === $field_type && taxonomy_exists( $meta_key ) ) ) {
+		if ( 'taxonomy' === $field_type || ( 'text' === $field_type && function_exists( 'taxonomy_exists' ) && taxonomy_exists( $meta_key ) ) ) {
 			$terms = get_the_terms( $post_id, $meta_key );
 			if ( empty( $terms ) || is_wp_error( $terms ) ) {
 				echo '<span class="tka-column-empty">—</span>';

@@ -4295,49 +4295,48 @@ class Settings
 		$status = get_option('tka_site_utilities_license_status', []);
 		$message = '';
 		$message_type = 'updated';
-		$server_url = 'https://plugins.thekitchen.agency';
+		$server_url = \TKA\WPUtils\Licensing\Licensing::getServerUrl();
+		$is_env = \TKA\WPUtils\Licensing\Licensing::isLicenseKeyFromEnv();
+		$env_key = \TKA\WPUtils\Licensing\Licensing::getEnvLicenseKey();
+		$domain = \TKA\WPUtils\Licensing\LicenseManager::determineDomain();
 
 		$request_method = isset($_SERVER['REQUEST_METHOD']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_METHOD'])) : '';
-		// If no POST action, we do a real-time heartbeat check on this page load to make sure UI is up-to-date
-		if ($request_method !== 'POST' && !empty($status['license_key']) && !\TKA\WPUtils\Licensing\Licensing::isLocalEnvironment()) {
-			$manager = new \TKA\WPUtils\Licensing\LicenseManager($server_url, $status['license_key'], 'tka-site-utilities');
-			$result = $manager->verify();
-
-			if (isset($result['success']) && $result['success'] && isset($result['status']) && $result['status'] === 'active') {
-				$status['status'] = 'active';
-				$status['last_check'] = time();
-				$status['grace_active'] = false;
-				update_option('tka_site_utilities_license_status', $status);
-				set_transient('tka_site_utilities_license_check_transient', 'active', 24 * HOUR_IN_SECONDS);
-			} else {
-				if (isset($result['status']) && $result['status'] !== 'network_error') {
-					$status['status'] = 'suspended';
-					$status['error_message'] = $result['error'] ?? 'Unregistered domain seat.';
-					update_option('tka_site_utilities_license_status', $status);
-					set_transient('tka_site_utilities_license_check_transient', 'suspended', 24 * HOUR_IN_SECONDS);
-				}
-			}
-		}
 
 		if ($request_method === 'POST' && isset($_POST['tka_site_utilities_license_nonce']) && wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['tka_site_utilities_license_nonce'])), 'tka_site_utilities_license_action')) {
 			$action = isset($_POST['tka_site_utilities_license_action_type']) ? sanitize_text_field(wp_unslash($_POST['tka_site_utilities_license_action_type'])) : '';
 			$license_key = isset($_POST['tka_site_utilities_license_key']) ? sanitize_text_field(wp_unslash($_POST['tka_site_utilities_license_key'])) : '';
 
-			$server_url = 'https://plugins.thekitchen.agency';
+			if ($action === 'revalidate_env') {
+				delete_transient('tka_site_utilities_license_check_transient');
+				$result = \TKA\WPUtils\Licensing\Licensing::validateAndSync($env_key, true);
+				$status = get_option('tka_site_utilities_license_status', []);
 
-			if ($action === 'activate' && !empty($license_key)) {
-				$manager = new \TKA\WPUtils\Licensing\LicenseManager($server_url, $license_key, 'tka-site-utilities');
-				$result = $manager->activate();
+				if (!empty($result['success']) && isset($result['status']) && $result['status'] === 'active') {
+					$message = __('License key from .env validated successfully.', 'tka-site-utilities');
+					$message_type = 'updated';
+				} else {
+					$message = $result['error'] ?? __('License key validation failed.', 'tka-site-utilities');
+					$message_type = 'error';
+				}
+			} elseif ($action === 'check_whitelist') {
+				delete_transient('tka_site_utilities_whitelist_transient');
+				delete_transient('tka_site_utilities_license_check_transient');
+				$result = \TKA\WPUtils\Licensing\Licensing::checkDomainWhitelist(true);
+				$status = get_option('tka_site_utilities_license_status', []);
 
-				if (isset($result['success']) && $result['success']) {
-					$status = [
-						'license_key' => $license_key,
-						'status' => 'active',
-						'last_check' => time(),
-						'grace_active' => false
-					];
-					update_option('tka_site_utilities_license_status', $status);
-					set_transient('tka_site_utilities_license_check_transient', 'active', 24 * HOUR_IN_SECONDS);
+				if (\TKA\WPUtils\Licensing\Licensing::isDomainWhitelisted()) {
+					$message = __('Hosted domain is on the whitelist of the license server.', 'tka-site-utilities');
+					$message_type = 'updated';
+				} else {
+					$message = __('Hosted domain is NOT on the whitelist of the license server.', 'tka-site-utilities');
+					$message_type = 'error';
+				}
+			} elseif ($action === 'activate' && !empty($license_key)) {
+				delete_transient('tka_site_utilities_license_check_transient');
+				$result = \TKA\WPUtils\Licensing\Licensing::validateAndSync($license_key, false);
+				$status = get_option('tka_site_utilities_license_status', []);
+
+				if (!empty($result['success']) && isset($result['status']) && $result['status'] === 'active') {
 					$message = __('License activated successfully.', 'tka-site-utilities');
 					$message_type = 'updated';
 				} else {
@@ -4349,19 +4348,36 @@ class Settings
 					$manager = new \TKA\WPUtils\Licensing\LicenseManager($server_url, $status['license_key'], 'tka-site-utilities');
 					$manager->deactivate();
 				}
-				
+
 				$status = [];
 				update_option('tka_site_utilities_license_status', $status);
 				delete_transient('tka_site_utilities_license_check_transient');
-				
+				delete_transient('tka_site_utilities_whitelist_transient');
+
 				$message = __('License deactivated locally.', 'tka-site-utilities');
 				$message_type = 'updated';
+			}
+		} else {
+			// On GET page load, ensure .env key is validated or domain whitelist is checked
+			if ($is_env) {
+				if (empty($status['validated_key']) || $status['validated_key'] !== $env_key) {
+					\TKA\WPUtils\Licensing\Licensing::validateAndSync($env_key, true);
+					$status = get_option('tka_site_utilities_license_status', []);
+				}
+			} elseif (empty($status['license_key']) && empty($status['is_whitelisted'])) {
+				if (empty($status['last_whitelist_check']) || (time() - (int)$status['last_whitelist_check']) > 12 * HOUR_IN_SECONDS) {
+					\TKA\WPUtils\Licensing\Licensing::checkDomainWhitelist();
+					$status = get_option('tka_site_utilities_license_status', []);
+				}
 			}
 		}
 
 		$is_active = \TKA\WPUtils\Licensing\Licensing::isActive();
-		$current_key = $status['license_key'] ?? '';
+		$is_whitelisted = \TKA\WPUtils\Licensing\Licensing::isDomainWhitelisted();
+		$current_key = $is_env ? $env_key : ($status['license_key'] ?? '');
 		$error_message = $status['error_message'] ?? '';
+		$is_really_active = !empty($status['status']) && $status['status'] === 'active';
+		$is_local = \TKA\WPUtils\Licensing\Licensing::isLocalEnvironment();
 		?>
 		<div class="wrap tka-site-utilities-wrap">
 			<h2 class="screen-reader-text"></h2>
@@ -4390,16 +4406,29 @@ class Settings
 						<?php endif; ?>
 
 						<div class="tka-settings-card" style="padding: 24px; margin-top: 20px;">
-							
-							<?php 
-							$is_local = \TKA\WPUtils\Licensing\Licensing::isLocalEnvironment();
-							$is_really_active = !empty($status['status']) && $status['status'] === 'active';
-							
-							if ($is_local): ?>
+
+							<?php if ($is_whitelisted): ?>
 								<div style="margin-bottom: 20px; padding: 15px; background: rgba(34, 197, 94, 0.1); border-left: 3px solid #22c55e; border-radius: 4px;">
 									<p style="margin: 0; font-size: 14px; color: var(--tka-text-main);">
 										<span class="dashicons dashicons-yes-alt" style="color: #22c55e; vertical-align: middle;"></span>
-										<strong><?php esc_html_e('Local development bypass active.', 'tka-site-utilities'); ?></strong> <?php esc_html_e('Plugin features are unlocked. Enter a license key below to receive updates.', 'tka-site-utilities'); ?>
+										<strong><?php esc_html_e('Domain Whitelisted:', 'tka-site-utilities'); ?></strong>
+										<?php printf(esc_html(__('Hosted domain (%s) is on the whitelist of the license server. Plugin features are unlocked.', 'tka-site-utilities')), '<code>' . esc_html($domain) . '</code>'); ?>
+									</p>
+								</div>
+							<?php elseif ($is_env && $is_really_active): ?>
+								<div style="margin-bottom: 20px; padding: 15px; background: rgba(34, 197, 94, 0.1); border-left: 3px solid #22c55e; border-radius: 4px;">
+									<p style="margin: 0; font-size: 14px; color: var(--tka-text-main);">
+										<span class="dashicons dashicons-yes-alt" style="color: #22c55e; vertical-align: middle;"></span>
+										<strong><?php esc_html_e('Active (.env):', 'tka-site-utilities'); ?></strong>
+										<?php esc_html_e('License key is entered via .env file and validated with the license server.', 'tka-site-utilities'); ?>
+									</p>
+								</div>
+							<?php elseif ($is_env && !empty($status['status']) && $status['status'] === 'suspended'): ?>
+								<div style="margin-bottom: 20px; padding: 15px; background: rgba(239, 68, 68, 0.1); border-left: 3px solid #ef4444; border-radius: 4px;">
+									<p style="margin: 0; font-size: 14px; color: var(--tka-text-main);">
+										<span class="dashicons dashicons-warning" style="color: #ef4444; vertical-align: middle;"></span>
+										<strong><?php esc_html_e('Validation Failed (.env):', 'tka-site-utilities'); ?></strong>
+										<?php echo esc_html($error_message ? $error_message : __('The license key from .env could not be validated.', 'tka-site-utilities')); ?>
 									</p>
 								</div>
 							<?php elseif ($is_really_active): ?>
@@ -4407,6 +4436,13 @@ class Settings
 									<p style="margin: 0; font-size: 14px; color: var(--tka-text-main);">
 										<span class="dashicons dashicons-yes-alt" style="color: #22c55e; vertical-align: middle;"></span>
 										<strong><?php esc_html_e('Active:', 'tka-site-utilities'); ?></strong> <?php esc_html_e('Your license is currently active and verified.', 'tka-site-utilities'); ?>
+									</p>
+								</div>
+							<?php elseif ($is_local && empty($current_key)): ?>
+								<div style="margin-bottom: 20px; padding: 15px; background: rgba(34, 197, 94, 0.1); border-left: 3px solid #22c55e; border-radius: 4px;">
+									<p style="margin: 0; font-size: 14px; color: var(--tka-text-main);">
+										<span class="dashicons dashicons-yes-alt" style="color: #22c55e; vertical-align: middle;"></span>
+										<strong><?php esc_html_e('Local development bypass active.', 'tka-site-utilities'); ?></strong> <?php esc_html_e('Plugin features are unlocked. Enter a license key or configure .env to receive updates.', 'tka-site-utilities'); ?>
 									</p>
 								</div>
 							<?php elseif (!empty($status['status']) && $status['status'] === 'suspended'): ?>
@@ -4420,33 +4456,58 @@ class Settings
 								<div style="margin-bottom: 20px; padding: 15px; background: rgba(245, 158, 11, 0.1); border-left: 3px solid #f59e0b; border-radius: 4px;">
 									<p style="margin: 0; font-size: 14px; color: var(--tka-text-main);">
 										<span class="dashicons dashicons-info" style="color: #f59e0b; vertical-align: middle;"></span>
-										<strong><?php esc_html_e('Not Activated:', 'tka-site-utilities'); ?></strong> <?php esc_html_e('Please enter your license key to unlock the plugin features.', 'tka-site-utilities'); ?>
+										<strong><?php esc_html_e('Not Activated:', 'tka-site-utilities'); ?></strong> <?php esc_html_e('Please enter your license key or whitelist this domain to unlock the plugin features.', 'tka-site-utilities'); ?>
 									</p>
 								</div>
 							<?php endif; ?>
 
 							<form action="" method="post">
 								<?php wp_nonce_field('tka_site_utilities_license_action', 'tka_site_utilities_license_nonce'); ?>
-								
+
 								<table class="form-table" style="margin-bottom: 20px;">
 									<tr>
 										<th scope="row"><label for="tka_site_utilities_license_key"><?php esc_html_e('License Key', 'tka-site-utilities'); ?></label></th>
 										<td>
-											<input type="text" id="tka_site_utilities_license_key" name="tka_site_utilities_license_key" value="<?php echo esc_attr($current_key); ?>" class="regular-text tka-input" style="width: 100%; max-width: 400px;" <?php echo $is_really_active ? 'readonly' : ''; ?> />
-											<p class="description" style="color: var(--tka-text-muted); margin-top: 5px;"><?php esc_html_e('Enter your license key provided by TKA Systems.', 'tka-site-utilities'); ?></p>
+											<input type="text" id="tka_site_utilities_license_key" name="tka_site_utilities_license_key" value="<?php echo esc_attr($current_key); ?>" class="regular-text tka-input" style="width: 100%; max-width: 400px;" <?php echo ($is_env || $is_really_active) ? 'readonly' : ''; ?> />
+											<?php if ($is_env): ?>
+												<p class="description" style="color: var(--tka-text-muted); margin-top: 5px;">
+													<span class="dashicons dashicons-admin-generic" style="font-size: 16px; vertical-align: text-bottom;"></span>
+													<?php esc_html_e('Defined via environment (.env). To change, edit your .env file or environment configuration.', 'tka-site-utilities'); ?>
+												</p>
+											<?php else: ?>
+												<p class="description" style="color: var(--tka-text-muted); margin-top: 5px;"><?php esc_html_e('Enter your license key provided by TKA Systems, or define TKA_SITE_UTILITIES_LICENSE_KEY in your .env file.', 'tka-site-utilities'); ?></p>
+											<?php endif; ?>
+										</td>
+									</tr>
+									<tr>
+										<th scope="row"><?php esc_html_e('Hosted Domain', 'tka-site-utilities'); ?></th>
+										<td>
+											<code><?php echo esc_html($domain); ?></code>
+											<?php if ($is_whitelisted): ?>
+												<span class="dashicons dashicons-yes" style="color: #22c55e; vertical-align: middle;"></span>
+												<strong style="color: #22c55e;"><?php esc_html_e('Whitelisted on License Server', 'tka-site-utilities'); ?></strong>
+											<?php endif; ?>
 										</td>
 									</tr>
 								</table>
-								
-								<p class="submit" style="margin: 0; padding: 0;">
-									<?php if ($is_really_active): ?>
+
+								<div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+									<?php if ($is_env): ?>
+										<input type="hidden" name="tka_site_utilities_license_action_type" value="revalidate_env">
+										<button type="submit" class="tka-btn tka-btn-primary"><?php esc_html_e('Re-validate .env License', 'tka-site-utilities'); ?></button>
+									<?php elseif ($is_really_active): ?>
 										<input type="hidden" name="tka_site_utilities_license_action_type" value="deactivate">
 										<button type="submit" class="tka-btn tka-btn-danger"><?php esc_html_e('Deactivate License', 'tka-site-utilities'); ?></button>
 									<?php else: ?>
 										<input type="hidden" name="tka_site_utilities_license_action_type" value="activate">
 										<button type="submit" class="tka-btn tka-btn-primary"><?php esc_html_e('Activate License', 'tka-site-utilities'); ?></button>
 									<?php endif; ?>
-								</p>
+
+									<button type="submit" name="tka_site_utilities_license_action_type" value="check_whitelist" class="tka-btn tka-btn-secondary">
+										<span class="dashicons dashicons-update" style="vertical-align: middle; font-size: 16px;"></span>
+										<?php esc_html_e('Check Whitelist Status', 'tka-site-utilities'); ?>
+									</button>
+								</div>
 							</form>
 						</div>
 					</main>

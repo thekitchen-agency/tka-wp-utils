@@ -5,6 +5,24 @@ All notable changes to the **TKA Site Utilities** WordPress plugin will be docum
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.19.0] - 2026-10-08
+
+### Added
+- **.env License Key Validation**:
+  - Automatically detect and extract license keys configured via `.env` file or environment variables (`TKA_SITE_UTILITIES_LICENSE_KEY`, `TKA_LICENSE_KEY`).
+  - Validate `.env` license keys against the licensing server, ensuring proper seat activation and status tracking.
+  - License management screen detects environment-configured keys, displays real-time server validation status, makes the input field read-only, and provides a "Re-validate .env License" action.
+- **License Server Domain Whitelist Support**:
+  - Support automatic activation and feature unlocking when the hosted domain is on the license server's whitelist, even without a license key.
+  - Added "Check Whitelist Status" button and prominent whitelist status indicators in the admin panel.
+
+### Enhanced
+- **Plugin Updater & WordPress Core Compatibility**:
+  - Enhanced `check_update` payload to include complete WordPress update metadata (`id`, `slug`, `plugin`, `new_version`, `package`, `url`, `requires`, `tested`, `requires_php`).
+  - Added support for `$transient->no_update` to inform WordPress core when the plugin is up-to-date.
+  - Set `$res->download_link` and `$res->trunk` on `plugins_api` response so the "Install Update Now" action inside the WordPress version details modal functions properly.
+  - Dynamically resolved plugin basename to support custom directory structures or symlinks.
+
 ## [1.18.2] - 2026-10-08
 
 ### Changed

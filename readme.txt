@@ -3,7 +3,7 @@ Contributors: thekitchen-agency
 Tags: classic editor, svg upload, admin columns, hardening, image optimization
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 1.18.2
+Stable tag: 1.19.0
 Requires PHP: 8.3
 License: MIT
 License URI: https://opensource.org/licenses/MIT
@@ -59,6 +59,11 @@ Our plugin uses a database-first approach: it converts physical files to WebP an
 Since images are permanently converted to WebP in the database, deactivating the plugin leaves WebP files active in your media library. If you want to keep original JPEGs/PNGs for safe backup, make sure the "Keep Original Images" setting is toggled on before running bulk optimization.
 
 == Changelog ==
+
+= 1.19.0 =
+*   Feature: Automatically detect and validate license keys defined via .env or environment variables.
+*   Feature: Domain whitelist support to unlock plugin features if the hosted domain is whitelisted on the license server.
+*   Enhancement: Complete WordPress core updater payload compliance, no_update transient caching, and modal download link compatibility.
 
 = 1.18.2 =
 *   Style: Set `.media-toolbar` CSS height to 68px across media library modal and grid interfaces.
