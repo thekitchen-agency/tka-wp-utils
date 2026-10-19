@@ -5,6 +5,13 @@ All notable changes to the **TKA Site Utilities** WordPress plugin will be docum
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.19.2] - 2026-10-19
+
+### Fixed
+- **Page Transitions**:
+  - Fixed wipe, swipe, and slide CSS animations and selector scoping for View Transitions API.
+  - Bumped version declaration across plugin files to `1.19.2`.
+
 ## [1.19.0] - 2026-10-08
 
 ### Added
