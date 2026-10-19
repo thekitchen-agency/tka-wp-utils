@@ -1,27 +1,42 @@
-@property --tka-vt-view-transition-animation-wipe-angle {
-	syntax: "<angle>";
-	initial-value: 270deg;
-	inherits: false;
-}
-
-@property --tka-vt-view-transition-animation-wipe-progress {
-	syntax: "<number>";
-	initial-value: 0;
-	inherits: false;
-}
-
 @property --tka-vt-view-transition-animation-duration {
 	syntax: "<time>";
 	initial-value: 1s;
 	inherits: false;
 }
 
-@keyframes tka-view-transition-animation-wipe-new {
+@keyframes tka-view-transition-wipe-from-top {
 	from {
-		--tka-vt-view-transition-animation-wipe-progress: 0;
+		clip-path: inset(0 0 100% 0);
 	}
 	to {
-		--tka-vt-view-transition-animation-wipe-progress: 1;
+		clip-path: inset(0 0 0 0);
+	}
+}
+
+@keyframes tka-view-transition-wipe-from-bottom {
+	from {
+		clip-path: inset(100% 0 0 0);
+	}
+	to {
+		clip-path: inset(0 0 0 0);
+	}
+}
+
+@keyframes tka-view-transition-wipe-from-left {
+	from {
+		clip-path: inset(0 100% 0 0);
+	}
+	to {
+		clip-path: inset(0 0 0 0);
+	}
+}
+
+@keyframes tka-view-transition-wipe-from-right {
+	from {
+		clip-path: inset(0 0 0 100%);
+	}
+	to {
+		clip-path: inset(0 0 0 0);
 	}
 }
 
@@ -42,8 +57,8 @@
 ::view-transition-new(root) {
 	opacity: 1;
 	transform: none;
-	animation: tka-view-transition-animation-wipe-new var(--tka-vt-view-transition-animation-duration) cubic-bezier(0.45, 0, 0.35, 1.0);
+	animation-duration: var(--tka-vt-view-transition-animation-duration);
+	animation-timing-function: cubic-bezier(0.45, 0, 0.35, 1.0);
 	animation-fill-mode: both;
-	-webkit-mask-image: linear-gradient(var(--tka-vt-view-transition-animation-wipe-angle), #000 calc(-70% + calc(170% * var(--tka-vt-view-transition-animation-wipe-progress, 0))), transparent calc(170% * var(--tka-vt-view-transition-animation-wipe-progress, 0)));
-	mask-image: linear-gradient(var(--tka-vt-view-transition-animation-wipe-angle), #000 calc(-70% + calc(170% * var(--tka-vt-view-transition-animation-wipe-progress, 0))), transparent calc(170% * var(--tka-vt-view-transition-animation-wipe-progress, 0)));
+	animation-name: tka-view-transition-wipe-from-top;
 }

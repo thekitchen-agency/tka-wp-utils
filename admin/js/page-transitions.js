@@ -3,10 +3,9 @@
  */
 
 window.tkaInitPageTransitions = ( config ) => {
-	if ( ! window.navigation || ! ( 'CSSViewTransitionRule' in window ) ) {
-		window.console.warn(
-			'Page transitions not loaded as the browser is lacking support.'
-		);
+	// Require cross-document view transition support
+	const hasVtSupport = ( 'onpageswap' in window && 'onpagereveal' in window ) || ( 'CSSViewTransitionRule' in window );
+	if ( ! hasVtSupport ) {
 		return;
 	}
 
@@ -34,22 +33,23 @@ window.tkaInitPageTransitions = ( config ) => {
 	};
 
 	/**
-	 * Detect page type based on body classes
+	 * Detect page type based on body/root element classes
 	 */
-	const detectPageType = ( bodyEl ) => {
-		if ( ! bodyEl ) {
+	const detectPageType = ( el ) => {
+		const target = el || document.body || document.documentElement;
+		if ( ! target || ! target.classList ) {
 			return 'any';
 		}
-		if ( bodyEl.classList.contains( 'home' ) || bodyEl.classList.contains( 'front-page' ) ) {
+		if ( target.classList.contains( 'home' ) || target.classList.contains( 'front-page' ) ) {
 			return 'home';
 		}
-		if ( bodyEl.classList.contains( 'archive' ) || bodyEl.classList.contains( 'category' ) || bodyEl.classList.contains( 'tag' ) ) {
+		if ( target.classList.contains( 'archive' ) || target.classList.contains( 'category' ) || target.classList.contains( 'tag' ) ) {
 			return 'archive';
 		}
-		if ( bodyEl.classList.contains( 'page' ) ) {
+		if ( target.classList.contains( 'page' ) ) {
 			return 'single_page';
 		}
-		if ( bodyEl.classList.contains( 'single' ) ) {
+		if ( target.classList.contains( 'single' ) ) {
 			return 'single_post';
 		}
 		return 'any';
@@ -59,7 +59,7 @@ window.tkaInitPageTransitions = ( config ) => {
 	let lastClickedLinkHint = null;
 	document.addEventListener( 'click', ( e ) => {
 		const link = e.target.closest( 'a' );
-		if ( link ) {
+		if ( link && link.href ) {
 			let type = 'any';
 			if ( link.closest( '.wp-block-post' ) || link.closest( 'article' ) || link.matches( '.wp-block-post-title a' ) || link.matches( '.entry-title a' ) ) {
 				type = 'single_post';
@@ -87,7 +87,7 @@ window.tkaInitPageTransitions = ( config ) => {
 			}
 
 			// 2. Verify To condition
-			if ( rule.to_type !== 'any' && destTypeHint && rule.to_type !== destTypeHint ) {
+			if ( rule.to_type !== 'any' && destTypeHint && destTypeHint !== 'any' && rule.to_type !== destTypeHint ) {
 				continue;
 			}
 			if ( rule.to_type === 'custom_url' && ! matchUrlPattern( destUrl, rule.to_url ) ) {
@@ -127,7 +127,7 @@ window.tkaInitPageTransitions = ( config ) => {
 					} )
 					.map( ( [ selector, name ] ) => {
 						try {
-							const element = bodyElement ? bodyElement.querySelector( selector ) : null;
+							const element = bodyElement ? bodyElement.querySelector( selector ) : document.querySelector( selector );
 							return [ element, name ];
 						} catch ( e ) {
 							return [ null, name ];
@@ -200,7 +200,6 @@ window.tkaInitPageTransitions = ( config ) => {
 			return null;
 		}
 		try {
-			// CSS.escape is a helper to ensure URLs containing special characters do not break the CSS selector parsing
 			const safeUrl = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape( url ) : url.replace( /"/g, '\\"' );
 			const postLinkSelector = appendSelectors(
 				config.postSelector,
@@ -221,7 +220,7 @@ window.tkaInitPageTransitions = ( config ) => {
 	 */
 	window.addEventListener( 'pageswap', ( event ) => {
 		if ( event.viewTransition ) {
-			const bodyEl = document.body;
+			const bodyEl = document.body || document.documentElement;
 			const srcType = detectPageType( bodyEl );
 			const srcUrl = window.location.href;
 			
@@ -252,14 +251,6 @@ window.tkaInitPageTransitions = ( config ) => {
 			const transitionClass = rule && rule.animation === 'custom' && rule.custom_class 
 				? rule.custom_class 
 				: 'tka-transition-' + animationType;
-
-			console.log( '[TKA Transitions] pageswap details:', {
-				srcType,
-				srcUrl,
-				destUrl,
-				animationType,
-				transitionClass
-			} );
 
 			// Add transition type to event (if browser supports types)
 			if ( event.viewTransition.types ) {
@@ -299,6 +290,13 @@ window.tkaInitPageTransitions = ( config ) => {
 			event.viewTransition.finished.finally(() => {
 				document.documentElement.classList.remove( transitionClass );
 			});
+
+			event.viewTransition.ready.catch( ( err ) => {
+				console.warn( '[TKA View Transitions] Pageswap ready aborted:', err );
+			} );
+			event.viewTransition.finished.catch( ( err ) => {
+				console.warn( '[TKA View Transitions] Pageswap finished aborted:', err );
+			} );
 		}
 	} );
 
@@ -307,7 +305,7 @@ window.tkaInitPageTransitions = ( config ) => {
 	 */
 	window.addEventListener( 'pagereveal', ( event ) => {
 		if ( event.viewTransition ) {
-			const bodyEl = document.body;
+			const bodyEl = document.body || document.documentElement;
 			const destType = detectPageType( bodyEl );
 			const destUrl = window.location.href;
 
@@ -339,15 +337,6 @@ window.tkaInitPageTransitions = ( config ) => {
 					: 'tka-transition-' + animationType;
 			}
 			
-			console.log( '[TKA Transitions] pagereveal details:', {
-				destType,
-				destUrl,
-				srcType,
-				srcUrl,
-				animationType,
-				transitionClass
-			} );
-			
 			document.documentElement.classList.add( transitionClass );
 
 			let articleEl = null;
@@ -373,15 +362,37 @@ window.tkaInitPageTransitions = ( config ) => {
 			if ( viewTransitionEntries ) {
 				setTemporaryViewTransitionNames(
 					viewTransitionEntries,
-					event.viewTransition.ready
+					event.viewTransition.finished
 				);
 			}
 
 			// Clean up classes and sessionStorage when finished (or aborted/skipped)
 			event.viewTransition.finished.finally( () => {
 				document.documentElement.classList.remove( transitionClass );
-				sessionStorage.removeItem( 'tka_active_transition_class' );
+				if ( sessionStorage.getItem( 'tka_active_transition_class' ) === transitionClass ) {
+					sessionStorage.removeItem( 'tka_active_transition_class' );
+				}
+				sessionStorage.removeItem( 'tka_transition_source' );
 			} );
+
+			event.viewTransition.ready.catch( ( err ) => {
+				console.warn( '[TKA View Transitions] Pagereveal ready aborted:', err );
+			} );
+			event.viewTransition.finished.catch( ( err ) => {
+				console.warn( '[TKA View Transitions] Pagereveal finished aborted:', err );
+			} );
+		}
+	} );
+
+	/**
+	 * BFCache restoration handler
+	 */
+	window.addEventListener( 'pageshow', ( event ) => {
+		if ( event.persisted ) {
+			const classesToRemove = Array.from( document.documentElement.classList ).filter( ( c ) => c.startsWith( 'tka-transition-' ) );
+			classesToRemove.forEach( ( c ) => document.documentElement.classList.remove( c ) );
+			sessionStorage.removeItem( 'tka_active_transition_class' );
+			sessionStorage.removeItem( 'tka_transition_source' );
 		}
 	} );
 };

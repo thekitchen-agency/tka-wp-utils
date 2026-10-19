@@ -19,14 +19,14 @@
 @keyframes tka-view-transition-animation-swipe-old {
 	to {
 		opacity: 0;
-		translate: calc(100vw * var(--tka-vt-view-transition-animation-swipe-horizontal-offset) * -1) calc(100vw * var(--tka-vt-view-transition-animation-swipe-vertical-offset) * -1);
+		translate: calc(100vw * var(--tka-vt-view-transition-animation-swipe-horizontal-offset) * -1) calc(100vh * var(--tka-vt-view-transition-animation-swipe-vertical-offset) * -1);
 	}
 }
 
 @keyframes tka-view-transition-animation-swipe-new {
 	from {
 		opacity: 0;
-		translate: calc(100vw * var(--tka-vt-view-transition-animation-swipe-horizontal-offset)) calc(100vw * var(--tka-vt-view-transition-animation-swipe-vertical-offset));
+		translate: calc(100vw * var(--tka-vt-view-transition-animation-swipe-horizontal-offset)) calc(100vh * var(--tka-vt-view-transition-animation-swipe-vertical-offset));
 	}
 }
 

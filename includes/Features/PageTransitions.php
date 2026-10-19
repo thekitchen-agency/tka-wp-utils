@@ -69,7 +69,7 @@ class PageTransitions {
 		$defaults = [
 			'post-selector'              => '.wp-block-post.post, article.post, body.single main',
 			'global-transition-names'    => [
-				'header' => 'header',
+				'body > header, #app > header, header.banner, header.site-header, #masthead' => 'header',
 				'main'   => 'main',
 			],
 			'post-transition-names'      => [
@@ -112,7 +112,13 @@ class PageTransitions {
 					if ( false !== $existing_key ) {
 						unset( $args['global-transition-names'][ $existing_key ] );
 					}
-					$args['global-transition-names'][ $this->options[ $opt_key ] ] = $target_name;
+					$raw_sel = $this->options[ $opt_key ];
+					if ( 'header' === trim( $raw_sel ) ) {
+						$raw_sel = 'body > header, #app > header, header.banner, header.site-header, #masthead';
+					} elseif ( 'main' === trim( $raw_sel ) ) {
+						$raw_sel = 'body > main, #app > main, #main, main.main';
+					}
+					$args['global-transition-names'][ $raw_sel ] = $target_name;
 				}
 			}
 
@@ -218,7 +224,8 @@ class PageTransitions {
 			wp_json_encode( $config, JSON_FORCE_OBJECT | JSON_HEX_TAG | JSON_UNESCAPED_SLASHES )
 		);
 
-		wp_register_script( 'tka-view-transitions', false, [], TKA_SITE_UTILITIES_VERSION, true );
+		// Must load in the head (before initial rendering) so pagereveal can be intercepted
+		wp_register_script( 'tka-view-transitions', false, [], TKA_SITE_UTILITIES_VERSION, false );
 		wp_add_inline_script( 'tka-view-transitions', $src_script );
 		wp_add_inline_script( 'tka-view-transitions', $init_script );
 		wp_enqueue_script( 'tka-view-transitions' );
@@ -255,7 +262,13 @@ class PageTransitions {
 		$fade_seconds = $duration / 1000;
 		$css .= "html.tka-transition-fade::view-transition-group(*) { animation-duration: {$fade_seconds}s; }\n";
 
-		// Prevent header from flashing/fading (keep it persistent and static)
+		// Keep header persistent and static across all page loads
+		$header_selector = ! empty( $this->options['page_transitions_header_selector'] ) ? $this->options['page_transitions_header_selector'] : 'header';
+		if ( 'header' === trim( $header_selector ) ) {
+			$header_selector = 'body > header, #app > header, header.banner, header.site-header, #masthead';
+		}
+		$css .= "{$header_selector} { view-transition-name: header; }\n";
+		$css .= "main header, section header, article header, [class*=\"block-\"] header, header header { view-transition-name: none !important; }\n";
 		$css .= "::view-transition-old(header), ::view-transition-new(header) { animation: none; mix-blend-mode: normal; }\n";
 
 		// Output custom CSS
@@ -404,28 +417,18 @@ class PageTransitions {
 					'wipe-from-top',
 				],
 				'use_stylesheet'              => true,
-				'use_global_transition_names' => true,
+				'use_global_transition_names' => false,
 				'use_post_transition_names'   => true,
 				'get_stylesheet_callback'     => static function ( string $css, string $alias, array $args ) {
-					if ( str_ends_with( $alias, 'left' ) ) {
-						$args['angle'] = 90;
-					} elseif ( str_ends_with( $alias, 'top' ) ) {
-						$args['angle'] = 180;
-					} elseif ( str_ends_with( $alias, 'bottom' ) ) {
-						$args['angle'] = 0;
-					} elseif ( str_ends_with( $alias, 'right' ) ) {
-						$args['angle'] = 270;
-					}
-
+					$keyframe_name = ! empty( $alias ) ? 'tka-view-transition-' . $alias : 'tka-view-transition-wipe-from-top';
 					$css .= sprintf(
-						'::view-transition-new(root) { --tka-vt-view-transition-animation-wipe-angle: %ddeg; }',
-						$args['angle']
+						'::view-transition-new(root) { animation-name: %s; }',
+						$keyframe_name
 					);
 
 					return $css;
 				},
-			],
-			[ 'angle' => 270 ]
+			]
 		);
 	}
 
