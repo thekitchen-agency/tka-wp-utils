@@ -584,7 +584,7 @@
 .tka-menu-organizer {
 	display: flex;
 	flex-direction: column;
-	gap: 10px;
+	gap: 4px;
 	width: 100%;
 	margin-top: 15px;
 }
@@ -592,16 +592,22 @@
 .tka-organizer-item {
 	display: flex;
 	align-items: center;
-	padding: 14px 20px;
+	padding: 6px 12px;
 	background: #ffffff;
 	border: 1px solid var(--tka-border);
-	border-radius: var(--tka-radius);
-	box-shadow: var(--tka-shadow);
+	border-radius: 8px;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 	cursor: grab;
-	transition: all 0.2s ease-in-out;
+	transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 	position: relative;
 	width: 100%;
 	box-sizing: border-box;
+	min-height: 40px;
+}
+
+.tka-organizer-item:hover {
+	border-color: #cbd5e1;
+	box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 }
 
 .tka-organizer-item:active {
@@ -609,64 +615,125 @@
 }
 
 .tka-organizer-item.ui-sortable-helper {
-	box-shadow: var(--tka-shadow-lg);
+	box-shadow: 0 12px 28px -5px rgba(0, 0, 0, 0.18), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
 	border-color: var(--tka-primary);
-	background: rgba(255, 255, 255, 0.95);
-	backdrop-filter: blur(4px);
+	background: #ffffff;
+	border-left-width: 4px;
+	z-index: 999999;
+	cursor: grabbing !important;
 }
 
 .tka-organizer-placeholder {
 	border: 2px dashed var(--tka-primary);
-	background: rgba(79, 70, 229, 0.03);
-	border-radius: var(--tka-radius);
-	height: 56px;
-	margin-bottom: 10px;
+	background: rgba(79, 70, 229, 0.04);
+	border-radius: 8px;
+	height: 38px;
+	min-height: 38px;
+	margin-bottom: 4px;
 	width: 100%;
 	box-sizing: border-box;
 }
 
 .tka-organizer-drag {
-	margin-right: 15px;
-	color: var(--tka-text-muted);
+	margin-right: 10px;
+	color: #94a3b8;
 	cursor: grab;
 	display: flex;
 	align-items: center;
+	transition: color 0.15s ease;
+}
+
+.tka-organizer-item:hover .tka-organizer-drag {
+	color: var(--tka-primary);
 }
 
 .tka-organizer-drag span.dashicons {
-	font-size: 20px;
-	width: 20px;
-	height: 20px;
+	font-size: 18px;
+	width: 18px;
+	height: 18px;
 }
 
 .tka-organizer-details {
 	display: flex;
 	align-items: center;
-	gap: 10px;
+	gap: 8px;
 	flex-grow: 1;
+	min-width: 0;
+	cursor: grab;
 }
 
 .tka-organizer-title {
-	font-size: 14px;
+	font-size: 13px;
 	font-weight: 600;
 	color: var(--tka-text-main);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.tka-organizer-details .tka-code-badge {
+	font-size: 11px;
+	padding: 1px 6px;
+	line-height: 1.4;
 }
 
 .tka-organizer-actions {
 	margin-left: auto;
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+/* Quick Move to Top / Bottom Buttons */
+.tka-organizer-quick-btn {
+	background: transparent;
+	border: 1px solid transparent;
+	color: #94a3b8;
+	padding: 3px 6px;
+	border-radius: 4px;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	opacity: 0.35;
+	transition: all 0.15s ease;
+}
+
+.tka-organizer-item:hover .tka-organizer-quick-btn {
+	opacity: 1;
+	border-color: var(--tka-border);
+	background: #f8fafc;
+}
+
+.tka-organizer-quick-btn:hover {
+	color: var(--tka-primary);
+	border-color: var(--tka-primary);
+	background: rgba(79, 70, 229, 0.08);
+}
+
+.tka-organizer-quick-btn span.dashicons {
+	font-size: 14px;
+	width: 14px;
+	height: 14px;
 }
 
 /* Visibility Action Button styling */
 .tka-organizer-toggle-btn {
 	background: none;
 	border: 1px solid transparent;
-	padding: 6px;
+	padding: 4px 8px;
 	border-radius: 6px;
 	cursor: pointer;
 	transition: all 0.15s ease-in-out;
 	display: flex;
 	align-items: center;
 	justify-content: center;
+}
+
+.tka-organizer-toggle-btn span.dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
 }
 
 .tka-btn-visible {
@@ -693,13 +760,22 @@
 
 /* Item Visual States */
 .tka-organizer-item.menu-hidden {
-	border-left: 4px solid var(--tka-danger);
-	opacity: 0.65;
+	border-left: 3px solid var(--tka-danger);
+	opacity: 0.6;
 	background: #f8fafc;
 }
 
 .tka-organizer-item.menu-visible {
-	border-left: 4px solid var(--tka-success);
+	border-left: 3px solid var(--tka-success);
+}
+
+@keyframes tkaItemFlash {
+	0% { background-color: rgba(79, 70, 229, 0.15); transform: scale(1.01); }
+	100% { background-color: #ffffff; transform: scale(1); }
+}
+
+.tka-item-just-moved {
+	animation: tkaItemFlash 0.5s ease-out;
 }
 
 /* Organizer Sub-Tabs Styles */
@@ -747,6 +823,284 @@
 	color: var(--tka-secondary);
 	background: rgba(6, 182, 212, 0.06);
 	border-color: rgba(6, 182, 212, 0.15);
+}
+
+.tka-sub-tab-btn-custom.active {
+	color: #7c3aed;
+	background: rgba(124, 58, 237, 0.06);
+	border-color: rgba(124, 58, 237, 0.15);
+}
+
+.tka-sub-tabs-nav-wrapper {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	border-bottom: 2px solid var(--tka-border);
+	padding-bottom: 12px;
+	margin-bottom: 15px;
+	flex-wrap: wrap;
+}
+
+.tka-sub-tabs-nav-wrapper .tka-sub-tabs-nav {
+	border-bottom: none;
+	padding-bottom: 0;
+	margin-bottom: 0;
+	flex-wrap: wrap;
+	flex-grow: 1;
+}
+
+.tka-btn-add-view {
+	background: #ffffff;
+	border: 1px dashed var(--tka-primary);
+	color: var(--tka-primary);
+	padding: 7px 14px;
+	font-size: 13px;
+	font-weight: 600;
+	border-radius: 6px;
+	cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	transition: all 0.2s ease;
+}
+
+.tka-btn-add-view:hover {
+	background: var(--tka-primary);
+	color: #ffffff;
+	border-style: solid;
+}
+
+.tka-view-meta-options {
+	background: var(--tka-bg-main);
+	border: 1px solid var(--tka-border);
+	border-radius: var(--tka-radius);
+	padding: 14px 18px;
+	margin-bottom: 20px;
+}
+
+.tka-view-meta-grid {
+	display: grid;
+	grid-template-columns: 1fr auto;
+	gap: 24px;
+	padding: 20px;
+	background: var(--tka-bg-main);
+	border: 1px solid var(--tka-border);
+	border-radius: var(--tka-radius);
+	margin-bottom: 24px;
+	align-items: start;
+}
+
+.tka-view-meta-left {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.tka-view-meta-label {
+	font-size: 13px;
+	font-weight: 700;
+	color: var(--tka-text-main);
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+.tka-view-title-input {
+	font-size: 15px;
+	font-weight: 600;
+	padding: 8px 14px;
+	border-radius: 6px;
+	border: 1px solid var(--tka-border);
+	width: 100%;
+	max-width: 400px;
+	color: var(--tka-text-main);
+	background: #ffffff;
+}
+
+.tka-view-meta-right {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 12px;
+}
+
+.tka-btn-delete-view {
+	color: var(--tka-danger);
+	background: var(--tka-danger-bg);
+	border: 1px solid rgba(239, 68, 68, 0.25);
+	padding: 6px 12px;
+	border-radius: 6px;
+	font-size: 12px;
+	font-weight: 600;
+	cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	transition: all 0.15s ease;
+}
+
+.tka-btn-delete-view:hover {
+	background: var(--tka-danger);
+	color: #ffffff;
+	border-color: var(--tka-danger);
+}
+
+.tka-view-block-toggle {
+	text-align: right;
+}
+
+.tka-checkbox-label {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	font-weight: 600;
+	font-size: 13px;
+	color: var(--tka-text-main);
+	cursor: pointer;
+	user-select: none;
+}
+
+.tka-users-assignment-section {
+	background: var(--tka-bg-card);
+	border: 1px solid var(--tka-border);
+	border-radius: var(--tka-radius);
+	padding: 18px 20px;
+	margin-bottom: 24px;
+	box-shadow: var(--tka-shadow);
+}
+
+.tka-users-section-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 14px;
+	gap: 12px;
+	flex-wrap: wrap;
+}
+
+.tka-users-section-title {
+	margin: 0;
+	font-size: 14px;
+	font-weight: 700;
+	color: var(--tka-text-main);
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.tka-users-section-title .dashicons {
+	color: var(--tka-primary);
+	font-size: 18px;
+	width: 18px;
+	height: 18px;
+}
+
+.tka-user-search-input {
+	padding: 6px 12px;
+	border-radius: 6px;
+	border: 1px solid var(--tka-border);
+	font-size: 12px;
+	width: 220px;
+	color: var(--tka-text-main);
+}
+
+.tka-users-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+	gap: 10px;
+	max-height: 240px;
+	overflow-y: auto;
+	padding: 4px;
+}
+
+.tka-user-select-card {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 10px 14px;
+	border: 1px solid var(--tka-border);
+	border-radius: 8px;
+	background: #ffffff;
+	cursor: pointer;
+	transition: all 0.15s ease;
+	user-select: none;
+}
+
+.tka-user-select-card:hover {
+	border-color: rgba(79, 70, 229, 0.4);
+	background: var(--tka-bg-main);
+}
+
+.tka-user-select-card.selected {
+	border-color: var(--tka-primary);
+	background: rgba(79, 70, 229, 0.04);
+	box-shadow: 0 0 0 1px var(--tka-primary);
+}
+
+.tka-user-avatar img {
+	border-radius: 50%;
+	vertical-align: middle;
+}
+
+.tka-user-info {
+	flex-grow: 1;
+	min-width: 0;
+}
+
+.tka-user-name-line {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	flex-wrap: wrap;
+}
+
+.tka-user-name {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--tka-text-main);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.tka-role-badge {
+	font-size: 10px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	background: #f1f5f9;
+	color: #475569;
+	padding: 2px 6px;
+	border-radius: 4px;
+}
+
+.tka-installer-badge {
+	font-size: 10px;
+	font-weight: 600;
+	background: rgba(6, 182, 212, 0.1);
+	color: var(--tka-secondary);
+	padding: 2px 6px;
+	border-radius: 4px;
+}
+
+.tka-other-view-badge {
+	font-size: 11px;
+	color: #b45309;
+	background: #fef3c7;
+	padding: 1px 6px;
+	border-radius: 4px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.tka-user-sub-line {
+	font-size: 11px;
+	color: var(--tka-text-muted);
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-top: 2px;
 }
 
 .tka-sub-tab-content {

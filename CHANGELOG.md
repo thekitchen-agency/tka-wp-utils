@@ -5,6 +5,20 @@ All notable changes to the **TKA Site Utilities** WordPress plugin will be docum
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.20.0] - 2026-10-23
+
+### Added
+- **User-Specific Menu Organizer Views**:
+  - Assign tailored admin menu visibility, item ordering, and page permissions per specific user or role.
+  - Dedicated view selector tabs, user/role assignment dropdowns, and instant layout switching.
+- **Strict Direct URL Access Enforcement**:
+  - Optionally block direct URL/query access to administrative screens matching hidden menu items, with automatic safe fallback redirect for `index.php` and whitelist exemption for superadmins/installers.
+
+### Enhanced
+- **Menu Organizer Drag-and-Drop UX**:
+  - Redesigned compact menu pills to make dragging and moving items over long lists faster and more comfortable.
+  - Automatically sort disabled/hidden menu items to the bottom of the list upon saving.
+
 ## [1.19.2] - 2026-10-19
 
 ### Fixed

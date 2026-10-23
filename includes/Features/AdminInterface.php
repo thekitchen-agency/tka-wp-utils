@@ -47,6 +47,7 @@ class AdminInterface {
 
 		add_filter( 'custom_menu_order', '__return_true' );
 		add_filter( 'menu_order', [ $this, 'reorderAdminMenus' ], 999 );
+		add_action( 'admin_init', [ $this, 'enforceDirectAccessRestriction' ] );
 
 		// Design customization hooks
 		if ( ! empty( $this->options['login_logo'] ) || ! empty( $this->options['login_custom_css'] ) ) {
@@ -66,19 +67,80 @@ class AdminInterface {
 	}
 
 	/**
-	 * Restrict standard WordPress sidebar menus for secondary administrators.
+	 * Retrieve the active menu view configuration for the current user.
+	 *
+	 * Returns array with:
+	 *  - 'type': 'owner' | 'custom' | 'client' | 'none'
+	 *  - 'view_id': string|null
+	 *  - 'hidden_menus': array
+	 *  - 'menu_order': array
+	 *  - 'block_direct_access': bool
 	 */
-	public function hideAdminMenus(): void {
-		$is_owner = self::isCurrentUserInstaller();
-
-		if ( ! $is_owner && ! current_user_can( 'manage_options' ) ) {
-			return; // Only apply constraints to owners or other administrators
+	public function getCurrentUserMenuView(): array {
+		$current_user_id = get_current_user_id();
+		if ( ! $current_user_id ) {
+			return [
+				'type'                => 'none',
+				'view_id'             => null,
+				'hidden_menus'        => [],
+				'menu_order'          => [],
+				'block_direct_access' => false,
+			];
 		}
 
-		$hidden_menus = $is_owner 
-			? ( $this->options['owner_hidden_admin_menus'] ?? [] )
-			: ( $this->options['hidden_admin_menus'] ?? [] );
+		// 1. Installer / Superadmin check
+		if ( self::isCurrentUserInstaller() ) {
+			return [
+				'type'                => 'owner',
+				'view_id'             => null,
+				'hidden_menus'        => $this->options['owner_hidden_admin_menus'] ?? [],
+				'menu_order'          => $this->options['owner_admin_menu_order'] ?? [],
+				'block_direct_access' => false, // Never block site owner / installer!
+			];
+		}
 
+		// 2. Check if assigned to a Custom View
+		$custom_views = $this->options['menu_views'] ?? [];
+		if ( ! empty( $custom_views ) && is_array( $custom_views ) ) {
+			foreach ( $custom_views as $view_id => $view ) {
+				$assigned_users = $view['user_ids'] ?? [];
+				if ( is_array( $assigned_users ) && in_array( $current_user_id, array_map( 'intval', $assigned_users ), true ) ) {
+					return [
+						'type'                => 'custom',
+						'view_id'             => $view_id,
+						'hidden_menus'        => $view['hidden_menus'] ?? [],
+						'menu_order'          => $view['menu_order'] ?? [],
+						'block_direct_access' => ! empty( $view['block_direct_access'] ),
+					];
+				}
+			}
+		}
+
+		// 3. Fallback to Client Layout
+		return [
+			'type'                => 'client',
+			'view_id'             => null,
+			'hidden_menus'        => $this->options['hidden_admin_menus'] ?? [],
+			'menu_order'          => $this->options['admin_menu_order'] ?? [],
+			'block_direct_access' => ! empty( $this->options['client_block_direct_access'] ),
+		];
+	}
+
+	/**
+	 * Restrict standard WordPress sidebar menus for secondary administrators or assigned view users.
+	 */
+	public function hideAdminMenus(): void {
+		$view = $this->getCurrentUserMenuView();
+		if ( $view['type'] === 'none' ) {
+			return;
+		}
+
+		// If it's a fallback client view, only apply to users with manage_options
+		if ( $view['type'] === 'client' && ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$hidden_menus = $view['hidden_menus'];
 		if ( empty( $hidden_menus ) ) {
 			return;
 		}
@@ -88,8 +150,9 @@ class AdminInterface {
 		}
 
 		// If Appearance (themes.php) is hidden but the user can edit menus,
-		// expose "Menus" (nav-menus.php) as a standalone top-level menu page.
-		if ( in_array( 'themes.php', $hidden_menus, true ) && current_user_can( 'edit_theme_options' ) ) {
+		// expose "Menus" (nav-menus.php) as a standalone top-level menu page,
+		// unless nav-menus.php is itself explicitly in hidden_menus!
+		if ( in_array( 'themes.php', $hidden_menus, true ) && ! in_array( 'nav-menus.php', $hidden_menus, true ) && current_user_can( 'edit_theme_options' ) ) {
 			add_menu_page(
 				__( 'Menus', 'tka-site-utilities' ),
 				__( 'Menus', 'tka-site-utilities' ),
@@ -294,16 +357,16 @@ class AdminInterface {
 	 * Re-order top level admin menu items based on custom order settings.
 	 */
 	public function reorderAdminMenus( array $menu_order ): array {
-		$is_owner = self::isCurrentUserInstaller();
-
-		if ( ! $is_owner && ! current_user_can( 'manage_options' ) ) {
-			return $menu_order; // Skip non-administrators
+		$view = $this->getCurrentUserMenuView();
+		if ( $view['type'] === 'none' ) {
+			return $menu_order;
 		}
 
-		$custom_order = $is_owner
-			? ( $this->options['owner_admin_menu_order'] ?? [] )
-			: ( $this->options['admin_menu_order'] ?? [] );
+		if ( $view['type'] === 'client' && ! current_user_can( 'manage_options' ) ) {
+			return $menu_order; // Skip non-administrators in default client layout
+		}
 
+		$custom_order = $view['menu_order'];
 		if ( empty( $custom_order ) ) {
 			return $menu_order;
 		}
@@ -322,6 +385,233 @@ class AdminInterface {
 		}
 
 		return $new_order;
+	}
+
+	/**
+	 * Strictly block direct URL access to pages corresponding to hidden menu items.
+	 */
+	public function enforceDirectAccessRestriction(): void {
+		if ( wp_doing_ajax() || wp_doing_cron() || ( defined( 'REST_REQUEST' ) && REST_REQUEST ) ) {
+			return;
+		}
+
+		// Never lock out site owner/installer or superadmins
+		if ( self::isCurrentUserInstaller() ) {
+			return;
+		}
+
+		// Allow user impersonation switch-back action
+		if ( isset( $_GET['worldsend_switch_back'] ) ) {
+			return;
+		}
+
+		$view = $this->getCurrentUserMenuView();
+		if ( empty( $view['block_direct_access'] ) || empty( $view['hidden_menus'] ) ) {
+			return;
+		}
+
+		// Client layout restriction only applies to users who otherwise have admin access
+		if ( $view['type'] === 'client' && ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		global $pagenow;
+		if ( empty( $pagenow ) ) {
+			return;
+		}
+
+		$current_page      = $pagenow;
+		$current_page_slug = sanitize_text_field( wp_unslash( $_GET['page'] ?? '' ) );
+		$current_post_type = sanitize_text_field( wp_unslash( $_GET['post_type'] ?? '' ) );
+
+		if ( $current_page === 'post.php' && empty( $current_post_type ) && ! empty( $_GET['post'] ) ) {
+			$post_id = intval( $_GET['post'] );
+			if ( $post_id > 0 ) {
+				$current_post_type = get_post_type( $post_id ) ?: '';
+			}
+		}
+
+		$hidden_menus = $view['hidden_menus'];
+
+		// If Dashboard (index.php) is hidden and user lands on index.php (e.g. right after login),
+		// gracefully redirect to their first allowed menu instead of terminating with 403.
+		if ( $current_page === 'index.php' && empty( $current_page_slug ) && in_array( 'index.php', $hidden_menus, true ) ) {
+			$allowed_slug = $this->getFirstAllowedAdminUrl( $view );
+			if ( $allowed_slug ) {
+				wp_safe_redirect( admin_url( $allowed_slug ) );
+				exit;
+			}
+		}
+
+		$is_blocked = false;
+		foreach ( $hidden_menus as $menu_slug ) {
+			if ( $this->isScreenMatchingMenuSlug( $menu_slug, $current_page, $current_page_slug, $current_post_type ) ) {
+				$is_blocked = true;
+				break;
+			}
+		}
+
+		if ( $is_blocked ) {
+			wp_die(
+				esc_html__( 'Sorry, you are not allowed to access this page.', 'tka-site-utilities' ),
+				esc_html__( 'Access Denied', 'tka-site-utilities' ),
+				[
+					'response'  => 403,
+					'back_link' => true,
+				]
+			);
+		}
+	}
+
+	/**
+	 * Find the first available admin page slug that is not hidden in the given view.
+	 */
+	private function getFirstAllowedAdminUrl( array $view ): ?string {
+		$menu_order   = $view['menu_order'] ?? [];
+		$hidden_menus = $view['hidden_menus'] ?? [];
+
+		foreach ( $menu_order as $slug ) {
+			if ( ! in_array( $slug, $hidden_menus, true ) && $slug !== 'index.php' ) {
+				return $slug;
+			}
+		}
+
+		// Fallback check against standard post types/pages
+		$fallbacks = [ 'edit.php?post_type=page', 'edit.php', 'upload.php' ];
+		foreach ( $fallbacks as $fb ) {
+			if ( ! in_array( $fb, $hidden_menus, true ) ) {
+				return $fb;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Check whether the current screen matches a hidden menu slug.
+	 */
+	private function isScreenMatchingMenuSlug( string $menu_slug, string $current_page, string $current_page_slug, string $current_post_type ): bool {
+		// 1. Exact match on $pagenow
+		if ( $current_page === $menu_slug ) {
+			return true;
+		}
+
+		// 2. Exact match on admin page query parameter (?page=slug)
+		if ( ! empty( $current_page_slug ) ) {
+			if ( $current_page_slug === $menu_slug ) {
+				return true;
+			}
+			$slug_query = [];
+			parse_str( (string) wp_parse_url( $menu_slug, PHP_URL_QUERY ), $slug_query );
+			if ( ! empty( $slug_query['page'] ) && $slug_query['page'] === $current_page_slug ) {
+				return true;
+			}
+
+			// Submenu match: if the hidden slug has registered submenus that match $current_page_slug
+			global $submenu;
+			if ( ! empty( $submenu[ $menu_slug ] ) && is_array( $submenu[ $menu_slug ] ) ) {
+				foreach ( $submenu[ $menu_slug ] as $sub_item ) {
+					if ( ! empty( $sub_item[2] ) && ( $sub_item[2] === $current_page_slug || $sub_item[2] === $current_page ) ) {
+						return true;
+					}
+				}
+			}
+		}
+
+		// 3. Settings (options-general.php) and subpages
+		if ( $menu_slug === 'options-general.php' ) {
+			$options_screens = [
+				'options-general.php',
+				'options-writing.php',
+				'options-reading.php',
+				'options-discussion.php',
+				'options-media.php',
+				'options-permalink.php',
+				'options-privacy.php',
+			];
+			if ( in_array( $current_page, $options_screens, true ) ) {
+				return true;
+			}
+		}
+
+		// 4. Plugins (plugins.php) and subpages
+		if ( $menu_slug === 'plugins.php' ) {
+			if ( in_array( $current_page, [ 'plugins.php', 'plugin-install.php', 'plugin-editor.php' ], true ) ) {
+				return true;
+			}
+		}
+
+		// 5. Appearance (themes.php) and subpages (excluding nav-menus.php if nav-menus.php is not explicitly hidden)
+		if ( $menu_slug === 'themes.php' ) {
+			if ( in_array( $current_page, [ 'themes.php', 'theme-install.php', 'theme-editor.php', 'customize.php' ], true ) ) {
+				return true;
+			}
+		}
+
+		// 6. Tools (tools.php) and subpages
+		if ( $menu_slug === 'tools.php' ) {
+			$tools_screens = [
+				'tools.php',
+				'import.php',
+				'export.php',
+				'site-health.php',
+				'export-personal-data.php',
+				'erase-personal-data.php',
+			];
+			if ( in_array( $current_page, $tools_screens, true ) ) {
+				return true;
+			}
+		}
+
+		// 7. Users (users.php) and adding users (allow editing own profile)
+		if ( $menu_slug === 'users.php' ) {
+			if ( in_array( $current_page, [ 'users.php', 'user-new.php' ], true ) ) {
+				return true;
+			}
+			if ( $current_page === 'user-edit.php' && isset( $_GET['user_id'] ) && intval( $_GET['user_id'] ) !== get_current_user_id() ) {
+				return true;
+			}
+		}
+
+		// 8. Media (upload.php)
+		if ( $menu_slug === 'upload.php' ) {
+			if ( in_array( $current_page, [ 'upload.php', 'media-new.php' ], true ) ) {
+				return true;
+			}
+		}
+
+		// 9. Comments (edit-comments.php)
+		if ( $menu_slug === 'edit-comments.php' ) {
+			if ( in_array( $current_page, [ 'edit-comments.php', 'comment.php' ], true ) ) {
+				return true;
+			}
+		}
+
+		// 10. Posts & Custom Post Types
+		$target_post_type = '';
+		if ( str_starts_with( $menu_slug, 'edit.php?post_type=' ) ) {
+			$target_post_type = sanitize_key( substr( $menu_slug, strlen( 'edit.php?post_type=' ) ) );
+		} elseif ( $menu_slug === 'edit.php' ) {
+			$target_post_type = 'post';
+		}
+
+		if ( ! empty( $target_post_type ) ) {
+			if ( in_array( $current_page, [ 'edit.php', 'post-new.php', 'post.php' ], true ) ) {
+				$effective_post_type = ! empty( $current_post_type ) ? $current_post_type : ( $current_page === 'edit.php' ? 'post' : '' );
+				if ( $effective_post_type === $target_post_type ) {
+					return true;
+				}
+			}
+
+			if ( $current_page === 'edit-tags.php' && ! empty( $_GET['taxonomy'] ) ) {
+				$tax = get_taxonomy( sanitize_key( wp_unslash( $_GET['taxonomy'] ) ) );
+				if ( $tax && in_array( $target_post_type, (array) $tax->object_type, true ) ) {
+					return true;
+				}
+			}
+		}
+
+		return false;
 	}
 
 	/**

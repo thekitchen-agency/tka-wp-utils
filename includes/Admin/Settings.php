@@ -158,6 +158,8 @@ class Settings
 					'admin_menu_order' => [],
 					'owner_hidden_admin_menus' => [],
 					'owner_admin_menu_order' => [],
+					'client_block_direct_access' => 0,
+					'menu_views' => [],
 					'obfuscate_author_urls' => 0,
 					'obfuscate_emails' => 0,
 					'disable_xmlrpc' => 0,
@@ -342,6 +344,8 @@ class Settings
 			'admin_menu_order' => [],
 			'owner_hidden_admin_menus' => [],
 			'owner_admin_menu_order' => [],
+			'client_block_direct_access' => 0,
+			'menu_views' => [],
 			'obfuscate_author_urls' => 0,
 			'obfuscate_emails' => 0,
 			'disable_xmlrpc' => 0,
@@ -433,7 +437,7 @@ class Settings
 		if (empty($form_context)) {
 			if (isset($input['classic_editor']) || isset($input['image_optimization_enabled']) || isset($input['disable_gutenberg'])) {
 				$form_context = 'general_settings';
-			} elseif (isset($input['admin_menu_order']) || isset($input['hidden_admin_menus']) || isset($input['owner_admin_menu_order']) || isset($input['owner_hidden_admin_menus'])) {
+			} elseif (isset($input['admin_menu_order']) || isset($input['hidden_admin_menus']) || isset($input['owner_admin_menu_order']) || isset($input['owner_hidden_admin_menus']) || isset($input['menu_views'])) {
 				$form_context = 'menu_organizer';
 			}
 		}
@@ -442,6 +446,8 @@ class Settings
 			$is_owner = AdminInterface::isCurrentUserInstaller();
 
 			// Always sanitize and save client/other admin layout settings when submitted
+			$sanitized['client_block_direct_access'] = !empty($input['client_block_direct_access']) ? 1 : 0;
+
 			$sanitized['hidden_admin_menus'] = [];
 			if (isset($input['hidden_admin_menus']) && is_array($input['hidden_admin_menus'])) {
 				foreach ($input['hidden_admin_menus'] as $menu) {
@@ -453,6 +459,82 @@ class Settings
 			if (isset($input['admin_menu_order']) && is_array($input['admin_menu_order'])) {
 				foreach ($input['admin_menu_order'] as $slug) {
 					$sanitized['admin_menu_order'][] = sanitize_text_field($slug);
+				}
+			}
+
+			// Automatically move all disabled/hidden menu items to the bottom of the order list
+			$visible_slugs = [];
+			$hidden_slugs  = [];
+			foreach ($sanitized['admin_menu_order'] as $slug) {
+				if (in_array($slug, $sanitized['hidden_admin_menus'], true)) {
+					$hidden_slugs[] = $slug;
+				} else {
+					$visible_slugs[] = $slug;
+				}
+			}
+			$sanitized['admin_menu_order'] = array_merge($visible_slugs, $hidden_slugs);
+
+			// Sanitize custom menu views assigned to specific users
+			$sanitized['menu_views'] = [];
+			if (isset($input['menu_views']) && is_array($input['menu_views'])) {
+				foreach ($input['menu_views'] as $view_id => $view_data) {
+					$view_id = sanitize_key($view_id);
+					if (empty($view_id)) {
+						continue;
+					}
+
+					$view_title = sanitize_text_field($view_data['title'] ?? '');
+					if (empty($view_title)) {
+						$view_title = __('Custom View', 'tka-site-utilities');
+					}
+
+					$user_ids = [];
+					if (!empty($view_data['user_ids']) && is_array($view_data['user_ids'])) {
+						foreach ($view_data['user_ids'] as $uid) {
+							$uid = intval($uid);
+							if ($uid > 0) {
+								$user_ids[] = $uid;
+							}
+						}
+						$user_ids = array_values(array_unique($user_ids));
+					}
+
+					$hidden_menus = [];
+					if (!empty($view_data['hidden_menus']) && is_array($view_data['hidden_menus'])) {
+						foreach ($view_data['hidden_menus'] as $h_slug) {
+							$hidden_menus[] = sanitize_text_field($h_slug);
+						}
+					}
+
+					$menu_order = [];
+					if (!empty($view_data['menu_order']) && is_array($view_data['menu_order'])) {
+						foreach ($view_data['menu_order'] as $o_slug) {
+							$menu_order[] = sanitize_text_field($o_slug);
+						}
+					}
+
+					// Move disabled items in this view to the bottom
+					$v_visible_slugs = [];
+					$v_hidden_slugs  = [];
+					foreach ($menu_order as $o_slug) {
+						if (in_array($o_slug, $hidden_menus, true)) {
+							$v_hidden_slugs[] = $o_slug;
+						} else {
+							$v_visible_slugs[] = $o_slug;
+						}
+					}
+					$menu_order = array_merge($v_visible_slugs, $v_hidden_slugs);
+
+					$block_direct = !empty($view_data['block_direct_access']) ? 1 : 0;
+
+					$sanitized['menu_views'][$view_id] = [
+						'id'                  => $view_id,
+						'title'               => $view_title,
+						'user_ids'            => $user_ids,
+						'hidden_menus'        => $hidden_menus,
+						'menu_order'          => $menu_order,
+						'block_direct_access' => $block_direct,
+					];
 				}
 			}
 
@@ -471,6 +553,18 @@ class Settings
 						$sanitized['owner_admin_menu_order'][] = sanitize_text_field($slug);
 					}
 				}
+
+				// Move disabled items in owner layout to the bottom
+				$owner_visible_slugs = [];
+				$owner_hidden_slugs  = [];
+				foreach ($sanitized['owner_admin_menu_order'] as $slug) {
+					if (in_array($slug, $sanitized['owner_hidden_admin_menus'], true)) {
+						$owner_hidden_slugs[] = $slug;
+					} else {
+						$owner_visible_slugs[] = $slug;
+					}
+				}
+				$sanitized['owner_admin_menu_order'] = array_merge($owner_visible_slugs, $owner_hidden_slugs);
 			}
 		} elseif ($form_context === 'general_settings') {
 			$sanitized['classic_editor'] = isset($input['classic_editor']) ? 1 : 0;
@@ -3733,7 +3827,10 @@ class Settings
 			return;
 		}
 
-		$options = get_option('tka_site_utilities_options');
+		$options      = get_option('tka_site_utilities_options', []);
+		$all_users    = get_users(['orderby' => 'display_name', 'order' => 'ASC']);
+		$installer_id = AdminInterface::getInstallerId();
+		$menu_views   = $options['menu_views'] ?? [];
 		?>
 				<div class="wrap tka-site-utilities-wrap">
 					<h2 class="screen-reader-text"></h2>
@@ -3746,14 +3843,14 @@ class Settings
 								<span class="tka-version-badge"><?php esc_html_e('Menu Organizer', 'tka-site-utilities'); ?></span>
 							</div>
 							<p class="tka-tagline">
-								<?php esc_html_e('Configure separate drag-and-drop menu order and visibility rules for yourself and other administrators.', 'tka-site-utilities'); ?>
+								<?php esc_html_e('Configure separate drag-and-drop menu order, visibility rules, and access permissions for different users.', 'tka-site-utilities'); ?>
 							</p>
 						</header>
 
 						<!-- Settings Body Layout -->
 						<div class="tka-dashboard-body" style="grid-template-columns: 1fr;">
 							<main class="tka-dashboard-content">
-								<form method="post" action="options.php">
+								<form method="post" action="options.php" id="tka-menu-organizer-form">
 									<?php
 									settings_fields('tka_site_utilities_group');
 									?>
@@ -3761,29 +3858,29 @@ class Settings
 
 									<h2><?php esc_html_e('Admin Menu Organizer', 'tka-site-utilities'); ?></h2>
 									<p class="section-desc">
-										<?php esc_html_e('Organize and clean up navigation lists below. Toggle visibility or drag items vertically to sort.', 'tka-site-utilities'); ?>
+										<?php esc_html_e('Organize navigation lists below. Toggle visibility with the eye icon, drag items vertically to sort, and assign custom views to specific users.', 'tka-site-utilities'); ?>
 									</p>
 
 									<div class="tka-settings-card">
 										<p style="font-size: 13px; color: var(--tka-primary); background: rgba(79, 70, 229, 0.04); padding: 8px 14px; border-radius: 8px; border-left: 4px solid var(--tka-primary); line-height: 1.4; margin-bottom: 20px;">
 											<span class="dashicons dashicons-info" style="font-size: 16px; width: 16px; height: 16px; margin-top: -3px; vertical-align: middle; margin-right: 4px;"></span>
 											<strong><?php esc_html_e('Note:', 'tka-site-utilities'); ?></strong>
-											<?php esc_html_e('If the "Appearance" (themes.php) menu is hidden for other administrators, a standalone "Menus" option will automatically be exposed in their sidebar to allow navigation menu adjustments.', 'tka-site-utilities'); ?>
+											<?php esc_html_e('If the "Appearance" (themes.php) menu is hidden for a layout, a standalone "Menus" option will automatically be exposed to allow navigation menu adjustments, unless "Menus" is also explicitly hidden.', 'tka-site-utilities'); ?>
 										</p>
 
 										<?php
 										$default_menus = [
-											'index.php' => __('Dashboard', 'tka-site-utilities'),
-											'edit.php' => __('Posts', 'tka-site-utilities'),
-											'upload.php' => __('Media', 'tka-site-utilities'),
+											'index.php'               => __('Dashboard', 'tka-site-utilities'),
+											'edit.php'                => __('Posts', 'tka-site-utilities'),
+											'upload.php'              => __('Media', 'tka-site-utilities'),
 											'edit.php?post_type=page' => __('Pages', 'tka-site-utilities'),
-											'edit-comments.php' => __('Comments', 'tka-site-utilities'),
-											'themes.php' => __('Appearance', 'tka-site-utilities'),
-											'plugins.php' => __('Plugins', 'tka-site-utilities'),
-											'users.php' => __('Users', 'tka-site-utilities'),
-											'tools.php' => __('Tools', 'tka-site-utilities'),
-											'options-general.php' => __('Settings', 'tka-site-utilities'),
-											'nav-menus.php' => __('Menus', 'tka-site-utilities'),
+											'edit-comments.php'       => __('Comments', 'tka-site-utilities'),
+											'themes.php'              => __('Appearance', 'tka-site-utilities'),
+											'plugins.php'             => __('Plugins', 'tka-site-utilities'),
+											'users.php'               => __('Users', 'tka-site-utilities'),
+											'tools.php'               => __('Tools', 'tka-site-utilities'),
+											'options-general.php'     => __('Settings', 'tka-site-utilities'),
+											'nav-menus.php'           => __('Menus', 'tka-site-utilities'),
 										];
 
 										global $menu;
@@ -3801,18 +3898,42 @@ class Settings
 											}
 										}
 
-										// Merge defaults so that hidden items (removed from $menu) are still kept in the UI
+										// Merge defaults
 										$raw_menus = array_merge($default_menus, $raw_menus);
+
+										// Ensure registered post types are also present
+										$post_types = get_post_types(['show_ui' => true], 'objects');
+										foreach ($post_types as $pt) {
+											if (in_array($pt->name, ['attachment', 'revision', 'nav_menu_item', 'custom_css', 'customize_changeset'], true)) {
+												continue;
+											}
+											$pt_slug = ($pt->name === 'post') ? 'edit.php' : 'edit.php?post_type=' . $pt->name;
+											if (!isset($raw_menus[$pt_slug])) {
+												$raw_menus[$pt_slug] = $pt->labels->name;
+											}
+										}
 										?>
 
 										<!-- Sub-Tabs Navigation for Organizers -->
 										<div class="tka-sub-tabs-container" style="width: 100%;">
-											<div class="tka-sub-tabs-nav">
-												<button type="button" class="tka-sub-tab-btn active" data-subtab="client">
-													<?php esc_html_e('Client Layout (Other Administrators)', 'tka-site-utilities'); ?>
-												</button>
-												<button type="button" class="tka-sub-tab-btn" data-subtab="owner">
-													<?php esc_html_e('Your Account Layout (Original Installer Only)', 'tka-site-utilities'); ?>
+											<div class="tka-sub-tabs-nav-wrapper">
+												<div class="tka-sub-tabs-nav">
+													<button type="button" class="tka-sub-tab-btn active" data-subtab="client">
+														<?php esc_html_e('Client Layout (Default)', 'tka-site-utilities'); ?>
+													</button>
+													<button type="button" class="tka-sub-tab-btn" data-subtab="owner">
+														<?php esc_html_e('Your Account (Installer Only)', 'tka-site-utilities'); ?>
+													</button>
+													<?php foreach ($menu_views as $v_id => $v_data): ?>
+														<button type="button" class="tka-sub-tab-btn tka-sub-tab-btn-custom" data-subtab="<?php echo esc_attr($v_id); ?>">
+															<span class="dashicons dashicons-groups" style="margin-right: 5px; font-size: 16px; width: 16px; height: 16px; vertical-align: text-top;"></span>
+															<span class="tka-view-tab-title"><?php echo esc_html($v_data['title'] ?? __('Custom View', 'tka-site-utilities')); ?></span>
+														</button>
+													<?php endforeach; ?>
+												</div>
+												<button type="button" class="tka-btn-add-view" id="tka-add-menu-view-btn">
+													<span class="dashicons dashicons-plus-alt2"></span>
+													<?php esc_html_e('Add Custom View', 'tka-site-utilities'); ?>
 												</button>
 											</div>
 
@@ -3820,51 +3941,29 @@ class Settings
 											<div class="tka-sub-tab-content active" id="tka-subtab-client-content" style="width: 100%;">
 												<div class="tka-setting-row stack" style="margin-top: 15px; border-bottom: none; padding-bottom: 0; width: 100%;">
 													<div class="tka-setting-label">
-														<p><?php esc_html_e('Customize what other administrators see in their sidebar navigation.', 'tka-site-utilities'); ?>
+														<p><?php esc_html_e('Default layout applied to other administrators not assigned to a specific custom view.', 'tka-site-utilities'); ?></p>
+													</div>
+
+													<div class="tka-view-meta-options">
+														<label class="tka-checkbox-label">
+															<input type="checkbox" name="tka_site_utilities_options[client_block_direct_access]" value="1" <?php checked(!empty($options['client_block_direct_access'])); ?>>
+															<span><?php esc_html_e('Block Direct URL Access to Hidden Pages for Other Administrators', 'tka-site-utilities'); ?></span>
+														</label>
+														<p class="description">
+															<?php esc_html_e('When checked, secondary administrators attempting to directly access hidden pages by URL will be blocked with an Access Denied error.', 'tka-site-utilities'); ?>
 														</p>
 													</div>
 
-													<div class="tka-menu-organizer" id="tka-menu-organizer-list-client" style="width: 100%;">
+													<div id="tka-menu-organizer-list-client" style="width: 100%;">
 														<?php
-														$menus_to_hide = [];
-														$custom_order = $options['admin_menu_order'] ?? [];
-														foreach ($custom_order as $slug) {
-															if (isset($raw_menus[$slug])) {
-																$menus_to_hide[$slug] = $raw_menus[$slug];
-															}
-														}
-														foreach ($raw_menus as $slug => $label) {
-															if (!isset($menus_to_hide[$slug])) {
-																$menus_to_hide[$slug] = $label;
-															}
-														}
-
-														foreach ($menus_to_hide as $slug => $label):
-															$is_hidden = in_array($slug, $options['hidden_admin_menus'] ?? [], true);
-															?>
-																<div class="tka-organizer-item <?php echo $is_hidden ? 'menu-hidden' : 'menu-visible'; ?>" data-slug="<?php echo esc_attr($slug); ?>">
-																	<!-- Sortable Order Input -->
-																	<input type="hidden" name="tka_site_utilities_options[admin_menu_order][]" value="<?php echo esc_attr($slug); ?>">
-
-																	<!-- Hidden Visibility Checkbox (checked = hidden) -->
-																	<input type="checkbox" class="tka-menu-visibility-checkbox" name="tka_site_utilities_options[hidden_admin_menus][]" value="<?php echo esc_attr($slug); ?>" <?php checked($is_hidden); ?> style="display: none;">
-
-																	<div class="tka-organizer-drag">
-																		<span class="dashicons dashicons-menu"></span>
-																	</div>
-
-																	<div class="tka-organizer-details">
-																		<strong class="tka-organizer-title"><?php echo esc_html($label); ?></strong>
-																		<code class="tka-code-badge"><?php echo esc_html($slug); ?></code>
-																	</div>
-
-																	<div class="tka-organizer-actions">
-																		<button type="button" class="tka-organizer-toggle-btn <?php echo $is_hidden ? 'tka-btn-hidden' : 'tka-btn-visible'; ?>" title="<?php esc_attr_e('Toggle Visibility', 'tka-site-utilities'); ?>">
-																			<span class="dashicons <?php echo $is_hidden ? 'dashicons-hidden' : 'dashicons-visibility'; ?>"></span>
-																		</button>
-																	</div>
-																</div>
-														<?php endforeach; ?>
+														$this->renderOrganizerList(
+															'tka_site_utilities_options[admin_menu_order][]',
+															'tka_site_utilities_options[hidden_admin_menus][]',
+															$raw_menus,
+															$options['admin_menu_order'] ?? [],
+															$options['hidden_admin_menus'] ?? []
+														);
+														?>
 													</div>
 												</div>
 											</div>
@@ -3873,54 +3972,68 @@ class Settings
 											<div class="tka-sub-tab-content" id="tka-subtab-owner-content" style="display: none; width: 100%;">
 												<div class="tka-setting-row stack" style="margin-top: 15px; border-bottom: none; padding-bottom: 0; width: 100%;">
 													<div class="tka-setting-label">
-														<p><?php esc_html_e('Customize your own personal sidebar navigation order and visibility.', 'tka-site-utilities'); ?>
-														</p>
+														<p><?php esc_html_e('Customize your own personal sidebar navigation order and visibility.', 'tka-site-utilities'); ?></p>
 													</div>
 
-													<div class="tka-menu-organizer" id="tka-menu-organizer-list-owner" style="width: 100%;">
+													<div id="tka-menu-organizer-list-owner" style="width: 100%;">
 														<?php
-														$owner_menus_to_hide = [];
-														$owner_custom_order = $options['owner_admin_menu_order'] ?? [];
-														foreach ($owner_custom_order as $slug) {
-															if (isset($raw_menus[$slug])) {
-																$owner_menus_to_hide[$slug] = $raw_menus[$slug];
-															}
-														}
-														foreach ($raw_menus as $slug => $label) {
-															if (!isset($owner_menus_to_hide[$slug])) {
-																$owner_menus_to_hide[$slug] = $label;
-															}
-														}
-
-														foreach ($owner_menus_to_hide as $slug => $label):
-															$is_hidden = in_array($slug, $options['owner_hidden_admin_menus'] ?? [], true);
-															?>
-																<div class="tka-organizer-item <?php echo $is_hidden ? 'menu-hidden' : 'menu-visible'; ?>" data-slug="<?php echo esc_attr($slug); ?>">
-																	<!-- Sortable Order Input -->
-																	<input type="hidden" name="tka_site_utilities_options[owner_admin_menu_order][]" value="<?php echo esc_attr($slug); ?>">
-
-																	<!-- Hidden Visibility Checkbox (checked = hidden) -->
-																	<input type="checkbox" class="tka-menu-visibility-checkbox" name="tka_site_utilities_options[owner_hidden_admin_menus][]" value="<?php echo esc_attr($slug); ?>" <?php checked($is_hidden); ?> style="display: none;">
-
-																	<div class="tka-organizer-drag">
-																		<span class="dashicons dashicons-menu"></span>
-																	</div>
-
-																	<div class="tka-organizer-details">
-																		<strong class="tka-organizer-title"><?php echo esc_html($label); ?></strong>
-																		<code class="tka-code-badge"><?php echo esc_html($slug); ?></code>
-																	</div>
-
-																	<div class="tka-organizer-actions">
-																		<button type="button" class="tka-organizer-toggle-btn <?php echo $is_hidden ? 'tka-btn-hidden' : 'tka-btn-visible'; ?>" title="<?php esc_attr_e('Toggle Visibility', 'tka-site-utilities'); ?>">
-																			<span class="dashicons <?php echo $is_hidden ? 'dashicons-hidden' : 'dashicons-visibility'; ?>"></span>
-																		</button>
-																	</div>
-																</div>
-														<?php endforeach; ?>
+														$this->renderOrganizerList(
+															'tka_site_utilities_options[owner_admin_menu_order][]',
+															'tka_site_utilities_options[owner_hidden_admin_menus][]',
+															$raw_menus,
+															$options['owner_admin_menu_order'] ?? [],
+															$options['owner_hidden_admin_menus'] ?? []
+														);
+														?>
 													</div>
 												</div>
 											</div>
+
+											<!-- 3. Existing Custom Views Tab Contents -->
+											<?php foreach ($menu_views as $v_id => $v_data): 
+												$v_title = $v_data['title'] ?? __('Custom View', 'tka-site-utilities');
+												$v_users = !empty($v_data['user_ids']) ? array_map('intval', $v_data['user_ids']) : [];
+												$v_order = $v_data['menu_order'] ?? [];
+												$v_hidden = $v_data['hidden_menus'] ?? [];
+												$v_block = !empty($v_data['block_direct_access']);
+												?>
+												<div class="tka-sub-tab-content tka-custom-view-panel" id="tka-subtab-<?php echo esc_attr($v_id); ?>-content" style="display: none; width: 100%;">
+													<div class="tka-view-meta-grid">
+														<div class="tka-view-meta-left">
+															<label class="tka-view-meta-label"><?php esc_html_e('View Title', 'tka-site-utilities'); ?></label>
+															<input type="text" class="tka-view-title-input" name="tka_site_utilities_options[menu_views][<?php echo esc_attr($v_id); ?>][title]" value="<?php echo esc_attr($v_title); ?>" placeholder="e.g. Content Editor" data-view-id="<?php echo esc_attr($v_id); ?>">
+															<p class="description"><?php esc_html_e('Give this view a distinct name (e.g. Content Editor, Shop Manager).', 'tka-site-utilities'); ?></p>
+														</div>
+														<div class="tka-view-meta-right">
+															<button type="button" class="tka-btn-delete-view" data-view-id="<?php echo esc_attr($v_id); ?>">
+																<span class="dashicons dashicons-trash"></span>
+																<?php esc_html_e('Delete View', 'tka-site-utilities'); ?>
+															</button>
+															<div class="tka-view-block-toggle">
+																<label class="tka-checkbox-label">
+																	<input type="checkbox" name="tka_site_utilities_options[menu_views][<?php echo esc_attr($v_id); ?>][block_direct_access]" value="1" <?php checked($v_block); ?>>
+																	<span><?php esc_html_e('Block Direct URL Access to Hidden Pages', 'tka-site-utilities'); ?></span>
+																</label>
+																<p class="description"><?php esc_html_e('Strictly prevent assigned users from navigating directly to hidden admin screens.', 'tka-site-utilities'); ?></p>
+															</div>
+														</div>
+													</div>
+
+													<?php $this->renderUserAssignmentGrid($v_id, $all_users, $v_users, $installer_id, $menu_views); ?>
+
+													<div style="width: 100%;">
+														<?php
+														$this->renderOrganizerList(
+															"tka_site_utilities_options[menu_views][{$v_id}][menu_order][]",
+															"tka_site_utilities_options[menu_views][{$v_id}][hidden_menus][]",
+															$raw_menus,
+															$v_order,
+															$v_hidden
+														);
+														?>
+													</div>
+												</div>
+											<?php endforeach; ?>
 										</div>
 									</div>
 
@@ -3929,11 +4042,178 @@ class Settings
 										<?php submit_button(__('Save Menu Organizer', 'tka-site-utilities'), 'primary tka-save-btn', 'submit', false); ?>
 									</div>
 								</form>
+
+								<!-- Template for creating new Custom Views dynamically -->
+								<template id="tka-menu-view-template">
+									<div class="tka-sub-tab-content tka-custom-view-panel" id="tka-subtab-{{VIEW_ID}}-content" style="display: none; width: 100%;">
+										<div class="tka-view-meta-grid">
+											<div class="tka-view-meta-left">
+												<label class="tka-view-meta-label"><?php esc_html_e('View Title', 'tka-site-utilities'); ?></label>
+												<input type="text" class="tka-view-title-input" name="tka_site_utilities_options[menu_views][{{VIEW_ID}}][title]" value="{{VIEW_TITLE}}" placeholder="e.g. Content Editor" data-view-id="{{VIEW_ID}}">
+												<p class="description"><?php esc_html_e('Give this view a distinct name (e.g. Content Editor, Shop Manager).', 'tka-site-utilities'); ?></p>
+											</div>
+											<div class="tka-view-meta-right">
+												<button type="button" class="tka-btn-delete-view" data-view-id="{{VIEW_ID}}">
+													<span class="dashicons dashicons-trash"></span>
+													<?php esc_html_e('Delete View', 'tka-site-utilities'); ?>
+												</button>
+												<div class="tka-view-block-toggle">
+													<label class="tka-checkbox-label">
+														<input type="checkbox" name="tka_site_utilities_options[menu_views][{{VIEW_ID}}][block_direct_access]" value="1" checked="checked">
+														<span><?php esc_html_e('Block Direct URL Access to Hidden Pages', 'tka-site-utilities'); ?></span>
+													</label>
+													<p class="description"><?php esc_html_e('Strictly prevent assigned users from navigating directly to hidden admin screens.', 'tka-site-utilities'); ?></p>
+												</div>
+											</div>
+										</div>
+
+										<?php $this->renderUserAssignmentGrid('{{VIEW_ID}}', $all_users, [], $installer_id, $menu_views); ?>
+
+										<div style="width: 100%;">
+											<?php
+											$this->renderOrganizerList(
+												'tka_site_utilities_options[menu_views][{{VIEW_ID}}][menu_order][]',
+												'tka_site_utilities_options[menu_views][{{VIEW_ID}}][hidden_menus][]',
+												$raw_menus,
+												[],
+												[]
+											);
+											?>
+										</div>
+									</div>
+								</template>
 							</main>
 						</div>
 					</div>
 				</div>
 				<?php
+	}
+
+	/**
+	 * Helper to render the drag-and-drop sortable organizer list items.
+	 */
+	private function renderOrganizerList(string $order_field_name, string $hidden_field_name, array $raw_menus, array $saved_order, array $saved_hidden): void
+	{
+		$visible_menus = [];
+		$hidden_menus  = [];
+
+		foreach ($saved_order as $slug) {
+			if (isset($raw_menus[$slug])) {
+				if (in_array($slug, $saved_hidden, true)) {
+					$hidden_menus[$slug] = $raw_menus[$slug];
+				} else {
+					$visible_menus[$slug] = $raw_menus[$slug];
+				}
+			}
+		}
+
+		foreach ($raw_menus as $slug => $label) {
+			if (!isset($visible_menus[$slug]) && !isset($hidden_menus[$slug])) {
+				if (in_array($slug, $saved_hidden, true)) {
+					$hidden_menus[$slug] = $label;
+				} else {
+					$visible_menus[$slug] = $label;
+				}
+			}
+		}
+
+		$menus_to_sort = $visible_menus + $hidden_menus;
+		?>
+		<div class="tka-menu-organizer" style="width: 100%;">
+			<?php
+			foreach ($menus_to_sort as $slug => $label):
+				$is_hidden = in_array($slug, $saved_hidden, true);
+				?>
+				<div class="tka-organizer-item <?php echo $is_hidden ? 'menu-hidden' : 'menu-visible'; ?>" data-slug="<?php echo esc_attr($slug); ?>">
+					<input type="hidden" name="<?php echo esc_attr($order_field_name); ?>" value="<?php echo esc_attr($slug); ?>">
+					<input type="checkbox" class="tka-menu-visibility-checkbox" name="<?php echo esc_attr($hidden_field_name); ?>" value="<?php echo esc_attr($slug); ?>" <?php checked($is_hidden); ?> style="display: none;">
+
+					<div class="tka-organizer-drag">
+						<span class="dashicons dashicons-menu"></span>
+					</div>
+
+					<div class="tka-organizer-details">
+						<strong class="tka-organizer-title"><?php echo esc_html($label); ?></strong>
+						<code class="tka-code-badge"><?php echo esc_html($slug); ?></code>
+					</div>
+
+					<div class="tka-organizer-actions">
+						<button type="button" class="tka-organizer-quick-btn tka-btn-move-top" title="<?php esc_attr_e('Move to Top', 'tka-site-utilities'); ?>">
+							<span class="dashicons dashicons-arrow-up-alt2"></span>
+						</button>
+						<button type="button" class="tka-organizer-quick-btn tka-btn-move-bottom" title="<?php esc_attr_e('Move to Bottom', 'tka-site-utilities'); ?>">
+							<span class="dashicons dashicons-arrow-down-alt2"></span>
+						</button>
+						<button type="button" class="tka-organizer-toggle-btn <?php echo $is_hidden ? 'tka-btn-hidden' : 'tka-btn-visible'; ?>" title="<?php esc_attr_e('Toggle Visibility', 'tka-site-utilities'); ?>">
+							<span class="dashicons <?php echo $is_hidden ? 'dashicons-hidden' : 'dashicons-visibility'; ?>"></span>
+						</button>
+					</div>
+				</div>
+			<?php endforeach; ?>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Helper to render the user assignment cards grid for a view.
+	 */
+	private function renderUserAssignmentGrid(string $view_id, array $all_users, array $assigned_uids, int $installer_id, array $all_views): void
+	{
+		?>
+		<div class="tka-users-assignment-section" style="margin-bottom: 25px;">
+			<div class="tka-users-section-header">
+				<h4 class="tka-users-section-title">
+					<span class="dashicons dashicons-admin-users"></span>
+					<?php esc_html_e('Assign Users to this View', 'tka-site-utilities'); ?>
+				</h4>
+				<input type="text" class="tka-user-search-input" placeholder="<?php esc_attr_e('Filter users...', 'tka-site-utilities'); ?>">
+			</div>
+			<div class="tka-users-grid">
+				<?php
+				foreach ($all_users as $user):
+					$uid               = (int) $user->ID;
+					$is_assigned       = in_array($uid, $assigned_uids, true);
+					$is_site_installer = ($uid === $installer_id);
+					$role_names        = !empty($user->roles) ? implode(', ', array_map('ucfirst', $user->roles)) : __('No Role', 'tka-site-utilities');
+
+					// Find if assigned to another view
+					$other_view_name = null;
+					if (!$is_assigned) {
+						foreach ($all_views as $ov_id => $ov_data) {
+							if ($ov_id !== $view_id && !empty($ov_data['user_ids']) && in_array($uid, array_map('intval', $ov_data['user_ids']), true)) {
+								$other_view_name = $ov_data['title'] ?? __('Custom View', 'tka-site-utilities');
+								break;
+							}
+						}
+					}
+					?>
+					<label class="tka-user-select-card <?php echo $is_assigned ? 'selected' : ''; ?>" data-username="<?php echo esc_attr(strtolower($user->user_login . ' ' . $user->display_name . ' ' . $user->user_email)); ?>">
+						<input type="checkbox" class="tka-user-checkbox" name="tka_site_utilities_options[menu_views][<?php echo esc_attr($view_id); ?>][user_ids][]" value="<?php echo esc_attr($uid); ?>" <?php checked($is_assigned); ?>>
+						<div class="tka-user-avatar">
+							<?php echo get_avatar($uid, 32); ?>
+						</div>
+						<div class="tka-user-info">
+							<div class="tka-user-name-line">
+								<strong class="tka-user-name"><?php echo esc_html($user->display_name); ?></strong>
+								<span class="tka-role-badge"><?php echo esc_html($role_names); ?></span>
+								<?php if ($is_site_installer): ?>
+									<span class="tka-installer-badge"><?php esc_html_e('Installer', 'tka-site-utilities'); ?></span>
+								<?php endif; ?>
+							</div>
+							<div class="tka-user-sub-line">
+								<span class="tka-user-login">@<?php echo esc_html($user->user_login); ?></span>
+								<?php if ($other_view_name): ?>
+									<span class="tka-other-view-badge" title="<?php esc_attr_e('Assigned in another view', 'tka-site-utilities'); ?>">
+										<?php printf(esc_html__('Currently in: %s', 'tka-site-utilities'), esc_html($other_view_name)); ?>
+									</span>
+								<?php endif; ?>
+							</div>
+						</div>
+					</label>
+				<?php endforeach; ?>
+			</div>
+		</div>
+		<?php
 	}
 
 	/**

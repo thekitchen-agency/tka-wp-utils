@@ -333,16 +333,68 @@ document.addEventListener('DOMContentLoaded', function () {
 	});
 
 	// 4. Admin Menu Organizer Drag & Drop Sortable
-	const organizerLists = jQuery('.tka-menu-organizer');
-	if (organizerLists.length > 0) {
-		organizerLists.sortable({
-			handle: '.tka-organizer-drag',
-			axis: 'y',
-			placeholder: 'tka-organizer-placeholder',
-			containment: 'parent'
+	function initMenuOrganizerSortable($scope) {
+		const $lists = $scope ? $scope.find('.tka-menu-organizer') : jQuery('.tka-menu-organizer');
+		$lists.each(function () {
+			const $list = jQuery(this);
+			if ($list.hasClass('ui-sortable')) {
+				$list.sortable('destroy');
+			}
+			$list.sortable({
+				handle: '.tka-organizer-drag, .tka-organizer-details',
+				cancel: '.tka-organizer-actions, button, input',
+				axis: 'y',
+				placeholder: 'tka-organizer-placeholder',
+				tolerance: 'pointer',
+				scroll: true,
+				scrollSensitivity: 80,
+				scrollSpeed: 25,
+				opacity: 0.9,
+				cursor: 'grabbing',
+				start: function (e, ui) {
+					ui.placeholder.height(ui.item.outerHeight());
+				}
+			});
 		});
 	}
 
+	initMenuOrganizerSortable();
+
+	// Quick Move to Top / Bottom Actions
+	jQuery(document).on('click', '.tka-btn-move-top', function (e) {
+		e.preventDefault();
+		e.stopPropagation();
+		const $item = jQuery(this).closest('.tka-organizer-item');
+		const $list = $item.closest('.tka-menu-organizer');
+		$item.prependTo($list);
+		$item.addClass('tka-item-just-moved');
+		setTimeout(function () {
+			$item.removeClass('tka-item-just-moved');
+		}, 600);
+	});
+
+	jQuery(document).on('click', '.tka-btn-move-bottom', function (e) {
+		e.preventDefault();
+		e.stopPropagation();
+		const $item = jQuery(this).closest('.tka-organizer-item');
+		const $list = $item.closest('.tka-menu-organizer');
+		$item.appendTo($list);
+		$item.addClass('tka-item-just-moved');
+		setTimeout(function () {
+			$item.removeClass('tka-item-just-moved');
+		}, 600);
+	});
+
+	// On saving, move all disabled menu items to the bottom of each list
+	jQuery(document).on('submit', '#tka-menu-organizer-form', function () {
+		jQuery('.tka-menu-organizer').each(function () {
+			const $list = jQuery(this);
+			const $hiddenItems = $list.children('.tka-organizer-item.menu-hidden');
+			if ($hiddenItems.length > 0) {
+				$hiddenItems.appendTo($list);
+			}
+		});
+	});
 
 	// 5. Admin Menu Organizer Toggle Visibility Action
 	jQuery(document).on('click', '.tka-organizer-toggle-btn', function () {
@@ -364,29 +416,135 @@ document.addEventListener('DOMContentLoaded', function () {
 		}
 	});
 
-	// 5b. Organizer Sub-Tab Switching
-	const subTabButtons = document.querySelectorAll('.tka-sub-tab-btn');
-	const subTabContents = document.querySelectorAll('.tka-sub-tab-content');
+	// 5b. Organizer Sub-Tab Switching (Event Delegation)
+	jQuery(document).on('click', '.tka-sub-tab-btn', function (e) {
+		e.preventDefault();
+		const $btn = jQuery(this);
+		const targetSubtab = $btn.attr('data-subtab');
 
-	subTabButtons.forEach(function (btn) {
-		btn.addEventListener('click', function (e) {
-			e.preventDefault();
+		jQuery('.tka-sub-tab-btn').removeClass('active');
+		$btn.addClass('active');
 
-			subTabButtons.forEach((b) => b.classList.remove('active'));
-			this.classList.add('active');
+		jQuery('.tka-sub-tab-content').removeClass('active').hide();
+		const $targetPanel = jQuery('#tka-subtab-' + targetSubtab + '-content');
+		if ($targetPanel.length > 0) {
+			$targetPanel.addClass('active').show();
+			initMenuOrganizerSortable($targetPanel);
+		}
 
-			const targetSubtab = this.getAttribute('data-subtab');
+		try {
+			sessionStorage.setItem('tka_active_organizer_tab', targetSubtab);
+		} catch (err) {}
+	});
 
-			subTabContents.forEach(function (panel) {
-				if (panel.id === 'tka-subtab-' + targetSubtab + '-content') {
-					panel.classList.add('active');
-					panel.style.display = 'block';
-				} else {
-					panel.classList.remove('active');
-					panel.style.display = 'none';
-				}
-			});
+	// Restore active organizer tab on page load
+	(function restoreOrganizerTab() {
+		try {
+			const savedTab = sessionStorage.getItem('tka_active_organizer_tab');
+			if (savedTab && jQuery('.tka-sub-tab-btn[data-subtab="' + savedTab + '"]').length > 0) {
+				jQuery('.tka-sub-tab-btn[data-subtab="' + savedTab + '"]').trigger('click');
+			}
+		} catch (err) {}
+	})();
+
+	// 5c. Custom Menu View: Add New View
+	function tkaEscapeHtml(str) {
+		const div = document.createElement('div');
+		div.textContent = str;
+		return div.innerHTML;
+	}
+
+	function tkaEscapeAttr(str) {
+		return String(str).replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+	}
+
+	jQuery(document).on('click', '#tka-add-menu-view-btn', function (e) {
+		e.preventDefault();
+		const viewCount = jQuery('.tka-sub-tab-btn-custom').length + 1;
+		const defaultName = 'View ' + viewCount;
+		const enteredName = prompt('Enter a name for the new Menu View (e.g. Content Editor, Shop Manager):', defaultName);
+
+		if (enteredName === null) {
+			return; // Cancelled
+		}
+
+		const cleanName = enteredName.trim() || defaultName;
+		const viewId = 'view_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
+
+		// 1. Create subtab button
+		const tabBtnHtml = `
+			<button type="button" class="tka-sub-tab-btn tka-sub-tab-btn-custom" data-subtab="${viewId}">
+				<span class="dashicons dashicons-groups" style="margin-right: 5px; font-size: 16px; width: 16px; height: 16px; vertical-align: text-top;"></span>
+				<span class="tka-view-tab-title">${tkaEscapeHtml(cleanName)}</span>
+			</button>
+		`;
+		jQuery(tabBtnHtml).appendTo('.tka-sub-tabs-nav');
+
+		// 2. Clone template and inject
+		const template = document.getElementById('tka-menu-view-template');
+		if (!template) {
+			return;
+		}
+
+		let panelHtml = template.innerHTML;
+		panelHtml = panelHtml.split('{{VIEW_ID}}').join(viewId);
+		panelHtml = panelHtml.split('{{VIEW_TITLE}}').join(tkaEscapeAttr(cleanName));
+
+		jQuery(panelHtml).appendTo('.tka-sub-tabs-container');
+
+		// 3. Switch to new view tab
+		const $newTab = jQuery('.tka-sub-tab-btn[data-subtab="' + viewId + '"]');
+		$newTab.trigger('click');
+	});
+
+	// 5d. Custom Menu View: Delete View
+	jQuery(document).on('click', '.tka-btn-delete-view', function (e) {
+		e.preventDefault();
+		const viewId = jQuery(this).attr('data-view-id');
+		const viewTitle = jQuery('.tka-sub-tab-btn[data-subtab="' + viewId + '"] .tka-view-tab-title').text().trim() || 'this view';
+
+		if (!confirm('Are you sure you want to delete "' + viewTitle + '"? Assigned users will revert to the default client layout.')) {
+			return;
+		}
+
+		jQuery('.tka-sub-tab-btn[data-subtab="' + viewId + '"]').remove();
+		jQuery('#tka-subtab-' + viewId + '-content').remove();
+
+		// Fallback to client layout tab
+		jQuery('.tka-sub-tab-btn[data-subtab="client"]').trigger('click');
+	});
+
+	// 5e. Custom Menu View: Live Title Input Sync
+	jQuery(document).on('input', '.tka-view-title-input', function () {
+		const $input = jQuery(this);
+		const viewId = $input.attr('data-view-id');
+		const val = $input.val().trim() || 'Custom View';
+		jQuery('.tka-sub-tab-btn[data-subtab="' + viewId + '"] .tka-view-tab-title').text(val);
+	});
+
+	// 5f. Custom Menu View: Live User Search Filter
+	jQuery(document).on('input', '.tka-user-search-input', function () {
+		const query = jQuery(this).val().toLowerCase().trim();
+		const $grid = jQuery(this).closest('.tka-users-assignment-section').find('.tka-users-grid');
+
+		$grid.find('.tka-user-select-card').each(function () {
+			const username = jQuery(this).attr('data-username') || '';
+			if (!query || username.indexOf(query) !== -1) {
+				jQuery(this).show();
+			} else {
+				jQuery(this).hide();
+			}
 		});
+	});
+
+	// 5g. Custom Menu View: User Card Selection Styling
+	jQuery(document).on('change', '.tka-user-checkbox', function () {
+		const $card = jQuery(this).closest('.tka-user-select-card');
+		if (this.checked) {
+			$card.addClass('selected');
+		} else {
+			$card.removeClass('selected');
+		}
 	});
 
 	// 5c. Custom Logo Media Uploaders

@@ -3,7 +3,7 @@ Contributors: thekitchen-agency
 Tags: classic editor, svg upload, admin columns, hardening, image optimization
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 1.19.2
+Stable tag: 1.20.0
 Requires PHP: 8.3
 License: MIT
 License URI: https://opensource.org/licenses/MIT
@@ -59,6 +59,12 @@ Our plugin uses a database-first approach: it converts physical files to WebP an
 Since images are permanently converted to WebP in the database, deactivating the plugin leaves WebP files active in your media library. If you want to keep original JPEGs/PNGs for safe backup, make sure the "Keep Original Images" setting is toggled on before running bulk optimization.
 
 == Changelog ==
+
+= 1.20.0 =
+*   Feature: User-specific Menu Organizer Views — Create and assign custom admin menu order and visibility configurations per user or role.
+*   Enhancement: Compact drag-and-drop items in the Menu Organizer UI for easier drag handling across long lists.
+*   Enhancement: Automatically sort disabled/hidden menu items to the bottom of the list upon saving.
+*   Security: Strict direct URL access restriction — Optionally block direct browser URL access to pages corresponding to hidden menu items (excluding superadmin/installer and providing graceful fallback for index.php).
 
 = 1.19.2 =
 *   Fix: Page Transitions animations (slide, swipe, wipe), selector scoping, and View Transitions API styling.
