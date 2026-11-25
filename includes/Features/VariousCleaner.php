@@ -212,9 +212,12 @@ class VariousCleaner {
 	}
 
 	/**
-	 * Strip ver parameters from resources.
+	 * Strip ver parameters from frontend resources.
 	 */
 	public function removeVersionQuery( string $src ): string {
+		if ( is_admin() ) {
+			return $src;
+		}
 		if ( str_contains( $src, 'ver=' ) ) {
 			$src = remove_query_arg( 'ver', $src );
 		}

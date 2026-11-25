@@ -3,7 +3,7 @@ Contributors: thekitchen-agency
 Tags: classic editor, svg upload, admin columns, hardening, image optimization
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 1.20.2
+Stable tag: 1.20.3
 Requires PHP: 8.3
 License: MIT
 License URI: https://opensource.org/licenses/MIT
@@ -59,6 +59,9 @@ Our plugin uses a database-first approach: it converts physical files to WebP an
 Since images are permanently converted to WebP in the database, deactivating the plugin leaves WebP files active in your media library. If you want to keep original JPEGs/PNGs for safe backup, make sure the "Keep Original Images" setting is toggled on before running bulk optimization.
 
 == Changelog ==
+
+= 1.20.3 =
+*   Fix: Preserve `?ver=` cache-busting query parameters on WP Admin scripts when "Remove Version Strings" is enabled, and append `?v=` cache-buster to `focal-point.js` so browsers immediately load the updated drag-and-drop handler.
 
 = 1.20.2 =
 *   Fix: Media Focal Point Selector — Added dedicated `wp_ajax_tka_save_focal_point` endpoint and in-memory Backbone attachment `compat.item` + `MutationObserver` synchronization so switching images in the Media Modal never resets the reticle to center.

@@ -5,6 +5,13 @@ All notable changes to the **TKA Site Utilities** WordPress plugin will be docum
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.20.3] - 2026-11-25
+
+### Fixed
+- **Admin Script Cache Busting (`disable_version_strings`)**:
+  - Prevented `VariousCleaner::removeVersionQuery()` from stripping `?ver=` cache-busting query strings inside `is_admin()`, which had caused browsers to serve the cached `1.20.0` `focal-point.js` file (where preset buttons worked but drag-and-drop failed to trigger save).
+  - Appended `?v=<filemtime>` to `focal-point.js` script URL to force immediate browser cache invalidation.
+
 ## [1.20.2] - 2026-11-25
 
 ### Fixed

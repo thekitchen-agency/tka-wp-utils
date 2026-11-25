@@ -46,7 +46,7 @@ class MediaFocalPoint
 
         wp_enqueue_script(
             'tka-media-focal-point-admin',
-            $url . 'admin/js/focal-point.js',
+            $url . 'admin/js/focal-point.js?v=' . $jsVersion,
             ['jquery'],
             $jsVersion,
             true
