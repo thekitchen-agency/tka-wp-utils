@@ -33,24 +33,25 @@
     if (badgeX) badgeX.textContent = `${x}%`;
     if (badgeY) badgeY.textContent = `${y}%`;
 
-    let changed = false;
-    if (inputX && String(inputX.value) !== String(x)) {
+    if (inputX) {
       inputX.value = x;
-      changed = true;
     }
-    if (inputY && String(inputY.value) !== String(y)) {
+    if (inputY) {
       inputY.value = y;
-      changed = true;
     }
 
-    if (triggerChange && changed) {
-      if (inputX) {
-        inputX.dispatchEvent(new Event('input', { bubbles: true }));
-        inputX.dispatchEvent(new Event('change', { bubbles: true }));
-      }
-      if (inputY) {
-        inputY.dispatchEvent(new Event('input', { bubbles: true }));
-        inputY.dispatchEvent(new Event('change', { bubbles: true }));
+    if (triggerChange) {
+      if (window.jQuery && inputX) {
+        window.jQuery(inputX).trigger('change');
+      } else {
+        if (inputX) {
+          inputX.dispatchEvent(new Event('input', { bubbles: true }));
+          inputX.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        if (inputY) {
+          inputY.dispatchEvent(new Event('input', { bubbles: true }));
+          inputY.dispatchEvent(new Event('change', { bubbles: true }));
+        }
       }
     }
   };

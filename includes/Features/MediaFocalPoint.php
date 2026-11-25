@@ -40,11 +40,14 @@ class MediaFocalPoint
             $version
         );
 
+        $jsFile = __DIR__ . '/../../admin/js/focal-point.js';
+        $jsVersion = file_exists($jsFile) ? (string) filemtime($jsFile) : $version;
+
         wp_enqueue_script(
             'tka-media-focal-point-admin',
             $url . 'admin/js/focal-point.js',
             ['jquery'],
-            $version,
+            $jsVersion,
             true
         );
     }

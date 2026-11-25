@@ -3,7 +3,7 @@ Contributors: thekitchen-agency
 Tags: classic editor, svg upload, admin columns, hardening, image optimization
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 1.20.0
+Stable tag: 1.20.1
 Requires PHP: 8.3
 License: MIT
 License URI: https://opensource.org/licenses/MIT
@@ -59,6 +59,10 @@ Our plugin uses a database-first approach: it converts physical files to WebP an
 Since images are permanently converted to WebP in the database, deactivating the plugin leaves WebP files active in your media library. If you want to keep original JPEGs/PNGs for safe backup, make sure the "Keep Original Images" setting is toggled on before running bulk optimization.
 
 == Changelog ==
+
+= 1.20.1 =
+*   Fix: Media Focal Point Selector — Ensure `change` event and WordPress Media Modal Backbone AJAX save fire reliably on pointer release (`mouseup`/`touchend`) after click or drag interactions.
+*   Enhancement: Added `filemtime` cache-busting version string for `focal-point.js`.
 
 = 1.20.0 =
 *   Feature: User-specific Menu Organizer Views — Create and assign custom admin menu order and visibility configurations per user or role.

@@ -5,6 +5,13 @@ All notable changes to the **TKA Site Utilities** WordPress plugin will be docum
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.20.1] - 2026-11-25
+
+### Fixed
+- **Media Focal Point Selector Persistence**:
+  - Fixed an issue where clicking or dragging the focal point reticle updated input values on `mousedown`/`mousemove` with `triggerChange = false`, preventing the `change` event (and WordPress Backbone `AttachmentCompat` AJAX save) from firing on `mouseup`/`touchend`.
+  - Added `jQuery(inputX).trigger('change')` support for reliable Backbone delegation in the WordPress Media Modal and `filemtime` cache-busting on `focal-point.js`.
+
 ## [1.20.0] - 2026-10-23
 
 ### Added
