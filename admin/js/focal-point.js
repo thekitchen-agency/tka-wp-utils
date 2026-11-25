@@ -6,11 +6,124 @@
   'use strict';
 
   let activePicker = null;
+  const sessionFocalPoints = new Map();
 
   /**
    * Clamp value between min and max
    */
   const clamp = (val, min, max) => Math.max(min, Math.min(max, val));
+
+  /**
+   * Apply coordinates visually to a picker wrapper without triggering a save.
+   */
+  const applyVisualCoordinates = (wrapper, x, y) => {
+    const picker = wrapper.querySelector('.focal-point-picker');
+    const reticle = wrapper.querySelector('.focal-point-reticle');
+    const inputX = wrapper.querySelector('.focal-point-input-x');
+    const inputY = wrapper.querySelector('.focal-point-input-y');
+    const badgeX = wrapper.querySelector('.coord-x');
+    const badgeY = wrapper.querySelector('.coord-y');
+
+    if (reticle) {
+      reticle.style.left = `${x}%`;
+      reticle.style.top = `${y}%`;
+    }
+    if (badgeX) badgeX.textContent = `${x}%`;
+    if (badgeY) badgeY.textContent = `${y}%`;
+    if (inputX) {
+      inputX.value = x;
+      inputX.setAttribute('value', String(x));
+    }
+    if (inputY) {
+      inputY.value = y;
+      inputY.setAttribute('value', String(y));
+    }
+    if (picker) {
+      picker.setAttribute('aria-valuenow', `${x}, ${y}`);
+    }
+  };
+
+  /**
+   * Sync updated focal point with WordPress Backbone Attachment model cache
+   * and persist immediately via dedicated AJAX endpoint.
+   */
+  const persistFocalPoint = (picker, x, y) => {
+    const wrapper = picker.closest('.focal-point-field-wrapper');
+    if (!wrapper) return;
+
+    const attachmentId = parseInt(wrapper.dataset.attachmentId, 10);
+    const nonce = wrapper.dataset.nonce || '';
+    if (!attachmentId) return;
+
+    sessionFocalPoints.set(attachmentId, { x, y });
+
+    // 1. Immediately update in-memory Backbone attachment model so switching away
+    // and back in the Media Modal never re-renders stale compat.item HTML.
+    const updateBackboneModel = (serverFocal, serverCompat) => {
+      if (!window.wp || !window.wp.media || !window.wp.media.model) {
+        return;
+      }
+      const models = [];
+      if (window.wp.media.model.Attachments && window.wp.media.model.Attachments.all) {
+        const m1 = window.wp.media.model.Attachments.all.get(attachmentId);
+        if (m1) models.push(m1);
+      }
+      if (window.wp.media.model.Attachment && typeof window.wp.media.model.Attachment.get === 'function') {
+        const m2 = window.wp.media.model.Attachment.get(attachmentId);
+        if (m2 && !models.includes(m2)) models.push(m2);
+      }
+
+      const focalObj = serverFocal || {
+        x,
+        y,
+        css: `${x}% ${y}%`,
+        style: `object-position: ${x}% ${y}%; --focal-x: ${x}%; --focal-y: ${y}%;`,
+        has_focal_point: true,
+      };
+
+      const compatForm = wrapper.closest('form.compat-item') || wrapper.closest('.compat-item');
+
+      models.forEach((model) => {
+        model.set('focal_point', focalObj);
+
+        if (serverCompat && serverCompat.item) {
+          model.set('compat', serverCompat);
+        } else if (compatForm) {
+          const currentCompat = model.get('compat');
+          if (currentCompat && typeof currentCompat === 'object') {
+            model.set('compat', Object.assign({}, currentCompat, { item: compatForm.innerHTML }));
+          }
+        }
+      });
+    };
+
+    applyVisualCoordinates(wrapper, x, y);
+    updateBackboneModel();
+
+    // 2. Persist to database via dedicated AJAX endpoint
+    const ajaxUrl = window.ajaxurl || '/wp-admin/admin-ajax.php';
+    if (nonce && window.fetch) {
+      const formData = new FormData();
+      formData.append('action', 'tka_save_focal_point');
+      formData.append('attachment_id', String(attachmentId));
+      formData.append('nonce', nonce);
+      formData.append('x', String(x));
+      formData.append('y', String(y));
+
+      window.fetch(ajaxUrl, {
+        method: 'POST',
+        credentials: 'same-origin',
+        body: formData,
+      })
+        .then((res) => res.json())
+        .then((resp) => {
+          if (resp && resp.success && resp.data) {
+            updateBackboneModel(resp.data.focal_point, resp.data.compat);
+          }
+        })
+        .catch(() => {});
+    }
+  };
 
   /**
    * Update coordinates and sync with DOM inputs and reticle
@@ -35,24 +148,15 @@
 
     if (inputX) {
       inputX.value = x;
+      inputX.setAttribute('value', String(x));
     }
     if (inputY) {
       inputY.value = y;
+      inputY.setAttribute('value', String(y));
     }
 
     if (triggerChange) {
-      if (window.jQuery && inputX) {
-        window.jQuery(inputX).trigger('change');
-      } else {
-        if (inputX) {
-          inputX.dispatchEvent(new Event('input', { bubbles: true }));
-          inputX.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-        if (inputY) {
-          inputY.dispatchEvent(new Event('input', { bubbles: true }));
-          inputY.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-      }
+      persistFocalPoint(picker, x, y);
     }
   };
 
@@ -107,8 +211,9 @@
     } else {
       const inputX = picker.parentElement.querySelector('.focal-point-input-x');
       const inputY = picker.parentElement.querySelector('.focal-point-input-y');
-      if (inputX) inputX.dispatchEvent(new Event('change', { bubbles: true }));
-      if (inputY) inputY.dispatchEvent(new Event('change', { bubbles: true }));
+      const x = inputX ? parseFloat(inputX.value) || 50 : 50;
+      const y = inputY ? parseFloat(inputY.value) || 50 : 50;
+      persistFocalPoint(picker, x, y);
     }
   };
 
@@ -185,4 +290,27 @@
 
   document.addEventListener('click', onButtonClick);
   document.addEventListener('keydown', onKeyDown);
+
+  // Observe dynamically rendered Media Modal attachment details to restore
+  // in-session focal point coordinates even if Backbone re-renders cached HTML.
+  if (window.MutationObserver && document.body) {
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        for (const node of mutation.addedNodes) {
+          if (node.nodeType !== 1) continue;
+          const wrappers = node.matches && node.matches('.focal-point-field-wrapper')
+            ? [node]
+            : (node.querySelectorAll ? Array.from(node.querySelectorAll('.focal-point-field-wrapper')) : []);
+          wrappers.forEach((wrapper) => {
+            const id = parseInt(wrapper.dataset.attachmentId, 10);
+            if (id && sessionFocalPoints.has(id)) {
+              const coords = sessionFocalPoints.get(id);
+              applyVisualCoordinates(wrapper, coords.x, coords.y);
+            }
+          });
+        }
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
 })();

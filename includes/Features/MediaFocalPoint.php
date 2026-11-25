@@ -19,6 +19,7 @@ class MediaFocalPoint
         add_action('admin_enqueue_scripts', [$this, 'enqueueAdminAssets']);
         add_filter('attachment_fields_to_edit', [$this, 'renderAttachmentField'], 10, 2);
         add_filter('attachment_fields_to_save', [$this, 'saveAttachmentField'], 10, 2);
+        add_action('wp_ajax_tka_save_focal_point', [$this, 'ajaxSaveFocalPoint']);
         add_filter('wp_prepare_attachment_for_js', [$this, 'prepareAttachmentForJs'], 10, 3);
         add_filter('wp_get_attachment_image_attributes', [$this, 'filterImageAttributes'], 10, 3);
         add_filter('acf/format_value/type=image', [$this, 'formatAcfImageValue'], 20, 3);
@@ -73,9 +74,11 @@ class MediaFocalPoint
             return $form_fields;
         }
 
+        $nonce = wp_create_nonce('tka_focal_point_' . $post->ID);
+
         ob_start();
         ?>
-        <div class="focal-point-field-wrapper" data-attachment-id="<?php echo esc_attr($post->ID); ?>">
+        <div class="focal-point-field-wrapper" data-attachment-id="<?php echo esc_attr($post->ID); ?>" data-nonce="<?php echo esc_attr($nonce); ?>">
             <div class="focal-point-picker" tabindex="0" role="slider" aria-label="<?php esc_attr_e('Image Focal Point', 'tka-site-utilities'); ?>" aria-valuenow="<?php echo esc_attr("{$x}, {$y}"); ?>">
                 <img src="<?php echo esc_url($imageUrl); ?>" alt="" class="focal-point-image" />
                 <div class="focal-point-reticle" style="left: <?php echo esc_attr($x); ?>%; top: <?php echo esc_attr($y); ?>%;">
@@ -149,6 +152,38 @@ class MediaFocalPoint
         }
 
         return $post;
+    }
+
+    /**
+     * Dedicated AJAX handler to persist focal point coordinates and return updated compat markup.
+     */
+    public function ajaxSaveFocalPoint(): void
+    {
+        $id = isset($_POST['attachment_id']) ? absint($_POST['attachment_id']) : 0;
+        if (!$id) {
+            wp_send_json_error(['message' => 'Invalid attachment ID.'], 400);
+        }
+
+        check_ajax_referer('tka_focal_point_' . $id, 'nonce');
+
+        if (!current_user_can('edit_post', $id)) {
+            wp_send_json_error(['message' => 'Permission denied.'], 403);
+        }
+
+        $x = isset($_POST['x']) ? self::sanitizeCoordinate($_POST['x']) : 50.0;
+        $y = isset($_POST['y']) ? self::sanitizeCoordinate($_POST['y']) : 50.0;
+
+        update_post_meta($id, self::META_KEY_X, $x);
+        update_post_meta($id, self::META_KEY_Y, $y);
+        update_post_meta($id, self::META_KEY_COMPOSITE, "{$x}% {$y}%");
+
+        $focal = self::getFocalPoint($id);
+        $compat = function_exists('get_compat_media_markup') ? get_compat_media_markup($id) : null;
+
+        wp_send_json_success([
+            'focal_point' => $focal,
+            'compat'      => $compat,
+        ]);
     }
 
     /**
