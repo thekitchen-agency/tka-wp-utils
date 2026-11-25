@@ -126,13 +126,9 @@ class Plugin
 			$classic_widgets->hook();
 		}
 
-		// Gutenberg features check
-		$gutenberg_mode = $options['disable_gutenberg'] ?? 'none';
-		$dequeue_styles = !empty($options['gutenberg_dequeue_block_styles']);
-		if ('none' !== $gutenberg_mode || $dequeue_styles) {
-			$gutenberg_manager = new GutenbergManager($gutenberg_mode, $options['gutenberg_post_types'] ?? [], $dequeue_styles);
-			$gutenberg_manager->hook();
-		}
+		// Gutenberg features (disabling, frontend style dequeue, block/embed curation & design guardrails)
+		$gutenberg_manager = new GutenbergManager($options);
+		$gutenberg_manager->hook();
 
 		// SVG Upload validation
 		if (!empty($options['svg_upload'])) {

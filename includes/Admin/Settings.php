@@ -4,6 +4,7 @@ namespace TKA\WPUtils\Admin;
 
 use TKA\WPUtils\Features\SvgValidator;
 use TKA\WPUtils\Features\AdminInterface;
+use TKA\WPUtils\Features\GutenbergManager;
 
 /**
  * Handles the admin settings interface and option registration.
@@ -223,6 +224,21 @@ class Settings
 					'wpml_disable_adjust_ids' => 0,
 					'wpml_disable_canonical_redirects_ajax' => 0,
 					'gutenberg_dequeue_block_styles' => 0,
+					'gutenberg_curation_enabled' => 0,
+					'gutenberg_admin_bypass' => 0,
+					'gutenberg_disable_patterns' => 0,
+					'gutenberg_disable_remote_patterns' => 0,
+					'gutenberg_disable_block_directory' => 0,
+					'gutenberg_disable_openverse' => 0,
+					'gutenberg_disable_custom_colors' => 0,
+					'gutenberg_enforce_brand_palette' => 0,
+					'gutenberg_brand_palette' => [],
+					'gutenberg_disable_custom_font_sizes' => 0,
+					'gutenberg_disable_custom_spacing' => 0,
+					'gutenberg_clean_block_styles' => 0,
+					'gutenberg_register_lead_style' => 0,
+					'gutenberg_allowed_blocks' => [],
+					'gutenberg_allowed_embeds' => ['youtube', 'vimeo', 'spotify'],
 					'deferred_scripts' => [],
 					'deferred_scripts_custom' => '',
 					'delayed_scripts_interaction' => '',
@@ -406,6 +422,21 @@ class Settings
 			'wpml_disable_adjust_ids' => 0,
 			'wpml_disable_canonical_redirects_ajax' => 0,
 			'gutenberg_dequeue_block_styles' => 0,
+			'gutenberg_curation_enabled' => 0,
+			'gutenberg_admin_bypass' => 0,
+			'gutenberg_disable_patterns' => 0,
+			'gutenberg_disable_remote_patterns' => 0,
+			'gutenberg_disable_block_directory' => 0,
+			'gutenberg_disable_openverse' => 0,
+			'gutenberg_disable_custom_colors' => 0,
+			'gutenberg_enforce_brand_palette' => 0,
+			'gutenberg_brand_palette' => [],
+			'gutenberg_disable_custom_font_sizes' => 0,
+			'gutenberg_disable_custom_spacing' => 0,
+			'gutenberg_clean_block_styles' => 0,
+			'gutenberg_register_lead_style' => 0,
+			'gutenberg_allowed_blocks' => [],
+			'gutenberg_allowed_embeds' => ['youtube', 'vimeo', 'spotify'],
 			'deferred_scripts' => [],
 			'deferred_scripts_custom' => '',
 			'delayed_scripts_interaction' => '',
@@ -775,6 +806,55 @@ class Settings
 			$sanitized['wpml_disable_adjust_ids'] = isset($input['wpml_disable_adjust_ids']) ? 1 : 0;
 			$sanitized['wpml_disable_canonical_redirects_ajax'] = isset($input['wpml_disable_canonical_redirects_ajax']) ? 1 : 0;
 			$sanitized['gutenberg_dequeue_block_styles'] = isset($input['gutenberg_dequeue_block_styles']) ? 1 : 0;
+
+			// Gutenberg Block, Embed & Design System Curation
+			$sanitized['gutenberg_curation_enabled']        = isset($input['gutenberg_curation_enabled']) ? 1 : 0;
+			$sanitized['gutenberg_admin_bypass']            = isset($input['gutenberg_admin_bypass']) ? 1 : 0;
+			$sanitized['gutenberg_disable_patterns']        = isset($input['gutenberg_disable_patterns']) ? 1 : 0;
+			$sanitized['gutenberg_disable_remote_patterns'] = isset($input['gutenberg_disable_remote_patterns']) ? 1 : 0;
+			$sanitized['gutenberg_disable_block_directory'] = isset($input['gutenberg_disable_block_directory']) ? 1 : 0;
+			$sanitized['gutenberg_disable_openverse']       = isset($input['gutenberg_disable_openverse']) ? 1 : 0;
+			$sanitized['gutenberg_disable_custom_colors']   = isset($input['gutenberg_disable_custom_colors']) ? 1 : 0;
+			$sanitized['gutenberg_enforce_brand_palette']   = isset($input['gutenberg_enforce_brand_palette']) ? 1 : 0;
+			$sanitized['gutenberg_disable_custom_font_sizes'] = isset($input['gutenberg_disable_custom_font_sizes']) ? 1 : 0;
+			$sanitized['gutenberg_disable_custom_spacing']  = isset($input['gutenberg_disable_custom_spacing']) ? 1 : 0;
+			$sanitized['gutenberg_clean_block_styles']      = isset($input['gutenberg_clean_block_styles']) ? 1 : 0;
+			$sanitized['gutenberg_register_lead_style']     = isset($input['gutenberg_register_lead_style']) ? 1 : 0;
+
+			$sanitized['gutenberg_brand_palette'] = [];
+			if (isset($input['gutenberg_brand_palette']) && is_array($input['gutenberg_brand_palette'])) {
+				foreach ($input['gutenberg_brand_palette'] as $swatch) {
+					$name  = isset($swatch['name']) ? sanitize_text_field($swatch['name']) : '';
+					$slug  = isset($swatch['slug']) ? sanitize_title($swatch['slug']) : '';
+					$color = isset($swatch['color']) ? sanitize_hex_color($swatch['color']) : '';
+					if ($name && $color) {
+						$sanitized['gutenberg_brand_palette'][] = [
+							'name'  => $name,
+							'slug'  => $slug ?: sanitize_title($name),
+							'color' => $color,
+						];
+					}
+				}
+			}
+
+			$raw_blocks     = isset($input['gutenberg_allowed_blocks']) && is_array($input['gutenberg_allowed_blocks'])
+				? array_values(array_unique(array_map('sanitize_text_field', $input['gutenberg_allowed_blocks'])))
+				: [];
+			$allowed_embeds = [];
+			$has_embed      = false;
+			foreach ($raw_blocks as $b) {
+				if (str_starts_with($b, 'core-embed-')) {
+					$allowed_embeds[] = substr($b, strlen('core-embed-'));
+					$has_embed        = true;
+				} elseif ($b === 'core/embed') {
+					$has_embed = true;
+				}
+			}
+			if ($has_embed && !in_array('core/embed', $raw_blocks, true)) {
+				$raw_blocks[] = 'core/embed';
+			}
+			$sanitized['gutenberg_allowed_blocks'] = $raw_blocks;
+			$sanitized['gutenberg_allowed_embeds'] = array_values(array_unique($allowed_embeds));
 			$sanitized['link_prefetch'] = isset($input['link_prefetch']) ? 1 : 0;
 
 			$sanitized['deferred_scripts'] = [];
@@ -1010,6 +1090,12 @@ class Settings
 										<span class="dashicons dashicons-admin-settings"></span>
 										<?php esc_html_e('Editor & Blocks', 'tka-site-utilities'); ?>
 									</a>
+									<?php $is_gutenberg_disabled = !empty($options['classic_editor']) || (($options['disable_gutenberg'] ?? 'none') === 'all'); ?>
+									<a href="#gutenberg-curation" class="tka-nav-item tka-gutenberg-curation-nav" data-tab="gutenberg-curation" <?php if ($is_gutenberg_disabled) : ?>style="display: none;"<?php endif; ?>>
+										<span class="dashicons dashicons-layout"></span>
+										<?php esc_html_e('Gutenberg Curation', 'tka-site-utilities'); ?>
+										<span class="tka-badge tka-badge-new">New</span>
+									</a>
 									<a href="#uploads" class="tka-nav-item" data-tab="uploads">
 										<span class="dashicons dashicons-shield"></span>
 										<?php esc_html_e('Security', 'tka-site-utilities'); ?>
@@ -1242,6 +1328,301 @@ class Settings
 														<span class="tka-slider"></span>
 													</label>
 												</div>
+											</div>
+										</div>
+									</section>
+
+									<!-- GUTENBERG CURATION & DESIGN GUARDRAILS PANEL -->
+									<?php
+									$gb_categories         = GutenbergManager::getCategorizedBlocks();
+									$gb_recommended_preset = GutenbergManager::getRecommendedPresetBlocks();
+									$gb_minimal_preset     = GutenbergManager::getMinimalPresetBlocks();
+									$gb_allowed_blocks     = isset($options['gutenberg_allowed_blocks']) && is_array($options['gutenberg_allowed_blocks']) && !empty($options['gutenberg_allowed_blocks'])
+										? $options['gutenberg_allowed_blocks']
+										: $gb_recommended_preset;
+									$gb_brand_palette      = !empty($options['gutenberg_brand_palette']) && is_array($options['gutenberg_brand_palette'])
+										? $options['gutenberg_brand_palette']
+										: GutenbergManager::getDefaultBrandPalette();
+									?>
+									<section id="panel-gutenberg-curation" class="tka-tab-panel"
+										data-recommended-blocks="<?php echo esc_attr(wp_json_encode($gb_recommended_preset)); ?>"
+										data-minimal-blocks="<?php echo esc_attr(wp_json_encode($gb_minimal_preset)); ?>">
+										<h2><?php esc_html_e('Gutenberg Block, Embed & Design Curation', 'tka-site-utilities'); ?></h2>
+										<p class="section-desc">
+											<?php esc_html_e('Control which Gutenberg blocks, oEmbed providers, pattern libraries, and theme.json design options are available in the block editor.', 'tka-site-utilities'); ?>
+										</p>
+
+										<!-- Card 1: Library & Pattern Restrictions -->
+										<div class="tka-settings-card">
+											<h3 class="tka-card-subtitle"><?php esc_html_e('Editor Library & Pattern Controls', 'tka-site-utilities'); ?></h3>
+
+											<div class="tka-setting-row">
+												<div class="tka-setting-label">
+													<strong><?php esc_html_e('Enable Block & Embed Curation', 'tka-site-utilities'); ?></strong>
+													<p><?php esc_html_e('When enabled, only the blocks and oEmbed providers checked below are available in the Gutenberg inserter.', 'tka-site-utilities'); ?></p>
+												</div>
+												<div class="tka-setting-control">
+													<label class="tka-switch">
+														<input type="checkbox" name="tka_site_utilities_options[gutenberg_curation_enabled]" value="1"
+															<?php checked(1, $options['gutenberg_curation_enabled'] ?? 0); ?>>
+														<span class="tka-slider"></span>
+													</label>
+												</div>
+											</div>
+
+											<div class="tka-setting-row">
+												<div class="tka-setting-label">
+													<strong><?php esc_html_e('Administrator Bypass', 'tka-site-utilities'); ?></strong>
+													<p><?php esc_html_e('Allow Administrators to access all blocks and embeds while restricting editors and authors to the curated list.', 'tka-site-utilities'); ?></p>
+												</div>
+												<div class="tka-setting-control">
+													<label class="tka-switch">
+														<input type="checkbox" name="tka_site_utilities_options[gutenberg_admin_bypass]" value="1"
+															<?php checked(1, $options['gutenberg_admin_bypass'] ?? 0); ?>>
+														<span class="tka-slider"></span>
+													</label>
+												</div>
+											</div>
+
+											<div class="tka-setting-row">
+												<div class="tka-setting-label">
+													<strong><?php esc_html_e('Disable Core & Theme Block Patterns', 'tka-site-utilities'); ?></strong>
+													<p><?php esc_html_e('Removes built-in WordPress and theme block patterns from the editor inserter.', 'tka-site-utilities'); ?></p>
+												</div>
+												<div class="tka-setting-control">
+													<label class="tka-switch">
+														<input type="checkbox" name="tka_site_utilities_options[gutenberg_disable_patterns]" value="1"
+															<?php checked(1, $options['gutenberg_disable_patterns'] ?? 0); ?>>
+														<span class="tka-slider"></span>
+													</label>
+												</div>
+											</div>
+
+											<div class="tka-setting-row">
+												<div class="tka-setting-label">
+													<strong><?php esc_html_e('Disable WordPress.org Remote Pattern Directory', 'tka-site-utilities'); ?></strong>
+													<p><?php esc_html_e('Prevents Gutenberg from querying and displaying remote patterns from WordPress.org.', 'tka-site-utilities'); ?></p>
+												</div>
+												<div class="tka-setting-control">
+													<label class="tka-switch">
+														<input type="checkbox" name="tka_site_utilities_options[gutenberg_disable_remote_patterns]" value="1"
+															<?php checked(1, $options['gutenberg_disable_remote_patterns'] ?? 0); ?>>
+														<span class="tka-slider"></span>
+													</label>
+												</div>
+											</div>
+
+											<div class="tka-setting-row">
+												<div class="tka-setting-label">
+													<strong><?php esc_html_e('Disable Block Directory (Plugin Search)', 'tka-site-utilities'); ?></strong>
+													<p><?php esc_html_e('Stops editors from searching for and installing third-party block plugins directly from the inserter.', 'tka-site-utilities'); ?></p>
+												</div>
+												<div class="tka-setting-control">
+													<label class="tka-switch">
+														<input type="checkbox" name="tka_site_utilities_options[gutenberg_disable_block_directory]" value="1"
+															<?php checked(1, $options['gutenberg_disable_block_directory'] ?? 0); ?>>
+														<span class="tka-slider"></span>
+													</label>
+												</div>
+											</div>
+
+											<div class="tka-setting-row">
+												<div class="tka-setting-label">
+													<strong><?php esc_html_e('Hide Openverse Stock Media Category', 'tka-site-utilities'); ?></strong>
+													<p><?php esc_html_e('Removes the external Openverse media tab from the Gutenberg media inserter.', 'tka-site-utilities'); ?></p>
+												</div>
+												<div class="tka-setting-control">
+													<label class="tka-switch">
+														<input type="checkbox" name="tka_site_utilities_options[gutenberg_disable_openverse]" value="1"
+															<?php checked(1, $options['gutenberg_disable_openverse'] ?? 0); ?>>
+														<span class="tka-slider"></span>
+													</label>
+												</div>
+											</div>
+										</div>
+
+										<!-- Card 2: Design & theme.json Guardrails -->
+										<div class="tka-settings-card">
+											<h3 class="tka-card-subtitle"><?php esc_html_e('Design System & theme.json Guardrails', 'tka-site-utilities'); ?></h3>
+
+											<div class="tka-setting-row">
+												<div class="tka-setting-label">
+													<strong><?php esc_html_e('Disable Custom Color & Gradient Pickers', 'tka-site-utilities'); ?></strong>
+													<p><?php esc_html_e('Locks arbitrary hex/RGB color pickers and custom gradients so authors can only pick approved theme colors.', 'tka-site-utilities'); ?></p>
+												</div>
+												<div class="tka-setting-control">
+													<label class="tka-switch">
+														<input type="checkbox" name="tka_site_utilities_options[gutenberg_disable_custom_colors]" value="1"
+															<?php checked(1, $options['gutenberg_disable_custom_colors'] ?? 0); ?>>
+														<span class="tka-slider"></span>
+													</label>
+												</div>
+											</div>
+
+											<div class="tka-setting-row">
+												<div class="tka-setting-label">
+													<strong><?php esc_html_e('Enforce Custom Brand Color Palette', 'tka-site-utilities'); ?></strong>
+													<p><?php esc_html_e('Replaces the default WordPress palette with your custom brand swatches below via theme.json.', 'tka-site-utilities'); ?></p>
+												</div>
+												<div class="tka-setting-control">
+													<label class="tka-switch">
+														<input type="checkbox" id="tka-gb-enforce-palette-toggle" name="tka_site_utilities_options[gutenberg_enforce_brand_palette]" value="1"
+															<?php checked(1, $options['gutenberg_enforce_brand_palette'] ?? 0); ?>>
+														<span class="tka-slider"></span>
+													</label>
+												</div>
+											</div>
+
+											<div class="tka-setting-row stack nested-gb-brand-palette" style="<?php echo !empty($options['gutenberg_enforce_brand_palette']) ? 'display: block;' : 'display: none;'; ?>">
+												<div class="tka-setting-label">
+													<strong><?php esc_html_e('Brand Color Swatches', 'tka-site-utilities'); ?></strong>
+													<p><?php esc_html_e('Configure the exact color palette available to authors in Gutenberg.', 'tka-site-utilities'); ?></p>
+												</div>
+												<div id="tka-gb-palette-list" class="tka-gb-palette-list">
+													<?php foreach ($gb_brand_palette as $idx => $swatch) : ?>
+														<div class="tka-gb-palette-row">
+															<input type="color" class="tka-gb-color-picker" value="<?php echo esc_attr($swatch['color'] ?? '#4F46E5'); ?>">
+															<input type="text" name="tka_site_utilities_options[gutenberg_brand_palette][<?php echo esc_attr($idx); ?>][color]" class="tka-gb-color-hex" value="<?php echo esc_attr($swatch['color'] ?? '#4F46E5'); ?>" placeholder="#000000">
+															<input type="text" name="tka_site_utilities_options[gutenberg_brand_palette][<?php echo esc_attr($idx); ?>][name]" value="<?php echo esc_attr($swatch['name'] ?? ''); ?>" placeholder="<?php esc_attr_e('Color Name', 'tka-site-utilities'); ?>">
+															<input type="text" name="tka_site_utilities_options[gutenberg_brand_palette][<?php echo esc_attr($idx); ?>][slug]" value="<?php echo esc_attr($swatch['slug'] ?? ''); ?>" placeholder="<?php esc_attr_e('slug', 'tka-site-utilities'); ?>">
+															<button type="button" class="button button-small tka-gb-remove-swatch">&times;</button>
+														</div>
+													<?php endforeach; ?>
+												</div>
+												<button type="button" class="button button-secondary" id="tka-gb-add-swatch-btn" style="margin-top: 10px;">
+													+ <?php esc_html_e('Add Color Swatch', 'tka-site-utilities'); ?>
+												</button>
+											</div>
+
+											<div class="tka-setting-row">
+												<div class="tka-setting-label">
+													<strong><?php esc_html_e('Disable Custom Font Sizes & Enforce H1–H6 Scale', 'tka-site-utilities'); ?></strong>
+													<p><?php esc_html_e('Locks arbitrary pixel font sizes and provides a clean preset scale (small to xx-large) with explicit H1–H6 hierarchy.', 'tka-site-utilities'); ?></p>
+												</div>
+												<div class="tka-setting-control">
+													<label class="tka-switch">
+														<input type="checkbox" name="tka_site_utilities_options[gutenberg_disable_custom_font_sizes]" value="1"
+															<?php checked(1, $options['gutenberg_disable_custom_font_sizes'] ?? 0); ?>>
+														<span class="tka-slider"></span>
+													</label>
+												</div>
+											</div>
+
+											<div class="tka-setting-row">
+												<div class="tka-setting-label">
+													<strong><?php esc_html_e('Lock Custom Spacing & Borders', 'tka-site-utilities'); ?></strong>
+													<p><?php esc_html_e('Disables custom margin, padding, block gap, and border controls inside Gutenberg block inspectors.', 'tka-site-utilities'); ?></p>
+												</div>
+												<div class="tka-setting-control">
+													<label class="tka-switch">
+														<input type="checkbox" name="tka_site_utilities_options[gutenberg_disable_custom_spacing]" value="1"
+															<?php checked(1, $options['gutenberg_disable_custom_spacing'] ?? 0); ?>>
+														<span class="tka-slider"></span>
+													</label>
+												</div>
+											</div>
+
+											<div class="tka-setting-row">
+												<div class="tka-setting-label">
+													<strong><?php esc_html_e('Clean Unsupported Core Block Styles', 'tka-site-utilities'); ?></strong>
+													<p><?php esc_html_e('Unregisters noisy default styles like rounded image masks, dotted separators, and plain quote variations.', 'tka-site-utilities'); ?></p>
+												</div>
+												<div class="tka-setting-control">
+													<label class="tka-switch">
+														<input type="checkbox" name="tka_site_utilities_options[gutenberg_clean_block_styles]" value="1"
+															<?php checked(1, $options['gutenberg_clean_block_styles'] ?? 0); ?>>
+														<span class="tka-slider"></span>
+													</label>
+												</div>
+											</div>
+
+											<div class="tka-setting-row">
+												<div class="tka-setting-label">
+													<strong><?php esc_html_e('Register "Lead Paragraph" Block Style', 'tka-site-utilities'); ?></strong>
+													<p><?php esc_html_e('Adds an editorial "Lead Paragraph" (.is-style-lead) style option to the Paragraph block.', 'tka-site-utilities'); ?></p>
+												</div>
+												<div class="tka-setting-control">
+													<label class="tka-switch">
+														<input type="checkbox" name="tka_site_utilities_options[gutenberg_register_lead_style]" value="1"
+															<?php checked(1, $options['gutenberg_register_lead_style'] ?? 0); ?>>
+														<span class="tka-slider"></span>
+													</label>
+												</div>
+											</div>
+										</div>
+
+										<!-- Card 3: Allowed Gutenberg Blocks & Embeds -->
+										<div class="tka-settings-card">
+											<div class="tka-gb-allowlist-header">
+												<div>
+													<h3 class="tka-card-subtitle" style="margin-bottom: 4px;"><?php esc_html_e('Allowed Gutenberg Blocks & Embed Providers', 'tka-site-utilities'); ?></h3>
+													<p class="section-desc" style="margin-bottom: 0;"><?php esc_html_e('Select individual blocks and oEmbed providers, or apply a preset.', 'tka-site-utilities'); ?></p>
+												</div>
+												<div class="tka-gb-preset-buttons">
+													<button type="button" class="button button-secondary" id="tka-gb-preset-recommended"><?php esc_html_e('Recommended', 'tka-site-utilities'); ?></button>
+													<button type="button" class="button button-secondary" id="tka-gb-preset-minimal"><?php esc_html_e('Minimal', 'tka-site-utilities'); ?></button>
+													<button type="button" class="button button-secondary" id="tka-gb-select-all"><?php esc_html_e('Select All', 'tka-site-utilities'); ?></button>
+													<button type="button" class="button button-secondary" id="tka-gb-deselect-all"><?php esc_html_e('Deselect All', 'tka-site-utilities'); ?></button>
+												</div>
+											</div>
+
+											<div class="tka-gb-search-wrap">
+												<input type="text" id="tka-gb-block-search" placeholder="<?php esc_attr_e('Search blocks or embed providers by name or slug...', 'tka-site-utilities'); ?>">
+											</div>
+
+											<div class="tka-gb-categories">
+												<?php foreach ($gb_categories as $cat_key => $cat_data) :
+													if (empty($cat_data['blocks'])) {
+														continue;
+													}
+													$count_active = 0;
+													foreach ($cat_data['blocks'] as $b_name => $b_item) {
+														if (in_array($b_name, $gb_allowed_blocks, true)) {
+															$count_active++;
+														}
+													}
+													$total_cat    = count($cat_data['blocks']);
+													$is_embed_cat = ($cat_key === 'embeds');
+													?>
+													<div class="tka-gb-cat-section <?php echo $is_embed_cat ? 'is-embeds' : ''; ?>" data-cat="<?php echo esc_attr($cat_key); ?>">
+														<div class="tka-gb-cat-header">
+															<div>
+																<strong><?php echo esc_html($cat_data['title']); ?></strong>
+																<span class="tka-gb-cat-count">(<?php echo sprintf(esc_html__('%d of %d active', 'tka-site-utilities'), $count_active, $total_cat); ?>)</span>
+																<div class="tka-gb-cat-desc"><?php echo esc_html($cat_data['desc']); ?></div>
+															</div>
+															<div class="tka-gb-cat-actions">
+																<?php if ($is_embed_cat) : ?>
+																	<button type="button" class="button button-small" id="tka-gb-embeds-recommended"><?php esc_html_e('Recommended', 'tka-site-utilities'); ?></button>
+																<?php endif; ?>
+																<button type="button" class="button button-small tka-gb-cat-select-all" data-cat="<?php echo esc_attr($cat_key); ?>"><?php esc_html_e('All', 'tka-site-utilities'); ?></button>
+																<button type="button" class="button button-small tka-gb-cat-deselect-all" data-cat="<?php echo esc_attr($cat_key); ?>"><?php esc_html_e('None', 'tka-site-utilities'); ?></button>
+															</div>
+														</div>
+
+														<div class="tka-gb-cat-grid">
+															<?php foreach ($cat_data['blocks'] as $b_name => $b_item) :
+																$checked = in_array($b_name, $gb_allowed_blocks, true) ? 'checked' : '';
+																?>
+																<label class="tka-gb-block-item" data-title="<?php echo esc_attr(strtolower($b_item['title'] . ' ' . $b_name . ' ' . ($b_item['description'] ?? '') . ' ' . ($b_item['group'] ?? ''))); ?>">
+																	<input type="checkbox" name="tka_site_utilities_options[gutenberg_allowed_blocks][]" value="<?php echo esc_attr($b_name); ?>" <?php echo $checked; ?>>
+																	<div class="tka-gb-block-meta">
+																		<div class="tka-gb-block-title-row">
+																			<span class="tka-gb-block-title"><?php echo esc_html($b_item['title']); ?></span>
+																			<?php if (!empty($b_item['group'])) : ?>
+																				<span class="tka-gb-group-badge"><?php echo esc_html($b_item['group']); ?></span>
+																			<?php endif; ?>
+																		</div>
+																		<?php if (!empty($b_item['description'])) : ?>
+																			<div class="tka-gb-block-desc"><?php echo esc_html($b_item['description']); ?></div>
+																		<?php endif; ?>
+																		<div class="tka-gb-block-slug"><?php echo esc_html($b_name); ?></div>
+																	</div>
+																</label>
+															<?php endforeach; ?>
+														</div>
+													</div>
+												<?php endforeach; ?>
 											</div>
 										</div>
 									</section>

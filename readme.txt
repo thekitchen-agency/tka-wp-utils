@@ -3,7 +3,7 @@ Contributors: thekitchen-agency
 Tags: classic editor, svg upload, admin columns, hardening, image optimization
 Requires at least: 6.2
 Tested up to: 7.0
-Stable tag: 1.20.3
+Stable tag: 1.21.0
 Requires PHP: 8.3
 License: MIT
 License URI: https://opensource.org/licenses/MIT
@@ -59,6 +59,9 @@ Our plugin uses a database-first approach: it converts physical files to WebP an
 Since images are permanently converted to WebP in the database, deactivating the plugin leaves WebP files active in your media library. If you want to keep original JPEGs/PNGs for safe backup, make sure the "Keep Original Images" setting is toggled on before running bulk optimization.
 
 == Changelog ==
+
+= 1.21.0 =
+*   Feature: Added dedicated **Gutenberg Curation** tab (visible whenever Gutenberg is not globally disabled) with granular block allowlists, 35 individual oEmbed provider controls, pattern/remote-pattern/block-directory/Openverse restrictions, and `theme.json` design guardrails (custom color lock, configurable Brand Color Palette, custom font-size lock with `H1–H6` scale, spacing/border lock, and core block style cleanup).
 
 = 1.20.3 =
 *   Fix: Preserve `?ver=` cache-busting query parameters on WP Admin scripts when "Remove Version Strings" is enabled, and append `?v=` cache-buster to `focal-point.js` so browsers immediately load the updated drag-and-drop handler.

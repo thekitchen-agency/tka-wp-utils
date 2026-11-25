@@ -5,6 +5,16 @@ All notable changes to the **TKA Site Utilities** WordPress plugin will be docum
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.21.0] - 2026-11-25
+
+### Added
+- **Gutenberg Block, Embed & Design System Curation (`includes/Features/GutenbergManager.php`, `includes/Admin/Settings.php`)**:
+  - Added a dedicated **Gutenberg Curation** settings tab that automatically appears when Gutenberg is active (hidden when Classic Editor is enabled or Gutenberg is set to *Disable Completely*).
+  - **Granular Block & Embed Allowlist**: Categorized block selector across 7 groups (*Text & Editorial*, *Media*, *Design & Layout*, *Embeds (Fine-Grained)*, *Custom & Plugin Blocks*, *Widgets & Advanced*, *Theme & FSE*) with live search, category select-all/none toggles, and 1-click presets (*Recommended*, *Minimal*).
+  - **Fine-Grained oEmbed Provider Curation**: Control 35 individual embed providers (YouTube, Vimeo, Spotify, SoundCloud, Twitter/X, Bluesky, TikTok, etc.) both on the PHP `oembed_providers` backend and via live client-side `core/embed` block variation filtering, with an *Administrator Bypass* option.
+  - **Editor Library & Pattern Controls**: Individual toggles to disable core/theme block patterns, WordPress.org remote pattern directory, Block Directory plugin search, and Openverse media library, plus a defensive `UploadProgressSnackbar` `getFailureCount` private-API safeguard.
+  - **Design System & `theme.json` Guardrails**: Lock custom color/gradient pickers, enforce a configurable Brand Color Palette (with interactive swatch repeater and `tka_site_utilities_gutenberg_color_palette` filter), lock custom font sizes with an explicit `H1–H6` scale (`tka_site_utilities_gutenberg_typography` filter), lock custom spacing/borders, clean unsupported core block styles, and optionally register a `Lead Paragraph` (`is-style-lead`) style.
+
 ## [1.20.3] - 2026-11-25
 
 ### Fixed

@@ -1408,5 +1408,182 @@ document.addEventListener('DOMContentLoaded', function () {
 				}
 			});
 	});
+
+	// Gutenberg Curation & Design System Manager UI
+	(function initGutenbergCurationUI() {
+		const curationNav = document.querySelector('.tka-gutenberg-curation-nav');
+		const curationPanel = document.getElementById('panel-gutenberg-curation');
+		const classicEditorToggle = document.querySelector('input[name="tka_site_utilities_options[classic_editor]"]');
+		const disableGbRadios = document.querySelectorAll('input[name="tka_site_utilities_options[disable_gutenberg]"]');
+
+		function updateCurationVisibility() {
+			if (!curationNav) return;
+			const isClassic = classicEditorToggle ? classicEditorToggle.checked : false;
+			const checkedRadio = document.querySelector('input[name="tka_site_utilities_options[disable_gutenberg]"]:checked');
+			const isAllDisabled = checkedRadio ? checkedRadio.value === 'all' : false;
+			const shouldHide = isClassic || isAllDisabled;
+
+			curationNav.style.display = shouldHide ? 'none' : '';
+			if (shouldHide && curationPanel && curationPanel.classList.contains('active')) {
+				const generalNav = document.querySelector('.tka-nav-item[data-tab="general"]');
+				if (generalNav) generalNav.click();
+			}
+		}
+
+		if (classicEditorToggle) {
+			classicEditorToggle.addEventListener('change', updateCurationVisibility);
+		}
+		disableGbRadios.forEach((radio) => radio.addEventListener('change', updateCurationVisibility));
+		updateCurationVisibility();
+
+		if (!curationPanel) return;
+
+		// Enforce Brand Palette toggle
+		const paletteToggle = document.getElementById('tka-gb-enforce-palette-toggle');
+		const paletteNested = document.querySelector('.nested-gb-brand-palette');
+		if (paletteToggle && paletteNested) {
+			paletteToggle.addEventListener('change', function () {
+				paletteNested.style.display = this.checked ? 'block' : 'none';
+			});
+		}
+
+		// Brand Palette Swatch Repeater
+		const paletteList = document.getElementById('tka-gb-palette-list');
+		const addSwatchBtn = document.getElementById('tka-gb-add-swatch-btn');
+
+		if (paletteList) {
+			paletteList.addEventListener('input', function (e) {
+				const row = e.target.closest('.tka-gb-palette-row');
+				if (!row) return;
+				const picker = row.querySelector('.tka-gb-color-picker');
+				const hexInput = row.querySelector('.tka-gb-color-hex');
+				if (e.target.classList.contains('tka-gb-color-picker') && hexInput) {
+					hexInput.value = e.target.value;
+				} else if (e.target.classList.contains('tka-gb-color-hex') && picker && /^#[0-9A-Fa-f]{6}$/.test(e.target.value)) {
+					picker.value = e.target.value;
+				}
+			});
+
+			paletteList.addEventListener('click', function (e) {
+				if (e.target.classList.contains('tka-gb-remove-swatch')) {
+					const row = e.target.closest('.tka-gb-palette-row');
+					if (row) row.remove();
+				}
+			});
+		}
+
+		if (addSwatchBtn && paletteList) {
+			addSwatchBtn.addEventListener('click', function () {
+				const idx = Date.now();
+				const row = document.createElement('div');
+				row.className = 'tka-gb-palette-row';
+				row.innerHTML = `
+					<input type="color" class="tka-gb-color-picker" value="#4F46E5">
+					<input type="text" name="tka_site_utilities_options[gutenberg_brand_palette][${idx}][color]" class="tka-gb-color-hex" value="#4F46E5" placeholder="#000000">
+					<input type="text" name="tka_site_utilities_options[gutenberg_brand_palette][${idx}][name]" value="" placeholder="Color Name">
+					<input type="text" name="tka_site_utilities_options[gutenberg_brand_palette][${idx}][slug]" value="" placeholder="slug">
+					<button type="button" class="button button-small tka-gb-remove-swatch">&times;</button>
+				`;
+				paletteList.appendChild(row);
+			});
+		}
+
+		// Live Block & Embed Search
+		const searchInput = document.getElementById('tka-gb-block-search');
+		if (searchInput) {
+			searchInput.addEventListener('input', function () {
+				const term = this.value.toLowerCase().trim();
+				curationPanel.querySelectorAll('.tka-gb-block-item').forEach((item) => {
+					const text = item.getAttribute('data-title') || '';
+					item.style.display = (!term || text.includes(term)) ? 'flex' : 'none';
+				});
+			});
+		}
+
+		function updateCategoryCounts() {
+			curationPanel.querySelectorAll('.tka-gb-cat-section').forEach((section) => {
+				const checkboxes = section.querySelectorAll('input[name="tka_site_utilities_options[gutenberg_allowed_blocks][]"]');
+				const checked = section.querySelectorAll('input[name="tka_site_utilities_options[gutenberg_allowed_blocks][]"]:checked').length;
+				const countEl = section.querySelector('.tka-gb-cat-count');
+				if (countEl) {
+					countEl.textContent = `(${checked} of ${checkboxes.length} active)`;
+				}
+			});
+		}
+
+		curationPanel.addEventListener('change', function (e) {
+			if (e.target.name === 'tka_site_utilities_options[gutenberg_allowed_blocks][]') {
+				updateCategoryCounts();
+			}
+		});
+
+		const recommendedBlocks = JSON.parse(curationPanel.getAttribute('data-recommended-blocks') || '[]');
+		const minimalBlocks = JSON.parse(curationPanel.getAttribute('data-minimal-blocks') || '[]');
+		const recommendedEmbeds = ['core/embed', 'core-embed-youtube', 'core-embed-vimeo', 'core-embed-spotify'];
+
+		document.getElementById('tka-gb-preset-recommended')?.addEventListener('click', () => {
+			curationPanel.querySelectorAll('input[name="tka_site_utilities_options[gutenberg_allowed_blocks][]"]').forEach((cb) => {
+				cb.checked = recommendedBlocks.includes(cb.value);
+			});
+			updateCategoryCounts();
+		});
+
+		document.getElementById('tka-gb-preset-minimal')?.addEventListener('click', () => {
+			curationPanel.querySelectorAll('input[name="tka_site_utilities_options[gutenberg_allowed_blocks][]"]').forEach((cb) => {
+				cb.checked = minimalBlocks.includes(cb.value);
+			});
+			updateCategoryCounts();
+		});
+
+		document.getElementById('tka-gb-select-all')?.addEventListener('click', () => {
+			curationPanel.querySelectorAll('input[name="tka_site_utilities_options[gutenberg_allowed_blocks][]"]').forEach((cb) => {
+				cb.checked = true;
+			});
+			updateCategoryCounts();
+		});
+
+		document.getElementById('tka-gb-deselect-all')?.addEventListener('click', () => {
+			curationPanel.querySelectorAll('input[name="tka_site_utilities_options[gutenberg_allowed_blocks][]"]').forEach((cb) => {
+				cb.checked = false;
+			});
+			updateCategoryCounts();
+		});
+
+		document.getElementById('tka-gb-embeds-recommended')?.addEventListener('click', () => {
+			const embedsSection = curationPanel.querySelector('.tka-gb-cat-section[data-cat="embeds"]');
+			if (embedsSection) {
+				embedsSection.querySelectorAll('input[name="tka_site_utilities_options[gutenberg_allowed_blocks][]"]').forEach((cb) => {
+					cb.checked = recommendedEmbeds.includes(cb.value);
+				});
+				updateCategoryCounts();
+			}
+		});
+
+		curationPanel.querySelectorAll('.tka-gb-cat-select-all').forEach((btn) => {
+			btn.addEventListener('click', function () {
+				const cat = this.getAttribute('data-cat');
+				const section = curationPanel.querySelector(`.tka-gb-cat-section[data-cat="${cat}"]`);
+				if (section) {
+					section.querySelectorAll('input[name="tka_site_utilities_options[gutenberg_allowed_blocks][]"]').forEach((cb) => {
+						cb.checked = true;
+					});
+					updateCategoryCounts();
+				}
+			});
+		});
+
+		curationPanel.querySelectorAll('.tka-gb-cat-deselect-all').forEach((btn) => {
+			btn.addEventListener('click', function () {
+				const cat = this.getAttribute('data-cat');
+				const section = curationPanel.querySelector(`.tka-gb-cat-section[data-cat="${cat}"]`);
+				if (section) {
+					section.querySelectorAll('input[name="tka_site_utilities_options[gutenberg_allowed_blocks][]"]').forEach((cb) => {
+						cb.checked = false;
+					});
+					updateCategoryCounts();
+				}
+			});
+		});
+	})();
 });
 
